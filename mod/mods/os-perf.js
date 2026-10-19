@@ -1,18 +1,18 @@
-// A1 – plynulé karty vylepšení OS (MY OS UPGRADE) se stejným vzhledem.
+// A1 – smooth OS upgrade cards (MY OS UPGRADE) with the same look.
 //
-// Proč se to sekalo: každá z 35 karet měla
-//   • backdrop-filter: blur(16px) saturate(1.25) – rozmazání pozadí. Pod HTML vrstvou ale nevidí plátno hry,
-//     takže vizuálně skoro nic nedělá, jen se každý snímek znovu počítá;
-//   • filter: drop-shadow(...) ×2 – stín počítaný z průhlednosti celé karty (i textu), každý snímek.
-// Náhrada: backdrop-filter pryč; drop-shadow nahrazen stejnými stíny, které se vykreslí jednou
-// (rozmazaná kopie plochy pod panelem, text-shadow u textů, drop-shadow jen na malých obrázcích),
-// a každá karta má vlastní vrstvu (will-change), takže kliknutí překreslí jen tu jednu kartu.
-// Hodnoty jsou dopočítané z původních stínů a ověřené porovnáním snímků pixel po pixelu.
+// Why it stuttered: each of the 35 cards had
+//   • backdrop-filter: blur(16px) saturate(1.25) – background blur. Under the HTML layer it cannot see the
+//     game canvas, so it does almost nothing visually, it is just recomputed every frame;
+//   • filter: drop-shadow(...) ×2 – a shadow computed from the alpha of the whole card (text too), every frame.
+// Replacement: backdrop-filter removed; drop-shadow replaced by the same shadows drawn once
+// (a blurred copy of the area under the panel, text-shadow on texts, drop-shadow only on small images),
+// and every card has its own layer (will-change), so a click repaints just that one card.
+// The values are derived from the original shadows and verified by pixel-by-pixel screenshot comparison.
 DTMods.register('os-perf', () => {
   if (document.getElementById('dtmod-os-perf')) return;
   const R = '#mostech-root ';
   const css = `
-/* parametry původního drop-shadow podle stavu: alfa, posun, sigma, bílá záře, propustnost panelu */
+/* parameters of the original drop-shadow per state: alpha, offset, sigma, white glow, panel transmittance */
 ${R}.mostech-card {
   --dtA: 0.18; --dtY: 8px; --dtB: 18px; --dtG: 0; --dtP: 0.90;
   filter: none !important;
@@ -24,7 +24,7 @@ ${R}.mostech-card.is-selected       { --dtA: 0.30; --dtY: 12px; --dtB: 24px; --d
 ${R}.mostech-card.is-selected:hover { --dtA: 0.36; --dtY: 18px; --dtB: 32px; --dtG: 0;    --dtP: 0.60; filter: none !important; }
 ${R}.mostech-card-in { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 
-/* stín poloprůhledných ploch: rozmazaná kopie plochy pod panelem (alfa = alfa filtru × krytí plochy) */
+/* shadow of semi-transparent areas: blurred copy of the area under the panel (alpha = filter alpha × area coverage) */
 ${R}.mostech-card::before, ${R}.mostech-card::after, ${R}.mostech-card-icon::before, ${R}.mostech-level::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
   background: rgba(0,0,0, calc(var(--dtA) * var(--dtK)));
@@ -41,7 +41,7 @@ ${R}.mostech-card-icon::before { --dtK: 0.19; }
 ${R}.mostech-card.is-selected .mostech-card-icon::before { --dtK: 0.25; }
 ${R}.mostech-level::before { --dtK: 0.17; }
 
-/* stíny textu leží nad panelem → alfa × propustnost panelu (× průhlednost textu) */
+/* text shadows sit above the panel → alpha × panel transmittance (× text opacity) */
 ${R}.mostech-card-name, ${R}.mostech-card-desc, ${R}.mostech-price, ${R}.mostech-level { --dtT: 1; transition: text-shadow .35s ease; }
 ${R}.mostech-card-desc { --dtT: 0.78; }
 ${R}.mostech-level { --dtT: 0.86; }
@@ -54,7 +54,7 @@ ${R}.mostech-card-desc, ${R}.mostech-level { text-shadow: var(--dtS); }
 ${R}.mostech-price { text-shadow: 0 2px 10px rgba(0,0,0,0.28), var(--dtS); }
 ${R}.mostech-card.is-selected .mostech-price { text-shadow: 0 2px 12px color-mix(in srgb, var(--cat) 55%, transparent), var(--dtS); }
 
-/* neprůhledné obrázky (ikona, hvězdička) */
+/* opaque images (icon, star) */
 ${R}.mostech-card-icon img { --dtT: 0.84; transition: filter .35s ease;
   filter: drop-shadow(0 2px 5px rgba(0,0,0,0.40))
           drop-shadow(0 var(--dtY) var(--dtB) rgba(0,0,0, calc(var(--dtA) * var(--dtP) * var(--dtT)))); }
@@ -63,7 +63,7 @@ ${R}.mostech-level img { --dtT: 0.86; transition: filter .35s ease;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.40))
           drop-shadow(0 var(--dtY) var(--dtB) rgba(0,0,0, calc(var(--dtA) * var(--dtP) * var(--dtT)))); }
 
-/* kroužek výběru (vybraný je neprůhledný) */
+/* selection ring (the selected one is opaque) */
 ${R}.mostech-check {
   box-shadow: 0 3px 12px transparent,
               0 var(--dtY) calc(2 * var(--dtB)) rgba(0,0,0, calc(var(--dtA) * var(--dtP) * 0.2));

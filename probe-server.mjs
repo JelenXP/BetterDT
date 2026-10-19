@@ -1,4 +1,4 @@
-// Přijímá hlášení z testovacího modu mods/probe.js a vypisuje je.
+// Receives reports from the test mod mods/probe.js and prints them.
 import http from 'node:http';
 
 http.createServer((req, res) => {
@@ -8,4 +8,4 @@ http.createServer((req, res) => {
     console.log(new Date().toISOString(), body);
     res.end('ok');
   });
-}).listen(9334, '127.0.0.1', () => console.log('čekám na hlášení na http://127.0.0.1:9334'));
+}).listen(9334, '127.0.0.1', () => console.log('waiting for reports on http://127.0.0.1:9334'));

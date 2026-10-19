@@ -1,5 +1,5 @@
-// Testovací mod: po načtení pošle přehled runtime na lokální server (node probe-server.mjs).
-// Slouží jen k ověření, že mody běží. Pro normální hraní ho z mods.json vyřaď.
+// Test mod: after loading, sends a runtime overview to a local server (node probe-server.mjs).
+// Only for checking that mods run. Remove it from mods.json for normal play.
 DTMods.register('probe', runtime => {
   const report = () => {
     const info = {

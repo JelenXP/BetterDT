@@ -1,37 +1,32 @@
-DTModLoader for Devices Tycoon
-==============================
+BetterDT for Devices Tycoon
+===========================
 
 INSTALL
 1. Steam > Library > Devices Tycoon > right click > Manage > Browse local files.
 2. Extract everything from this zip into that folder
-   (DTModLoader_x64.ext.dll next to "Devices Tycoon.exe", the "mods" folder next to it).
-3. Start the game.
+   (BetterDT_x64.ext.dll next to "Devices Tycoon.exe", the "mods" folder next to it).
+3. Start the game. The settings are in the game: Settings > BetterDT.
 
 UNINSTALL
-Delete DTModLoader_x64.ext.dll and the "mods" folder.
+Delete BetterDT_x64.ext.dll and the "mods" folder.
 
 No game file is modified, so game updates do not remove the mods.
+BetterDT updates itself from GitHub (can be turned off in Settings > BetterDT).
+If an older DTModLoader_x64.ext.dll is present, BetterDT disables it on the first start.
 
-Included mods
-- os-perf.js     smoother OS upgrade cards (same look, no heavy blur filters)
-- hire-tools.js  FIND EMPLOYEES: second button that searches until the office is full,
-                 AUTO-HIRE checkbox (top right) that hires everyone found
-- train-all.js   UPGRADE EMPLOYEES: TRAIN ALL button that trains the whole profession to the
-                 max level while money and research points last (uses the game's own buttons)
-- vacation-tools.js  MY EMPLOYEES: VACATION FOR THE TIRED button that sends everyone with mood
-                 below 30 on vacation (same rules as the game; one per profession keeps working)
-- dtmodloader.ini  gpu=1 asks Windows for the high-performance GPU (any vendor: NVIDIA,
-                   AMD, Intel Arc). With integrated graphics only, nothing changes.
-                   Set gpu=0 to turn it off (e.g. to save battery).
+Included mods (each can be turned off in Settings > BetterDT > Mods)
+- os-perf.js         smoother OS upgrade cards (same look, no heavy blur filters)
+- hire-tools.js      FIND EMPLOYEES: second button that searches until the office is full,
+                     AUTO-HIRE checkbox (top right) that hires everyone found
+- train-all.js       UPGRADE EMPLOYEES: TRAIN ALL button that trains the whole profession to the
+                     max level while money and research points last (uses the game's own buttons)
+- vacation-tools.js  MY EMPLOYEES: VACATION FOR THE TIRED button that sends everyone with low mood
+                     on vacation (same rules as the game; one per profession keeps working)
+
+The high-performance GPU switch (on by default) asks Windows for the dedicated GPU on laptops
+with two GPUs (any vendor). With integrated graphics only, nothing changes.
 
 Add your own mods: put a .js file into "mods" and list it in mods\mods.json.
-A mod calls DTMods.register('name', runtime => { ... }) and gets the Construct 3 runtime.
+A mod calls BetterDT.register('name', runtime => { ... }) and gets the Construct 3 runtime.
 
-If something goes wrong, mods\dtmodloader.log shows what the loader did.
-
-----------------------------------------------------------------------------
-Česky
-INSTALACE: Steam > Knihovna > Devices Tycoon > pravé tlačítko > Spravovat > Procházet
-místní soubory. Rozbal celý zip do otevřené složky a spusť hru.
-ODINSTALACE: smaž DTModLoader_x64.ext.dll a složku "mods".
-Soubory hry se nemění, takže aktualizace hry mody nesmaže.
+Settings are stored in mods\betterdt.ini, the log in mods\betterdt.log.

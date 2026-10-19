@@ -1,62 +1,163 @@
-# Modding Devices Tycoon
+# BetterDT – mods for Devices Tycoon
 
-## Jak je hra udělaná
+BetterDT is a mod loader and a set of quality-of-life mods for **Devices Tycoon**. It does not modify
+any game file, so game updates do not remove it. It adds a **BetterDT** section to the game settings,
+where you can turn mods on and off, change their options and update BetterDT from GitHub.
 
-- **Engine:** Construct 3 (Scirra), export HTML5/JavaScript v obalu **WebView2**
-  (`Devices Tycoon.exe` + `*.ext.dll`). Není to Unity.
-- **Všechno je ve `www/assets.dat`** (1,4 GB, 9 362 souborů): jednoduchý nekomprimovaný balík
-  Constructu (`c3ab` / `fdir` / `blob`). Uvnitř není žádné šifrování ani podpis.
-- **Herní logika** = event sheety Constructu v `data.json` (50 MB, 299 layoutů, 287 event sheetů,
-  10 519 typů objektů) a k tomu autorův vlastní JS (ukládání, perky, achievementy…) uvnitř
-  `scripts/c3main.js` (minifikovaný).
-- **Herní data** = asi 600 JSON souborů ve formátu Construct Array (`{"c2array":true,"size":[x,y,z],"data":…}`):
-  procesory, GPU, OS, kanceláře, marketing, ocenění, překlady… Ty se modují nejsnáz.
+## Install
 
-## Co hra hlídá
+1. Download `BetterDT.zip` from the [latest release](https://github.com/JelenXP/BetterDT/releases/latest).
+2. Steam → Library → Devices Tycoon → right click → Manage → Browse local files.
+3. Extract everything into that folder (`BetterDT_x64.ext.dll` next to `Devices Tycoon.exe`,
+   the `mods` folder next to it) and start the game.
 
-Autor do kódu zabudoval **kontrolu [Integrity]**. Ta přečte `package.json` a hru ukončí
-(„Game files have been modified“), když je zapnuté `enable-devtools` nebo když `chromium-args` obsahuje
-`--remote-debugging-*`. Autor tedy nechce, aby ve hře šly DevTools, a tahle sada nástrojů
-je nechává být. **Obsah `assets.dat` nekontroluje**: upravený balík se spustí normálně (ověřeno,
-hra se dostala do menu a mod měl přístup k runtime).
+Uninstall: delete `BetterDT_x64.ext.dll` and the `mods` folder.
 
-## Zavaděč `DTModLoader_x64.ext.dll` (doporučená cesta, `loader/`)
+If you used the older `DTModLoader_x64.ext.dll`, BetterDT disables it on the first start
+(renames it to `.disabled`) and takes over its settings.
 
-Mody bez úpravy souborů hry. Instalace pro hráče: rozbalit `loader/dist/DTModLoader.zip` do složky
-hry (Steam → Spravovat → Procházet místní soubory). Odinstalace: smazat DLL a složku `mods`.
+## Settings in the game (Settings → BetterDT)
 
-**Jak funguje:**
-- `WV2ExtManager.dll` z obalu Constructu načte každý `*.ext.dll` ve složce hry a zavolá jeho
-  `WrapperExtInit`. Takhle se načítá i `Steam_x64.ext.dll`. Zavaděč vrátí objekt s prázdnými metodami
-  a žádnou komponentu nezaregistruje.
-- Při načtení přesměruje v importní tabulce exe `GetProcAddress`. Exe si přes něj bere
-  `CreateWebViewEnvironmentWithOptionsInternal`, takže zavaděč dostane volby prostředí a přidá do nich
-  `--force_high_performance_gpu` (vypnutí: `gpu=0` v `mods\dtmodloader.ini`). Přepínač nevybírá
-  výrobce. Chromium s ním požádá Windows (DXGI) o adaptér s preferencí „vysoký výkon“, tedy o stejné
-  pořadí, jaké používá nastavení grafiky ve Windows:
-  - jen integrovaná grafika: zůstane na ní,
-  - integrovaná + dedikovaná (NVIDIA, AMD, Intel Arc): přejde na dedikovanou,
-  - stolní PC jen s dedikovanou: beze změny.
+- **General:** version, automatic updates (on by default), "Check now" / "Install" for updates,
+  high-performance GPU switch, buttons that open the mods folder, the log and the GitHub releases.
+- **Mods:** an on/off switch for every mod and the mod options:
+  - hire-tools: hire everyone found automatically,
+  - train-all: mute the click sounds while training,
+  - vacation-tools: the mood threshold for sending people on vacation (default 30).
 
-  Seznam grafik a výkonnou volbu zapíše zavaděč do logu. Ověřeno na Intel UHD + RTX 5070:
-  s `gpu=1` kreslí RTX, s `gpu=0` Intel.
-- Po vytvoření controlleru (hra volá `CreateCoreWebView2ControllerWithOptions`; zachycené jsou všechny
-  čtyři varianty) zavaděč zaregistruje `AddScriptToExecuteOnDocumentCreated` se skriptem složeným
-  z `mods\mods.json` a souborů v `mods\`. Skript běží jen na hlavní stránce `app.localhost`.
-- Ověřeno v kopii hry 1.3 s originálním `assets.dat` i `package.json`:
-  - DLL se načte 30–60 ms před vytvořením WebView2,
-  - kreslí se na RTX 5070,
-  - `os-perf` i `hire-tools` běží (hromadné hledání našlo a najalo přesně 5 lidí).
-- Co se děje, je zapsané v `mods\dtmodloader.log`.
+Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
+effect after restarting the game; the page says so. All texts are in the game's 15 languages.
 
-**Sestavení:** `loader\build.bat` (Visual Studio 2022 s C++; hlavička WebView2 se stáhne z NuGetu)
-a pak `loader\package.ps1`, který vytvoří zip.
+## Automatic updates
 
-**Souběh s `dtmod install`:** když v `assets.dat` zůstal starý loader, nic se nezdvojí.
-`DTMods` od zavaděče je jen pro čtení a mod se stejným jménem se podruhé nespustí. Čistší je ale
-nejdřív spustit `dtmod restore`.
+At game start BetterDT downloads `manifest.txt` from the latest GitHub release. When the version is
+newer, it downloads every listed file, checks its size and SHA-256, and only then replaces the files
+(the loaded DLL is renamed to `BetterDT_x64.old` and deleted on the next start). The new version is
+used after a restart. `mods\mods.json` keeps any mods you added yourself.
 
-## Nástroj `dtmod.mjs` (Node 18+, bez závislostí)
+Manifest format:
+
+```
+betterdt-manifest 1
+version 0.2.0
+note <release notes line>
+mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
+file <sha256> <size> <asset name> <dest>      dest: dll | INSTALL.txt | mods/<file>.js
+```
+
+Updates can be turned off in the settings (`autoupdate=0` in `betterdt.ini`).
+
+## Mods (`mod/mods`)
+
+### `os-perf.js`: smooth OS upgrade cards
+The MY OS UPGRADE screen stuttered when clicking quickly. Each of the 35 cards had a `backdrop-filter: blur()`
+that does almost nothing visually there, and a double `filter: drop-shadow()` over the whole card. Both were
+recomputed on every animation. The mod replaces them with the same shadows drawn once and gives every card
+its own layer.
+- Look: screenshots differ from the original by 1.4 of 255 levels on average, only on font edges
+  (subpixel antialiasing).
+- Performance: without the mod the card animations dropped frames. With it the screen holds 105 FPS idle
+  and 85 FPS while clicking twice per second, without a single long frame.
+
+### `hire-tools.js`: faster hiring (FIND EMPLOYEES)
+- **A second button on every agency** (people icon + number) repeats the search until exactly as many people
+  are found as are missing to fill the office for the selected profession.
+  - Number = free seats − candidates of this profession already waiting to be hired.
+  - The last search is limited so it never finds more people than there are free seats. Example: 6 seats left
+    and the searches find 3 + 2, so the third search finds only 1.
+  - Every search costs the agency's full price. When the money or the candidates run out, the search stops
+    and the game shows its message.
+  - At 0 the button is dimmed and a click explains why (office full / enough candidates).
+- **AUTO-HIRE checkbox in the top right** (remembered; also in Settings → BetterDT → Mods). When it is checked,
+  everyone found is hired right away, after a regular search as well as after the batch search. Candidates of
+  the same profession found earlier are hired too while there is room. The result is shown next to the number
+  found ("Hired: 2"). Whoever does not fit stays in HIRE EMPLOYEES and the game shows "no free space".
+
+### `train-all.js`: train everyone (UPGRADE EMPLOYEES)
+- A green **TRAIN ALL (N)** button in the left panel under the legend, where N is the number of people of the
+  selected profession who are not at MAX LEVEL yet. A click goes through all pages of the profession and trains
+  until everyone is at the maximum or the money or research points run out.
+- Training clicks the game's own buttons, so the price (sum of the three levels × $1,500 and ⌈sum × 0.015⌉
+  points), gains, salary and perks are computed by the game. The mod only switches pages (`SubPage`) and clicks.
+- Sounds are muted during the batch (optional), one chime plays at the end. A summary ("Training finished: 29
+  upgrades", money and points spent) appears in the game notification. When the money runs out it is appended
+  under the game's message.
+- Tested: 14 designers (29 upgrades) in under a second. With $1M the batch stopped at the game's
+  "You don't have enough funds" message.
+
+### `vacation-tools.js`: vacation for the tired (MY EMPLOYEES)
+- A third button under the game's SEND ON VACATION and PAY THE BONUS: **VACATION FOR THE TIRED – N NEED A REST**.
+  It sends every employee of every profession with mood below 30 (the game marks them "Vacation needed" or
+  "Risk of dismissal") on vacation, the most tired first. The threshold can be changed in the settings.
+- The rules are taken from the game button's event: mood +30 to 40 (max 100), 30 days − 7 per perk,
+  status `Vacation`. At least one person of each profession must keep working. Whoever did not fit because
+  of that keeps working and the notification says so.
+- Tested: 67 of 70 tired employees left, 3 stayed (professions where everyone was tired).
+
+All buttons are built from the game's own objects (same buttons, gradients, icons and font).
+
+### Writing your own mod
+
+Put a `.js` file into `mods` and add it to `mods\mods.json`:
+
+```js
+BetterDT.register('my-mod', runtime => {
+  runtime.globalVars.SomeVariable;                 // global variables from the event sheets
+  runtime.objects.ArrayOffices.getFirstInstance(); // arrays, dictionaries, sprites…
+  runtime.addEventListener('tick', () => {});      // every frame
+  BetterDT.settings.bool('my-mod.option', true);   // settings from betterdt.ini
+});
+```
+
+`DTMods` is an alias of `BetterDT` for older mods. `examples/mods` has two development helpers:
+`example.js` and `probe.js` (with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
+
+## How the loader works (`loader/`)
+
+- `WV2ExtManager.dll` from the Construct wrapper loads every `*.ext.dll` in the game folder and calls its
+  `WrapperExtInit` (that is how `Steam_x64.ext.dll` is loaded). BetterDT returns an object with empty methods
+  and registers no component.
+- On load it redirects `GetProcAddress` in the exe's import table. The exe gets
+  `CreateWebViewEnvironmentWithOptionsInternal` through it, so the loader sees the environment options and adds
+  `--force_high_performance_gpu`. The switch does not pick a vendor: Chromium asks Windows (DXGI) for the
+  "high performance" adapter, the same order the Windows graphics settings use:
+  - integrated graphics only: stays on it,
+  - integrated + dedicated (NVIDIA, AMD, Intel Arc): moves to the dedicated one,
+  - desktop with a dedicated GPU only: no change.
+
+  On a laptop with Intel UHD and RTX 5070 the menu went from 84–88 % GPU load and 70–80 FPS (Intel)
+  to 8 % and ~130 FPS (RTX).
+- After the controller is created (all four creation methods are hooked) the loader registers
+  `AddScriptToExecuteOnDocumentCreated` with a script built from `mods\mods.json` and the files in `mods\`.
+  The script runs only in the main page on `app.localhost`.
+- `https://betterdt.localhost/…` is served through `WebResourceRequested` (registered after the game's own
+  handler, which would otherwise overwrite the response). The settings page uses it for `state`, `set`,
+  `check`, `install` and `open`. Only requests from the game page are accepted.
+- Everything it does is written to `mods\betterdt.log`.
+
+**Build:** `loader\build.bat` (Visual Studio 2022 with C++; the WebView2 header is downloaded from NuGet),
+then `loader\package.ps1` creates `dist\BetterDT.zip` and the release assets with `manifest.txt` in
+`dist\release`. Publish: `gh release create v<version> loader/dist/release/*`.
+
+## How the game is built
+
+- **Engine:** Construct 3 (Scirra), an HTML5/JavaScript export in a **WebView2** wrapper
+  (`Devices Tycoon.exe` + `*.ext.dll`). It is not Unity.
+- **Everything is in `www/assets.dat`** (1.4 GB, 9,362 files): a simple uncompressed Construct bundle
+  (`c3ab` / `fdir` / `blob`).
+- **Game logic** = Construct event sheets in `data.json` (50 MB, 299 layouts, 287 event sheets,
+  10,519 object types) plus the author's own JS (saving, perks, achievements…) in `scripts/c3main.js`.
+- **Game data** = about 600 JSON files in the Construct Array format: processors, GPUs, OSes, offices,
+  marketing, awards, translations…
+
+The author built an **[Integrity] check** into the game: it reads `package.json` and quits the game
+("Game files have been modified") when `enable-devtools` is on or `chromium-args` contains
+`--remote-debugging-*`. The author does not want DevTools in the game and BetterDT leaves that alone:
+it never enables DevTools or remote debugging.
+
+## `dtmod.mjs` (Node 18+, no dependencies)
+
+The older approach: repack `assets.dat` with the mods inside. BetterDT does not need it.
 
 ```bash
 node dtmod.mjs list "D:\SteamLibrary\steamapps\common\Devices Tycoon\www\assets.dat" ArrayProcessors
@@ -66,8 +167,10 @@ node dtmod.mjs list "D:\SteamLibrary\steamapps\common\Devices Tycoon\www\assets.
 node dtmod.mjs unpack "D:\SteamLibrary\steamapps\common\Devices Tycoon\www\assets.dat" extracted "\.json$"
 ```
 
-Mod = složka, ve které mají soubory stejné cesty jako v balíku. Soubor se stejným jménem
-nahradí originál, nový se přidá. Instalace (poprvé vytvoří zálohu `assets.dat.orig`):
+A mod is a folder whose files have the same paths as in the bundle. A file with the same name replaces the
+original, a new one is added. `install` creates the backup `assets.dat.orig` the first time and always packs
+from it, so mods never stack. A small `dtmod.json` marker in the repacked bundle lets `install` notice that
+Steam installed a new game version (it becomes the new backup). `restore` puts the original back.
 
 ```bash
 node dtmod.mjs install "D:\SteamLibrary\steamapps\common\Devices Tycoon" mod
@@ -77,105 +180,11 @@ node dtmod.mjs install "D:\SteamLibrary\steamapps\common\Devices Tycoon" mod
 node dtmod.mjs restore "D:\SteamLibrary\steamapps\common\Devices Tycoon"
 ```
 
-Balí se vždy z `assets.dat.orig`, takže se mody nevrší přes sebe. Do přebaleného balíku přibude
-malý soubor `dtmod.json` jako značka. Podle ní `install` pozná, že Steam mezitím nahrál novou verzi
-hry: vezme ji jako novou zálohu a nevrátí hru na starší verzi. `restore` takový nový originál
-nechá být.
+`node dtmod.mjs gpu <game folder> [on|off]` adds the high-performance GPU switch to `package.json` instead.
 
-### JS mody
+## Notes
 
-Když složka s modem obsahuje `mods/loader.js`, `pack`/`install` sám přidá do `index.html` jeden
-`<script>`. Loader přečte `mods/mods.json` a spustí každý uvedený skript, jakmile existuje
-runtime Constructu:
-
-```js
-DTMods.register('muj-mod', runtime => {
-  runtime.globalVars.NejakaPromenna;               // globální proměnné z eventů
-  runtime.objects.ArrayOffices.getFirstInstance(); // pole, slovníky, sprity…
-  runtime.addEventListener('tick', () => {});      // každý snímek
-});
-```
-
-Ve složce `examples/mods` jsou pomocné mody pro vývoj, které se do hry neinstalují:
-`example.js` a `probe.js`. `probe.js` spolu s `probe-server.mjs` posílá stav runtime na
-`http://127.0.0.1:9334`, takže nahrazuje konzoli, která kvůli blokaci DevTools není k dispozici.
-Když je chceš použít, zkopíruj je do `mod/mods` a připiš do `mods.json`.
-
-## Hotové mody (`mod/mods`)
-
-### `os-perf.js`: plynulé karty vylepšení OS
-Obrazovka MY OS UPGRADE se sekala při rychlém klikání. Každá z 35 karet měla `backdrop-filter: blur()`,
-který tam vizuálně skoro nic nedělá, a dvojitý `filter: drop-shadow()` přes celou kartu. Oba se počítaly
-znovu při každé animaci. Mod je nahrazuje stejnými stíny, které se vykreslí jednou, a každé kartě dá
-vlastní vrstvu.
-- Vzhled: proti originálu se snímky liší průměrně o 1,4 z 255 úrovní, jen na hranách písma
-  (subpixelové vyhlazování).
-- Výkon: bez módu měly animace karet trhané snímky. S módem drží 105 FPS v klidu a 85 FPS při
-  klikání 2× za sekundu, bez jediného dlouhého snímku.
-
-### `hire-tools.js`: rychlejší nabírání zaměstnanců (FIND EMPLOYEES)
-- **Druhé tlačítko na každé agentuře** (ikona osob + číslo) spustí opakované hledání, dokud se
-  nenajde přesně tolik lidí, kolik chybí do zaplnění kanceláře zvolené profese.
-  - Číslo = volná místa − kandidáti této profese, kteří už čekají na najmutí.
-  - Poslední hledání se omezí, aby se nenašlo víc lidí, než je volných míst. Příklad: zbývá 6 míst a
-    padne 3 + 2, takže třetí hledání najde jen 1.
-  - Každé hledání stojí plnou cenu agentury. Když dojdou peníze nebo kandidáti, hledání skončí
-    a hra ukáže své hlášení.
-  - Při čísle 0 je tlačítko ztlumené a po kliknutí se ukáže proč (plná kancelář / dost kandidátů).
-- **Zaškrtávátko AUTO-HIRE vpravo nahoře** (pamatuje si stav). Když je zaškrtnuté, všichni nalezení
-  se rovnou najmou, a to po běžném hledání i po hromadném. Najmou se také dřív nalezení kandidáti
-  stejné profese, dokud je místo. Výsledek se ukáže vedle počtu nalezených („Hired: 2“).
-  Kdo se nevejde, zůstane v seznamu HIRE EMPLOYEES a hra ukáže „no free space“.
-- Všechny texty jsou v 15 jazycích hry. Grafika je složená z herních prvků (stejná tlačítka,
-  přechody, ikony a písmo).
-
-### `train-all.js`: školení všech (UPGRADE EMPLOYEES)
-- V levém panelu pod legendou je zelené tlačítko **TRAIN ALL (N)**, kde N je počet lidí zvolené profese,
-  kteří ještě nemají MAX LEVEL. Kliknutí projde všechny stránky profese a školí, dokud nemají všichni
-  maximum nebo dokud nedojdou peníze či body výzkumu.
-- Školí se klikáním na herní tlačítka, takže cenu (součet tří úrovní × 1 500 $ a ⌈součet × 0,015⌉ bodů),
-  přírůstky, plat i perky počítá hra. Mod jen přepíná stránky (`SubPage`) a kliká.
-- Během dávky jsou vypnuté zvuky (`Sounds`), na konci zazní jedno cinknutí. Souhrn („Training finished: 29
-  upgrades“, utracené peníze a body) se ukáže v herním oznámení. Když dojdou peníze, připíše se pod
-  herní hlášku.
-- Ověřeno: 14 návrhářů (29 vylepšení) za necelou sekundu. Při 1 mil. $ se dávka zastavila na herní
-  hlášce „You don't have enough funds“.
-
-### `vacation-tools.js`: dovolená pro unavené (MY EMPLOYEES)
-- Pod herními tlačítky SEND ON VACATION a PAY THE BONUS je třetí stejné tlačítko
-  **VACATION FOR THE TIRED – N NEED A REST**. Pošle na dovolenou všechny zaměstnance všech profesí
-  s náladou pod 30 (hra u nich ukazuje „Vacation needed“ nebo „Risk of dismissal“), nejdřív ty
-  nejunavenější.
-- Pravidla jsou převzatá z eventu herního tlačítka: nálada +30 až 40 (max 100), 30 dní − 7 za perk,
-  stav `Vacation`. Z každé profese musí aspoň jeden člověk zůstat v práci. Kdo se proto nevešel,
-  zůstane v práci a oznámení to napíše.
-- Ověřeno: 67 ze 70 unavených odešlo, 3 zůstali (profese, kde byli unavení všichni). Karta zobrazeného
-  zaměstnance se hned přepnula na „ON VACATION – 30 DAYS LEFT“.
-
-Texty obou modů jsou v 15 jazycích hry a tlačítka jsou složená z herních objektů.
-
-## Výkonná grafika (notebooky se dvěma GPU)
-
-WebView2 jinak kreslí hru na úsporné integrované grafice. Na notebooku s Intel UHD a RTX 5070 to
-v menu znamenalo GPU vytížené na 84–88 % a jen 70–80 FPS na 165Hz displeji. Na RTX je ta samá
-obrazovka na 8 % GPU a ~130 FPS.
-
-```bash
-node dtmod.mjs gpu "D:\SteamLibrary\steamapps\common\Devices Tycoon"
-```
-
-Příkaz přidá do `chromium-args` v `package.json` přepínač `--force_high_performance_gpu`
-(poprvé uloží zálohu `package.json.orig`). Kontrola [Integrity] ve hře vadí jen přepínače pro
-DevTools a vzdálené ladění, tenhle pouští dál (ověřeno spuštěním). Vypnutí: `gpu … off`.
-`restore` přepínač odebere taky. Mění se jen tenhle jeden přepínač, takže vypnutí funguje
-správně i po aktualizaci hry.
-
-## Na co si dát pozor
-
-- Aktualizace ze Steamu nebo „Ověřit integritu herních souborů“ vrátí původní `assets.dat` (a `package.json`).
-  Pak stačí znovu spustit `install` a `gpu`. Zálohu si nástroj obnoví sám.
-- Ověřeno na verzi 1.3 (build 26033576): kód náboru, obrazovky FIND EMPLOYEES a MY OS UPGRADE
-  i použité texty jsou proti 1.2 beze změny a oba mody v ní fungují.
-- Hra je jeden velký projekt v Constructu: měnit logiku v `data.json` jde, ale je to zkompilovaná,
-  poziční struktura bez jmen, takže se upravuje těžko. Praktická cesta jsou JS mody a datové
-  JSON soubory.
+- A Steam update or "Verify integrity of game files" does not touch BetterDT (it only adds files).
+- Tested on game version 1.3 (build 26033576).
+- Changing logic in `data.json` is possible but hard (a compiled, positional structure without names).
+  JS mods and the data JSON files are the practical way.

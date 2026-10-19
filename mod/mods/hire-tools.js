@@ -1,14 +1,14 @@
-// B1 + B3 – rychlejší nábor na obrazovce FIND EMPLOYEES.
+// B1 + B3 – faster hiring on the FIND EMPLOYEES screen.
 //
-// B1: na každé kartě agentury je vedle zelené ceny druhé tlačítko „[ikona] N“. N = kolik lidí chybí
-//     do plné kanceláře aktuální profese (volná místa − už nalezení, ještě nenajatí kandidáti této profese).
-//     Jedno kliknutí opakuje hledání u té agentury (každé hledání stojí normální cenu a má normální
-//     náhodu agentury), dokud jich není N. Poslední hledání se ořízne, takže se nikdy nenajde víc,
-//     než je místa. Proběhne jedna obvyklá animace hledání a hra ukáže celkový počet.
-// B3: zaškrtávátko „AUTO-HIRE“ v horní liště vpravo (pamatuje si stav). Když je zapnuté, po každém
-//     hledání (běžném i B1) se automaticky najmou nalezení lidé této profese, až do kapacity kanceláře.
+// B1: every agency card gets a second button "[icon] N" next to the green price. N = how many people are
+//     missing to fill the office for the current profession (free seats − candidates already found but not hired).
+//     One click repeats the search at that agency (each search costs the normal price and has the agency's
+//     normal odds) until there are N. The last search is trimmed, so it never finds more than there is room for.
+//     One regular search animation plays and the game shows the total.
+// B3: an "AUTO-HIRE" checkbox in the top bar on the right (remembered). When it is on, after every search
+//     (regular or B1) the people found for this profession are hired automatically, up to the office capacity.
 //
-// Vše je postavené z herních objektů (stejná tlačítka, gradienty, písmo, ikony, zvuky, oznámení).
+// Everything is built from game objects (same buttons, gradients, font, icons, sounds, notifications).
 DTMods.register('hire-tools', (rt) => {
   if (globalThis.__dtHireTools) globalThis.__dtHireTools.dispose();
 
@@ -16,7 +16,7 @@ DTMods.register('hire-tools', (rt) => {
   const LAYOUT = 'FIND EMPLOYEES';
   const gv = rt.globalVars;
 
-  // ── texty (pořadí jazyků jako ve hře: ArrayLanguage řádek = LanguageChoose) ─────────────────────
+  // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
     auto: ['AUTO-HIRE', 'АВТОНАЙМ', 'AUTO-EINSTELLEN', 'EMBAUCHE AUTO', 'ASSUNZIONE AUTO', 'CONTRATACIÓN AUTO',
       'स्वतः नियुक्ति', 'OTOMATİK İŞE AL', 'CONTRATAÇÃO AUTO', 'АВТОНАЙМ', 'REKRUT OTOMATIS', 'AUTOZATRUDNIANIE',
@@ -51,7 +51,7 @@ DTMods.register('hire-tools', (rt) => {
   const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace('{n}', n);
   const gameText = (idx) => { try { return String(arr('ArrayLanguage').getAt(lang(), idx)); } catch { return ''; } };
 
-  // ── data hry ───────────────────────────────────────────────────────────────────────────────────
+  // ── game data ──────────────────────────────────────────────────────────────────────────────────
   const arr = (name) => rt.objects[name].getFirstInstance();
   const ids = (a) => { const out = []; for (let x = 0; x < (a.width | 0); x++) { const v = Number(a.getAt(x, 0, 0)); if (Number.isFinite(v)) out.push(v | 0); } return out; };
   const profOf = (id) => String(arr('ArrayEmployees').getAt(id, 4, 0));
@@ -82,7 +82,7 @@ DTMods.register('hire-tools', (rt) => {
     return { cap, hired, free, backlog, pool, need: Math.max(0, free - backlog.length) };
   }
 
-  // ── herní UI pomocníci ─────────────────────────────────────────────────────────────────────────
+  // ── game UI helpers ────────────────────────────────────────────────────────────────────────────
   const call = (fn) => { try { rt.callFunction(fn); } catch (e) { console.warn('[hire-tools]', fn, e); } };
   function notify(text, error) {
     gv.EditorNotification = 'ON';
@@ -96,17 +96,24 @@ DTMods.register('hire-tools', (rt) => {
   }
 
   // ── stav obrazovky ─────────────────────────────────────────────────────────────────────────────
-  let ui = null;            // objekty vytvořené na aktuální obrazovce
-  let busy = false;         // běží naše dávka
-  let phase = 'idle';       // 'idle' | 'searching' – sleduje herní animaci hledání
-  let batch = null;         // výsledek poslední dávky B1 (pro dohru po animaci)
+  let ui = null;            // objects created on the current screen
+  let busy = false;         // our batch is running
+  let phase = 'idle';       // 'idle' | 'searching' – follows the game's search animation
+  let batch = null;         // result of the last B1 batch (finished after the animation)
+  // the state lives in the BetterDT settings (hire-tools.autoHire); it used to be in localStorage
+  const S = globalThis.BetterDT && globalThis.BetterDT.settings;
   let autoHire = false;
   try { autoHire = localStorage.getItem(LS_KEY) === '1'; } catch { }
+  if (S) {
+    if (S.get('hire-tools.autoHire') === undefined) { if (autoHire) S.set('hire-tools.autoHire', true); }
+    else autoHire = S.bool('hire-tools.autoHire', false);
+    S.onChange((k, v) => { if (k === 'hire-tools.autoHire') autoHire = S.bool(k, false); });
+  }
   let statsCache = null, statsTick = 0;
 
-  // karty: [zelené tlačítko, jeho gradient, text ceny]
+  // cards: [green button, its gradient, price text]
   const CARDS = [[19896, 19897, 19902], [19898, 19899, 19903], [19900, 19901, 19904]];
-  const CARD_X = [790, 1230, 1670];    // střed karet v layoutu (původní poloha zelených tlačítek)
+  const CARD_X = [790, 1230, 1670];    // card centres in the layout (original position of the green buttons)
 
   function teardown() {
     if (!ui) return;
@@ -130,7 +137,7 @@ DTMods.register('hire-tools', (rt) => {
       const B = byUid(bu), G = byUid(gu), T = byUid(tu);
       if (!B || !G || !T) { ui = null; return; }
       const cx = CARD_X[k];
-      // zelené tlačítko užší, vpravo od něj nové (stejná pravá hrana jako původně)
+      // narrower green button, the new one to its right (same right edge as before)
       B.x = cx - 63; B.width = 226;
       G.x = cx - 63; G.width = 234;
       T.x = cx - 63; T.width = 210;
@@ -144,8 +151,8 @@ DTMods.register('hire-tools', (rt) => {
       nt.changeIconSet(rt.objects.Sprite389);
       ui.b1.push({ tier: k, btn: nb, glow: ng, text: nt, refB: B, refG: G, refT: T, n: -1, w: 116, h: 64 });
     }
-    // zaškrtávátko v horní liště: vypnuto = poloprůhledný čtverec (jako neaktivní tlačítko vlevo),
-    // zapnuto = herní ikona zaškrtnutého políčka
+    // checkbox in the top bar: off = semi-transparent square (like the inactive button on the left),
+    // on = the game's checked-box icon
     const box = rt.objects['9patch3'].createInstance('GLOBAL UI (Touched)', 1300, 50);
     box.width = 36; box.height = 36; box.opacity = 0;
     const check = rt.objects.Text.createInstance('GLOBAL UI (Top)', 1300, 22);
@@ -177,7 +184,7 @@ DTMods.register('hire-tools', (rt) => {
     return x >= b.left - pad && x <= b.right + pad && y >= b.top - pad && y <= b.bottom + pad;
   }
 
-  // ── B1: dávka hledání ──────────────────────────────────────────────────────────────────────────
+  // ── B1: search batch ───────────────────────────────────────────────────────────────────────────
   function engineBusy() {
     const bar = byUid(19905);
     return busy || phase === 'searching' || (bar && bar.opacity > 0.02);
@@ -210,11 +217,11 @@ DTMods.register('hire-tools', (rt) => {
       if (!f.length) { reason = 'pool'; break; }
       got.push(...f);
     }
-    // jedna normální animace hledání; samotné hledání v ní už nic nepřidá (počet 0)
+    // one normal search animation; the search inside it adds nothing (count 0)
     gv.FindEmployeesCountRandom = 0;
     call('FindEmployeesEngine_ON');
     call('CashSound');
-    // výsledek pro herní text „N employees found!“
+    // result for the game text "N employees found!"
     const temp = arr('ArrayEmployees_Temp');
     temp.setSize(got.length, Math.max(1, temp.height | 0), Math.max(1, temp.depth | 0));
     got.forEach((id, i) => temp.setAt(id, i, 0, 0));
@@ -225,12 +232,12 @@ DTMods.register('hire-tools', (rt) => {
     statsCache = null;
   }
 
-  // ── B3: automatické najmutí ────────────────────────────────────────────────────────────────────
+  // ── B3: automatic hiring ──────────────────────────────────────────────────────────────────────
   function hireFound(p, newIds) {
     const s = stats(p);
     const order = [...newIds.filter(id => profOf(id) === p), ...s.backlog.filter(id => !newIds.includes(id))];
     let hired = s.hired, ok = 0, left = 0;
-    gv.OfficeEmployeesMax = s.cap;          // hra kontroluje kapacitu přes tuto proměnnou
+    gv.OfficeEmployeesMax = s.cap;          // the game checks capacity through this variable
     for (const id of order) {
       if (hired >= s.cap) { left++; continue; }
       const r = globalThis.hireEmployee(rt, id);
@@ -239,7 +246,7 @@ DTMods.register('hire-tools', (rt) => {
     if (ok > 0) { try { globalThis.socialQueueThemeEvent(rt, 77); } catch { } }
     return { ok, left };
   }
-  // krátké „Najato: N“ ve stavovém řádku, když se najímá bez hledání (stejná animace jako herní výsledek)
+  // short "Hired: N" in the status line when hiring without a search (same animation as the game's result)
   function flashStatus(n) {
     const st = byUid(19908);
     if (!st || n <= 0) return;
@@ -264,7 +271,7 @@ DTMods.register('hire-tools', (rt) => {
     statsCache = null;
   }
 
-  // konec herní animace hledání (běžné i naší): text stavu se změní z „SEARCHING…“ na výsledek
+  // end of the game's search animation (regular or ours): the status text changes from "SEARCHING…" to the result
   function onSearchFinished() {
     const b = batch; batch = null;
     let hireRes = { ok: 0, left: 0 };
@@ -277,19 +284,19 @@ DTMods.register('hire-tools', (rt) => {
     if (b && b.reason === 'pool' && b.got < b.wanted && hireRes.left === 0) notify(tr('noCandidates'), false);
   }
 
-  // ── každý snímek ───────────────────────────────────────────────────────────────────────────────
+  // ── every frame ────────────────────────────────────────────────────────────────────────────────
   function tick() {
     if (!ui) return;
-    // sledování herního hledání
+    // follow the game's search
     const st = byUid(19908);
-    // (výchozí text v layoutu je také „SEARCHING…“, jen neviditelný → navíc musí být vidět text nebo lišta)
+    // (the default layout text is also "SEARCHING…", just invisible → the text or the bar must be visible too)
     const bar = byUid(19905);
     const searching = !!(st && gameText(11747) && st.text.includes(gameText(11747)) &&
       (st.opacity > 0.02 || (bar && bar.opacity > 0.02)));
     if (phase === 'idle' && searching) phase = 'searching';
     else if (phase === 'searching' && st && !searching) { phase = 'idle'; onSearchFinished(); }
 
-    // čísla na tlačítkách (stačí párkrát za sekundu)
+    // numbers on the buttons (a few times per second is enough)
     if (!statsCache || ++statsTick >= 15) { statsTick = 0; statsCache = stats(String(gv.EmployeesProfession)); }
     const n = Math.min(statsCache.need, statsCache.pool);
     for (const b of ui.b1) {
@@ -303,7 +310,7 @@ DTMods.register('hire-tools', (rt) => {
       b.glow.opacity = b.refG.opacity;
       b.text.opacity = b.refT.opacity * (n > 0 ? 1 : 0.6);
     }
-    // zaškrtávátko: průhlednost podle levého menu (náběh/odchod obrazovky)
+    // checkbox: opacity follows the left menu (screen fade in/out)
     const ref = byUid(19841);
     const a = ref ? ref.opacity : 1;
     layoutCheckbox();
@@ -313,26 +320,27 @@ DTMods.register('hire-tools', (rt) => {
     ui.label.opacity = a;
   }
 
-  // ── vstup: vlastní tlačítka, kliknutí nepustíme dál (jinak by se spustilo i hledání karty) ─────────
+  // ── input: our buttons; the click does not reach the game (it would also start the card's search) ─
   let swallow = false;
   function onDown(e) {
     try { onDownInner(e); } catch (err) { console.warn('[hire-tools] onDown', err); }
   }
   function onDownInner(e) {
     if (!ui || rt.layout.name !== LAYOUT) return;
-    if (String(gv.EditorNotification) !== 'OFF') return;          // klik zavírá herní oznámení
+    if (String(gv.EditorNotification) !== 'OFF') return;          // the click closes the game notification
     const layer = ui.b1[0].btn.layer;
     const [x, y] = layer.cssPxToLayer(e.clientX, e.clientY);
     const [gx, gy] = ui.box.layer.cssPxToLayer(e.clientX, e.clientY);
     let act = null;
     for (const b of ui.b1) if (b.btn.opacity > 0.05 && hitBox(b.btn, x, y)) act = () => {
       if (engineBusy()) return;
-      b.pressAt = performance.now();     // stisk jako u herních tlačítek (dopočítává tick)
+      b.pressAt = performance.now();     // press like the game buttons (finished by tick)
       runBatch(b.tier);
     };
     if (!act && ui.label.opacity > 0.05 && (hitBox(ui.box, gx, gy, 6) || hitBox(ui.label, gx, gy) && gx <= ui.label.getBoundingBox().left + ui.label.textWidth + 6)) act = () => {
       autoHire = !autoHire;
       try { localStorage.setItem(LS_KEY, autoHire ? '1' : '0'); } catch { }
+      if (S) S.set('hire-tools.autoHire', autoHire);
       call('Tap_Main');
     };
     if (!act) return;

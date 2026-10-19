@@ -1,5 +1,5 @@
-// Pořadí metod ve vtable WebView2 rozhraní, spočítané z oficiální hlavičky (C rozhraní),
-// aby v hlavním kódu nebyla ručně psaná čísla.
+// Method order in the WebView2 interface vtables, computed from the official header (C interface),
+// so the main code has no hand-written numbers.
 #define CINTERFACE
 #define COBJMACROS
 #include <stddef.h>

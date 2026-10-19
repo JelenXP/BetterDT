@@ -1,5 +1,5 @@
 @echo off
-rem Build DTModLoader_x64.ext.dll (Visual Studio 2022 with C++ tools).
+rem Build BetterDT_x64.ext.dll (Visual Studio 2022 with C++ tools).
 rem WebView2 SDK header is downloaded from NuGet on first build (package Microsoft.Web.WebView2).
 setlocal
 cd /d "%~dp0"
@@ -16,6 +16,6 @@ set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -property installationPath`) do set "VS=%%i"
 call "%VS%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 mkdir build 2>nul
-cl /nologo /LD /O2 /MT /EHsc /W3 /std:c++17 /utf-8 /D_CRT_SECURE_NO_WARNINGS /Isdk /Fobuild\ dtmodloader.cpp vtidx.c ^
-   /link /OUT:build\DTModLoader_x64.ext.dll /IMPLIB:build\dtmodloader.lib ole32.lib dxgi.lib || exit /b 1
-echo OK: build\DTModLoader_x64.ext.dll
+cl /nologo /LD /O2 /MT /EHsc /W3 /std:c++17 /utf-8 /D_CRT_SECURE_NO_WARNINGS /Isdk /Fobuild\ betterdt.cpp vtidx.c ^
+   /link /OUT:build\BetterDT_x64.ext.dll /IMPLIB:build\betterdt.lib ole32.lib dxgi.lib winhttp.lib bcrypt.lib shlwapi.lib shell32.lib || exit /b 1
+echo OK: build\BetterDT_x64.ext.dll

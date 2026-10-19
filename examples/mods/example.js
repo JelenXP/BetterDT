@@ -1,5 +1,5 @@
-// Ukázkový mod: při každé změně obrazovky (layoutu) zapíše do konzole její jméno
-// a vystaví runtime jako globalThis.rt pro vlastní pokusy.
+// Example mod: logs the name of every screen (layout) it switches to
+// and exposes the runtime as globalThis.rt for your own experiments.
 DTMods.register('example', runtime => {
   globalThis.rt = runtime;
   let last = '';

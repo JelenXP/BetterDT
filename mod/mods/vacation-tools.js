@@ -1,21 +1,23 @@
-// Dovolená pro unavené – obrazovka MY EMPLOYEES.
+// Vacation for the tired – MY EMPLOYEES screen.
 //
-// Pod herní tlačítka SEND ON VACATION a PAY THE BONUS přibude třetí stejné tlačítko
-// „VACATION FOR THE TIRED – N NEED A REST“. Jedno kliknutí pošle na dovolenou všechny zaměstnance
-// (všech profesí) s náladou pod 30, tedy ty, u kterých hra ukazuje „Vacation needed“ nebo
-// „Risk of dismissal“. Nejdřív jdou ti nejunavenější.
+// A third button of the same kind, "VACATION FOR THE TIRED – N NEED A REST", appears under the game's
+// SEND ON VACATION and PAY THE BONUS buttons. One click sends every employee (of all professions) with mood
+// below 30 on vacation, i.e. those the game marks "Vacation needed" or "Risk of dismissal".
+// The most tired go first.
 //
-// Pravidla jsou stejná jako u herního tlačítka (event sheet „MY EMPLOYEES [Engine]“):
-//   nálada + 30 až 40 (max 100), délka 30 dní − 7 za perk, stav „Vacation“, a z každé profese musí
-//   aspoň jeden člověk zůstat v práci. Kdo se kvůli tomu nevešel, zůstane a mod to napíše.
+// The rules are the same as for the game's button (event sheet "MY EMPLOYEES [Engine]"):
+//   mood + 30 to 40 (max 100), 30 days − 7 per perk, status "Vacation", and at least one person of each
+//   profession must keep working. Whoever did not fit because of that stays, and the mod says so.
 DTMods.register('vacation-tools', (rt) => {
   if (globalThis.__dtVacationTools) globalThis.__dtVacationTools.dispose();
 
   const LAYOUT = 'EMPLOYEES';
-  const LOW = 30;                      // pod touto náladou hra ukazuje „Vacation needed“
+  // below 30 the game shows "Vacation needed"; the threshold can be changed in the BetterDT settings
+  const S = globalThis.BetterDT && globalThis.BetterDT.settings;
+  const low = () => Math.min(100, Math.max(1, S ? S.num('vacation-tools.threshold', 30) : 30));
   const gv = rt.globalVars;
 
-  // ── texty (pořadí jazyků jako ve hře: ArrayLanguage řádek = LanguageChoose) ─────────────────────
+  // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
     btn: ['VACATION FOR THE TIRED', 'ОТПУСК УСТАВШИМ', 'URLAUB FÜR MÜDE', 'VACANCES POUR LES FATIGUÉS',
       'FERIE AI STANCHI', 'VACACIONES A LOS CANSADOS', 'थके हुओं को छुट्टी', 'YORGUNLARA İZİN',
@@ -54,9 +56,9 @@ DTMods.register('vacation-tools', (rt) => {
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace('{n}', n);
 
-  // ── data hry ───────────────────────────────────────────────────────────────────────────────────
-  // ArrayMyEmployees: x = zaměstnanec, y0 = id, y1 = nálada, y2 = dny stavu, y3 = stav ("Vacation"/"Bonus"/…)
-  // ArrayEmployees (id, 4) = profese, ArrayMyPerks (2, 1) = perk kratší dovolené
+  // ── game data ──────────────────────────────────────────────────────────────────────────────────
+  // ArrayMyEmployees: x = employee, y0 = id, y1 = mood, y2 = status days, y3 = status ("Vacation"/"Bonus"/…)
+  // ArrayEmployees (id, 4) = profession, ArrayMyPerks (2, 1) = shorter vacation perk
   const arr = (name) => rt.objects[name].getFirstInstance();
   function plan() {
     const my = arr('ArrayMyEmployees'), info = arr('ArrayEmployees');
@@ -71,7 +73,7 @@ DTMods.register('vacation-tools', (rt) => {
       const status = String(my.getAt(x, 3));
       const mood = Number(my.getAt(x, 1));
       if (status === 'Vacation') g.onVac++;
-      else if (Number.isFinite(mood) && mood < LOW) g.tired.push({ x, mood });
+      else if (Number.isFinite(mood) && mood < low()) g.tired.push({ x, mood });
     }
     const send = [];
     let kept = 0;
@@ -106,7 +108,7 @@ DTMods.register('vacation-tools', (rt) => {
     cache = { n: -1, at: 0 };
   }
 
-  // ── herní UI pomocníci ─────────────────────────────────────────────────────────────────────────
+  // ── game UI helpers ────────────────────────────────────────────────────────────────────────────
   const call = (fn) => { try { rt.callFunction(fn); } catch (e) { console.warn('[vacation-tools]', fn, e); } };
   function notify(text, error) {
     gv.EditorNotification = 'ON';
@@ -121,8 +123,8 @@ DTMods.register('vacation-tools', (rt) => {
   }
 
   // ── stav obrazovky ─────────────────────────────────────────────────────────────────────────────
-  // herní tlačítko „SEND ON VACATION“: 9patch3 19811 (UI Back) + 20018 (UI Blur) + text 19813,
-  // „PAY THE BONUS“ o 130 níž; ikona (i) 19831 pod nimi
+  // game button "SEND ON VACATION": 9patch3 19811 (UI Back) + 20018 (UI Blur) + text 19813,
+  // "PAY THE BONUS" 130 lower; the (i) icon 19831 below them
   const REF = { back: 19812, blur: 20019, text: 19814, info: 19831, title: 1459 };
   const STEP = 130;
   let ui = null;
@@ -148,7 +150,7 @@ DTMods.register('vacation-tools', (rt) => {
     text.horizontalAlign = 'center'; text.verticalAlign = 'top';
     text.width = rt0.width; text.height = rt0.height; text.opacity = 0;
     text.changeIconSet(rt.objects.Sprite443);
-    // stejné pořadí ve vrstvách jako herní tlačítka (ve vrstvě UI (Blur) nad nimi leží efekt rozmazání)
+    // same layer order as the game buttons (the blur effect sits above them on the UI (Blur) layer)
     blur.moveAdjacentToInstance(rl, true);
     back.moveAdjacentToInstance(rb, true);
     text.moveAdjacentToInstance(rt0, true);
@@ -165,8 +167,8 @@ DTMods.register('vacation-tools', (rt) => {
     const label = '[iconoffsety=5][icon=Vacantion] ' + tr('btn') +
       '\n[font=SofiaSansExtraCondensed-Light][szie=22][opacity=85]' + tr('need', n);
     if (label !== ui.label) { ui.label = label; ui.text.text = label; }
-    // jen v MY EMPLOYEES, když firma má zaměstnance; průhlednost podle titulku obrazovky
-    // (herní tlačítka se schovají, když je zobrazený člověk zrovna na dovolené – naše zůstává)
+    // only in MY EMPLOYEES when the company has employees; opacity follows the screen title
+    // (the game buttons hide when the shown person is on vacation – ours stays)
     const title = byUid(REF.title);
     let any = false;
     try { any = (arr('ArrayMyEmployees').width | 0) > 0; } catch { }
@@ -183,7 +185,7 @@ DTMods.register('vacation-tools', (rt) => {
     ui.text.opacity = a * (n > 0 ? 1 : 0.55);
   }
 
-  // ── vstup: naše tlačítko; kliknutí nepustíme dál do hry (jinak by se spustila i herní dovolená) ─
+  // ── input: our button; the click does not reach the game (it would also start the game's vacation) ─
   function hitBox(inst, x, y) {
     const b = inst.getBoundingBox();
     return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
@@ -197,7 +199,7 @@ DTMods.register('vacation-tools', (rt) => {
   function onDown(e) {
     try {
       if (!hit(e)) return;
-      if (String(gv.EditorNotification) !== 'OFF') return;       // klik zavírá herní oznámení
+      if (String(gv.EditorNotification) !== 'OFF') return;       // the click closes the game notification
       e.stopImmediatePropagation(); e.preventDefault();
       swallow = true;
       ui.pressAt = performance.now();

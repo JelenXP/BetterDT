@@ -1,19 +1,19 @@
-// Školení všech – obrazovka UPGRADE EMPLOYEES (TRAIN YOUR EMPLOYEES).
+// Train all – UPGRADE EMPLOYEES screen (TRAIN YOUR EMPLOYEES).
 //
-// V levém panelu pod legendou přibude zelené tlačítko „TRAIN ALL (N)“. N = kolik zaměstnanců zvolené
-// profese ještě nemá maximální úroveň. Kliknutí školí všechny zaměstnance profese na všech stránkách,
-// dokud nemají MAX LEVEL nebo dokud nedojdou peníze či body výzkumu.
+// A green "TRAIN ALL (N)" button appears in the left panel under the legend. N = how many employees of the
+// selected profession are not at the maximum level yet. A click trains every employee of the profession on all
+// pages until they reach MAX LEVEL or the money or research points run out.
 //
-// Školí se přes herní tlačítka (stejné kliknutí jako myší), takže cenu, přírůstky, plat, perky i hlášku
-// „málo peněz“ počítá hra sama. Mod jen přepíná stránky a kliká. Během dávky jsou ztlumené zvuky
-// (jinak by zaznělo sto cinknutí) a na konci zazní jeden.
+// Training goes through the game's own buttons (the same click as with the mouse), so the price, gains, salary,
+// perks and the "not enough money" message are all computed by the game. The mod only switches pages and clicks.
+// Sounds are muted during the batch (otherwise a hundred chimes would play) and one plays at the end.
 DTMods.register('train-all', (rt) => {
   if (globalThis.__dtTrainAll) globalThis.__dtTrainAll.dispose();
 
   const LAYOUT = 'UPGRADE EMPLOYEES';
   const gv = rt.globalVars;
 
-  // ── texty (pořadí jazyků jako ve hře: ArrayLanguage řádek = LanguageChoose) ─────────────────────
+  // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
     btn: ['TRAIN ALL', 'ОБУЧИТЬ ВСЕХ', 'ALLE SCHULEN', 'FORMER TOUT LE MONDE', 'FORMA TUTTI', 'ENTRENAR A TODOS',
       'सभी को प्रशिक्षित करें', 'HEPSİNİ EĞİT', 'TREINAR TODOS', 'НАВЧИТИ ВСІХ', 'LATIH SEMUA', 'SZKOL WSZYSTKICH',
@@ -60,9 +60,9 @@ DTMods.register('train-all', (rt) => {
   const gameText = (idx) => { try { return String(arr('ArrayLanguage').getAt(lang(), idx)); } catch { return ''; } };
   const money = (v) => '$' + Math.round(v).toLocaleString('en-US').replace(/,/g, ' ');
 
-  // ── data hry ───────────────────────────────────────────────────────────────────────────────────
-  // ArrayEmployees_Temp = zaměstnanci zobrazené profese (x → id), ArrayEmployees_Characters (id, 0..2) =
-  // design / rychlost / výzkum; hra školí, dokud je součet < 300.
+  // ── game data ──────────────────────────────────────────────────────────────────────────────────
+  // ArrayEmployees_Temp = employees of the shown profession (x → id), ArrayEmployees_Characters (id, 0..2) =
+  // design / speed / research; the game trains while the sum is < 300.
   function pending() {
     try {
       const temp = arr('ArrayEmployees_Temp'), ch = arr('ArrayEmployees_Characters');
@@ -77,7 +77,7 @@ DTMods.register('train-all', (rt) => {
     } catch { return 0; }
   }
 
-  // ── herní UI pomocníci ─────────────────────────────────────────────────────────────────────────
+  // ── game UI helpers ────────────────────────────────────────────────────────────────────────────
   const call = (fn) => { try { rt.callFunction(fn); } catch (e) { console.warn('[train-all]', fn, e); } };
   function notify(text, error) {
     gv.EditorNotification = 'ON';
@@ -96,15 +96,15 @@ DTMods.register('train-all', (rt) => {
   });
   const ticks = async (n) => { for (let i = 0; i < n; i++) await nextTick(); };
 
-  // tlačítka školení na kartách: neviditelná plocha 9patch3 ve vrstvě „UI (Touched)“
-  // (u MAX LEVEL a prázdných míst ji hra skryje)
+  // training buttons on the cards: invisible 9patch3 area on the "UI (Touched)" layer
+  // (the game hides it for MAX LEVEL and empty slots)
   function upgradeButtons() {
     return rt.objects['9patch3'].getAllInstances()
       .filter(i => i.layer && i.layer.name === 'UI (Touched)' && i.isVisible)
       .sort((a, b) => a.y - b.y || a.x - b.x);
   }
 
-  // kliknutí jako myší (hra reaguje na Mouse „On object clicked“)
+  // click like the mouse (the game reacts to Mouse "On object clicked")
   let synthetic = false;
   function clickInst(inst) {
     const canvas = document.querySelector('canvas');
@@ -161,7 +161,7 @@ DTMods.register('train-all', (rt) => {
     const n = cache.n;
     const label = '[iconoffsety=5][icon=Research] ' + tr('btn') + (running ? '  …' : n > 0 ? '  (' + n + ')' : '');
     if (label !== ui.label) { ui.label = label; ui.text.text = label; }
-    // průhlednost podle legendy (náběh a odchod obrazovky)
+    // opacity follows the legend (screen fade in/out)
     const legend = byUid(20073);
     const a = legend && legend.isVisible ? legend.opacity : 0;
     const on = n > 0 && !running;
@@ -170,13 +170,14 @@ DTMods.register('train-all', (rt) => {
     const k = pt < 0.075 ? 1 - 0.05 * (pt / 0.075) : pt < 0.25 ? 0.95 + 0.05 * ((pt - 0.075) / 0.175) : 1;
     ui.btn.width = ui.W * k; ui.btn.height = ui.H * k;
     ui.glow.width = (ui.W + 14) * k; ui.glow.height = (ui.H + 10) * k;
-    ui.btn.opacity = a;                          // podklad tvaru: gradient (source-atop) se kreslí jen přes něj
+    ui.btn.opacity = a;                          // shape base: the gradient (source-atop) is drawn only over it
     ui.glow.opacity = a * (on ? 1 : 0.4);
     ui.text.opacity = a * (on ? 1 : 0.6);
     ui.hint.opacity = a * 0.7;
   }
 
-  // ── dávka ──────────────────────────────────────────────────────────────────────────────────────
+  // ── batch ──────────────────────────────────────────────────────────────────────────────────────
+  const S = globalThis.BetterDT && globalThis.BetterDT.settings;
   async function run() {
     if (running) return;
     if (pending() <= 0) { call('Tap_Main'); notify(tr('allMax'), false); return; }
@@ -187,8 +188,8 @@ DTMods.register('train-all', (rt) => {
     const page0 = Math.max(1, +gv.SubPage | 0);
     let steps = 0, stoppedByGame = false;
     try {
-      await ticks(2);                              // nechat doběhnout stisk tlačítka a ťuknutí
-      gv.Sounds = 'OFF';
+      await ticks(2);                              // let the button press and tap sound finish
+      if (!S || S.bool('train-all.mute', true)) gv.Sounds = 'OFF';   // option in the BetterDT settings
       const pages = Math.max(1, +gv.SubPageMax | 0);
       outer:
       for (let pg = 1; pg <= pages; pg++) {
@@ -202,10 +203,10 @@ DTMods.register('train-all', (rt) => {
           clickInst(b);
           await ticks(2);
           if (+gv.Budget !== before) { steps++; idle = 0; continue; }
-          // nic se nekoupilo: hra hlášku „málo peněz / bodů“ ukáže až po 0,1 s (Wait 0.1 v eventu)
+          // nothing was bought: the game shows "not enough money / points" only after 0.1 s (Wait 0.1 in the event)
           for (let w = 0; w < 30 && String(gv.EditorNotification) === 'OFF'; w++) await nextTick();
           if (String(gv.EditorNotification) !== 'OFF') { stoppedByGame = true; break outer; }
-          if (++idle >= 3) break outer;                // klik se neujal
+          if (++idle >= 3) break outer;                // the click did not register
         }
       }
     } finally {
@@ -222,8 +223,8 @@ DTMods.register('train-all', (rt) => {
       (steps > 0 ? '\n[color=#ff7a7a]−' + money(spent) + '\n−' + Math.round(rp) + ' ' + gameText(13956) + '[/color]' : '');
     if (steps > 0) call('CashSound');
     if (stoppedByGame) {
-      // hra už ukázala svou hlášku (málo peněz / bodů) – doplníme do ní souhrn
-      // (text už je zkopírovaný do objektu ve vrstvě EDITOR NOTIFICATION, proto i tam)
+      // the game already showed its message (not enough money / points) – append the summary to it
+      // (the text is already copied into the object on the EDITOR NOTIFICATION layer, so there too)
       const old = String(gv.EditorNotificationText);
       gv.EditorNotificationText = old + '\n\n' + summary;
       for (const t of rt.objects.Text.getAllInstances()) {
@@ -232,7 +233,7 @@ DTMods.register('train-all', (rt) => {
     } else notify(summary, false);
   }
 
-  // ── vstup: naše tlačítko; kliknutí nepustíme dál do hry ─────────────────────────────────────────
+  // ── input: our button; the click does not reach the game ─────────────────────────────────────────
   function hitBox(inst, x, y, pad = 0) {
     const b = inst.getBoundingBox();
     return x >= b.left - pad && x <= b.right + pad && y >= b.top - pad && y <= b.bottom + pad;
@@ -241,7 +242,7 @@ DTMods.register('train-all', (rt) => {
   function onDown(e) {
     if (synthetic || !ui || layoutName() !== LAYOUT) return;
     try {
-      if (String(gv.EditorNotification) !== 'OFF') return;      // klik zavírá herní oznámení
+      if (String(gv.EditorNotification) !== 'OFF') return;      // the click closes the game notification
       if (ui.text.opacity < 0.05) return;
       const [x, y] = ui.btn.layer.cssPxToLayer(e.clientX, e.clientY);
       if (!hitBox(ui.btn, x, y)) return;
