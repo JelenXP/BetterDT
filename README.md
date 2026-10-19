@@ -26,7 +26,8 @@ game file and does not touch your saves.
 - **Real company names:** the other companies are called Sony, Intel, Samsung, … instead of Somy, Infel,
   Samsong, … (game 1.4+), without downloading and loading the names file in the game's editor.
 - **Updating software (UPDATE SOFTWARE):** **Select all** picks every released app for the update with its next
-  version and the same settings, instead of opening and saving each app one by one.
+  version and the same settings, instead of opening and saving each app one by one (**Clear all** takes them
+  out again).
 - **OS upgrade (MY OS UPGRADE):** **Select all** picks all of the about 35 technologies at once (**Clear all**
   takes them out again).
 - **MY OS UPGRADE** no longer stutters.
@@ -161,7 +162,9 @@ its own layer.
   app. **Select all** next to the game's **Update** button does that for every app that is not selected yet: it
   clicks the card and the editor's **Save** itself, so the version, the price and the level are the game's own.
 - The game's **Update** button then updates them all at once (and checks the money); **×** on a card still takes
-  one app out again. If the editor does not open or save as expected, the mod stops and turns itself off.
+  one app out again. When every app is selected the button turns into **Clear all**, which clicks **×** on all
+  of them (the versions go back, so selecting again gives the same next version). If the editor does not open or
+  save as expected, the mod stops and turns itself off.
 
 ### `os-upgrade-all.js`: select all OS upgrades (MY OS UPGRADE)
 - An OS upgrade lists about 35 technologies, each of which has to be clicked. **Select all** above the list
