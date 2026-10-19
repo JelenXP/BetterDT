@@ -38,6 +38,8 @@ WHAT YOU GET
 - Endless game: keep playing after the end of the game in 2101 ("Continue game" on the final screen).
   Based on a mod by M1lan.
 - Real company names (game 1.4+): Sony, Intel, Samsung, ... instead of Somy, Infel, Samsong, ...
+- UPDATE SOFTWARE: "Select all" picks every app for the update (next version, same settings).
+- MY OS UPGRADE: "Select all" picks all technologies at once.
 - MY OS UPGRADE: the screen no longer stutters.
 - Laptops with two graphics cards: the game runs on the faster one.
 

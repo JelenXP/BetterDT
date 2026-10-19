@@ -1,5 +1,7 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.3.4 Update software: "Select all" picks every app for the update (next version, same settings)
+0.3.4 OS upgrade: "Select all" picks all technologies at once
 0.3.3 Real company names: Sony, Intel, Samsung, ... instead of Somy, Infel, Samsong, ...
 0.3.3 Game 1.4: Research tab / Research all replace the game's new button (the game's one can be turned back on)
 0.3.2 The update message lists the changes of every version since yours, not just the newest
