@@ -1,0 +1,5 @@
+loader/build/
+loader/dist/
+loader/sdk/
+node_modules/
+*.orig
