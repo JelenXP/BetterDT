@@ -211,7 +211,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'hire-tools.js': [{ key: 'hire-tools.autoHire', type: 'bool', def: false }],
     'train-all.js': [{ key: 'train-all.mute', type: 'bool', def: true }],
     'vacation-tools.js': [{ key: 'vacation-tools.threshold', type: 'range', def: 30, min: 10, max: 90, step: 5 }],
-    'autosave.js': [{ key: 'autosave.days', type: 'range', def: 30, min: 5, max: 180, step: 5 }],
+    'autosave.js': [{ key: 'autosave.days', type: 'range', def: 90, min: 5, max: 180, step: 5 }],
   };
   // what only takes effect after a restart: state at game start
   const boot = { gpu: S.bool('gpu', true) };
