@@ -9,11 +9,46 @@
 //     (regular or B1) the people found for this profession are hired automatically, up to the office capacity.
 //
 // Everything is built from game objects (same buttons, gradients, font, icons, sounds, notifications).
-DTMods.register('hire-tools', (rt) => {
+// Game objects are found through BetterDTKit by their uid in game 1.3.0, checked by type, layer and size
+// (or found again by them when a game update renumbered them).
+const L_TOUCHED = 'UI (Touched) v2', L_TOP = 'UI (Top)', L_GTOP = 'GLOBAL UI (Top)', FIND = 'FIND EMPLOYEES';
+BetterDTKit.mod('hire-tools', {
+  needs: {
+    functions: ['findEmployees', 'hireEmployee'],
+    objects: ['Text', '9patch3', '9patch99', 'Gradient_24', 'Sprite389', 'Sprite290', 'ArrayEmployees', 'ArrayEmployees_Temp',
+      'ArrayMyEmployees', 'ArrayNewEmployees', 'ArrayOffices', 'ArrayMyResearch', 'ArrayLanguage'],
+    vars: ['Budget', 'FindEmployeesCountRandom', 'FindEmployeesCharacters', 'EmployeesProfession', 'EditorNotification',
+      'EditorNotificationText', 'OfficeEmployeesMax', 'DesignersOfficeLevel', 'ProgrammersOfficeLevel', 'EngineersOfficeLevel'],
+    arrays: { ArrayEmployees: [100, 5], ArrayMyResearch: [525, 1], ArrayOffices: [5, 1] },
+    // column 4 of ArrayEmployees is the profession (checked once a game is loaded)
+    dataCheck: (rt) => {
+      const e = rt.objects.ArrayEmployees.getFirstInstance(), seen = new Set();
+      for (let i = 0; i < Math.min(e.width, 300); i++) seen.add(String(e.getAt(i, 4)));
+      return ['DESIGNERS', 'PROGRAMMERS', 'ENGINEERS'].every(p => seen.has(p)) ? '' : 'ArrayEmployees: no professions in column 4';
+    },
+  },
+  texts: { 10974: "You don't have enough funds", 11706: 'You have no free space in the office', 11747: 'SEARCHING' },
+  uids: {
+    19834: { layout: FIND, t: 'Text', l: L_GTOP, x: 40, y: 21 },                       // screen title
+    19835: { layout: FIND, t: 'Text', l: L_GTOP, x: 1890, y: 21 },                     // money
+    19841: { layout: FIND, t: 'Text', l: L_GTOP, x: 270, y: 163 },                     // left menu
+    19896: { layout: FIND, t: '9patch3', l: L_TOUCHED, h: 64, x: 790, y: 590 },        // green buttons of the cards
+    19898: { layout: FIND, t: '9patch3', l: L_TOUCHED, h: 64, x: 1230, y: 590 },
+    19900: { layout: FIND, t: '9patch3', l: L_TOUCHED, h: 64, x: 1670, y: 590 },
+    19897: { layout: FIND, t: 'Gradient_24', l: L_TOUCHED, h: 70, x: 790, y: 590 },   // their gradients
+    19899: { layout: FIND, t: 'Gradient_24', l: L_TOUCHED, h: 70, x: 1230, y: 590 },
+    19901: { layout: FIND, t: 'Gradient_24', l: L_TOUCHED, h: 70, x: 1670, y: 590 },
+    19902: { layout: FIND, t: 'Text', l: L_TOP, h: 60, x: 790, y: 566 },               // their prices
+    19903: { layout: FIND, t: 'Text', l: L_TOP, h: 60, x: 1230, y: 566 },
+    19904: { layout: FIND, t: 'Text', l: L_TOP, h: 60, x: 1670, y: 566 },
+    19905: { layout: FIND, t: '9patch99', l: L_TOUCHED, h: 48, x: 980, y: 940 },      // search progress bar
+    19908: { layout: FIND, t: 'Text', l: L_TOP, w: 700, h: 75, x: 1230, y: 880 },      // search status line
+  },
+}, (rt, kit) => {
   if (globalThis.__dtHireTools) globalThis.__dtHireTools.dispose();
 
   const LS_KEY = 'dtmod.autoHire';
-  const LAYOUT = 'FIND EMPLOYEES';
+  const LAYOUT = FIND;
   const gv = rt.globalVars;
 
   // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
@@ -49,13 +84,13 @@ DTMods.register('hire-tools', (rt) => {
   };
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace('{n}', n);
-  const gameText = (idx) => { try { return String(arr('ArrayLanguage').getAt(lang(), idx)); } catch { return ''; } };
+  const gameText = (idx) => kit.text(idx);
 
   // ── game data ──────────────────────────────────────────────────────────────────────────────────
   const arr = (name) => rt.objects[name].getFirstInstance();
   const ids = (a) => { const out = []; for (let x = 0; x < (a.width | 0); x++) { const v = Number(a.getAt(x, 0, 0)); if (Number.isFinite(v)) out.push(v | 0); } return out; };
   const profOf = (id) => String(arr('ArrayEmployees').getAt(id, 4, 0));
-  const PRICE = [2e5, 45e4, 65e4];
+  const PRICE = [2e5, 45e4, 65e4];   // agency prices in game 1.3.0; the price on the card wins (see cardPrice)
   const ROLL = [[1, 1, 1, 2, 2, 2, 3], [1, 1, 1, 1, 2, 2], [1]];
   const SKILL = [[10, 35], [40, 60], [70, 85]];
   const choose = (a) => a[Math.floor(Math.random() * a.length)];
@@ -90,7 +125,7 @@ DTMods.register('hire-tools', (rt) => {
     call('EditorNotification_ON');
     if (error) call('ErrorSound');
   }
-  const byUid = (u) => rt.getInstanceByUid(u);
+  const byUid = (u) => kit.inst(u);
   function stopTweens(inst) {
     try { for (const t of inst.behaviors.Tween.allTweens()) t.stop(); } catch { }
   }
@@ -190,9 +225,16 @@ DTMods.register('hire-tools', (rt) => {
     return busy || phase === 'searching' || (bar && bar.opacity > 0.02);
   }
 
+  // the price the game shows on the card ("$200 000"), so a changed price is charged the same as by the game
+  function cardPrice(tier) {
+    const b = ui && ui.b1[tier];
+    const m = b && String(b.refT.text).replace(/\[[^\]]*\]/g, '').match(/\$\s*([\d\s.,]+)/);
+    const v = m ? Number(m[1].replace(/[^\d]/g, '')) : NaN;
+    return v > 0 ? v : PRICE[tier];
+  }
   function runBatch(tier) {
     const p = String(gv.EmployeesProfession);
-    const price = PRICE[tier];
+    const price = cardPrice(tier);
     const s = stats(p);
     call('Tap_Main');
     if (s.free <= 0) return notify(gameText(11706), false);
@@ -322,9 +364,7 @@ DTMods.register('hire-tools', (rt) => {
 
   // ── input: our buttons; the click does not reach the game (it would also start the card's search) ─
   let swallow = false;
-  function onDown(e) {
-    try { onDownInner(e); } catch (err) { console.warn('[hire-tools] onDown', err); }
-  }
+  const onDown = kit.guard((e) => onDownInner(e));
   function onDownInner(e) {
     if (!ui || rt.layout.name !== LAYOUT) return;
     if (String(gv.EditorNotification) !== 'OFF') return;          // the click closes the game notification
@@ -348,36 +388,39 @@ DTMods.register('hire-tools', (rt) => {
     swallow = true;
     act();
   }
-  function onOther(e) {
+  const onOther = kit.guard(function (e) {
     if (!swallow) return;
     e.stopImmediatePropagation(); e.preventDefault();
     if (e.type === 'click' || e.type === 'pointercancel') swallow = false;
-  }
+  });
   const OTHER = ['pointerup', 'mousedown', 'mouseup', 'click', 'pointercancel'];
   window.addEventListener('pointerdown', onDown, true);
   for (const t of OTHER) window.addEventListener(t, onOther, true);
 
-  function onLayoutStart() {
+  const onLayoutStart = kit.guard(() => {
     ui = null; phase = 'idle'; batch = null; busy = false;
     if (rt.layout.name === LAYOUT) setup();
-  }
+  });
   const onLayoutEnd = () => { ui = null; };
+  const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);
-  rt.addEventListener('tick', tick);
+  rt.addEventListener('tick', onTick);
   if (rt.layout && rt.layout.name === LAYOUT) setup();
 
-  globalThis.__dtHireTools = {
-    dispose() {
-      window.removeEventListener('pointerdown', onDown, true);
-      for (const t of OTHER) window.removeEventListener(t, onOther, true);
-      rt.removeEventListener('afteranylayoutstart', onLayoutStart);
-      rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
-      rt.removeEventListener('tick', tick);
-      if (rt.layout && rt.layout.name === LAYOUT) teardown();
-      ui = null;
-    },
-    get state() { return { autoHire, phase, busy, batch, ui: !!ui, stats: statsCache }; },
-    debug: { runBatch, stats, hireFound, onDown: (e) => onDownInner(e) },
+  const dispose = () => {
+    window.removeEventListener('pointerdown', onDown, true);
+    for (const t of OTHER) window.removeEventListener(t, onOther, true);
+    rt.removeEventListener('afteranylayoutstart', onLayoutStart);
+    rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
+    rt.removeEventListener('tick', onTick);
+    if (rt.layout && rt.layout.name === LAYOUT) teardown();
+    ui = null;
   };
+  globalThis.__dtHireTools = {
+    dispose,
+    get state() { return { autoHire, phase, busy, batch, ui: !!ui, stats: statsCache }; },
+    debug: { runBatch, stats, hireFound, cardPrice, onDown: (e) => onDownInner(e) },
+  };
+  return dispose;
 });

@@ -7,7 +7,16 @@
 // Training goes through the game's own buttons (the same click as with the mouse), so the price, gains, salary,
 // perks and the "not enough money" message are all computed by the game. The mod only switches pages and clicks.
 // Sounds are muted during the batch (otherwise a hundred chimes would play) and one plays at the end.
-DTMods.register('train-all', (rt) => {
+// If a click does not train anyone three times in a row, the batch stops (the game changed its buttons).
+BetterDTKit.mod('train-all', {
+  needs: {
+    objects: ['Text', '9patch3', 'Gradient_24', 'Sprite396', 'ArrayEmployees_Temp', 'ArrayEmployees_Characters', 'ArrayLanguage'],
+    vars: ['Budget', 'ResearchCoins', 'Sounds', 'SubPage', 'SubPageMax', 'EditorNotification', 'EditorNotificationText'],
+    arrays: { ArrayEmployees_Characters: [1, 3] },
+  },
+  texts: { 13956: 'Research points' },
+  uids: { 20073: { layout: 'UPGRADE EMPLOYEES', t: 'Text', l: 'GLOBAL UI (Top)', w: 497, h: 268, x: 270, y: 350 } },   // legend
+}, (rt, kit) => {
   if (globalThis.__dtTrainAll) globalThis.__dtTrainAll.dispose();
 
   const LAYOUT = 'UPGRADE EMPLOYEES';
@@ -57,7 +66,7 @@ DTMods.register('train-all', (rt) => {
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace('{n}', n);
   const arr = (name) => rt.objects[name].getFirstInstance();
-  const gameText = (idx) => { try { return String(arr('ArrayLanguage').getAt(lang(), idx)); } catch { return ''; } };
+  const gameText = (idx) => kit.text(idx);
   const money = (v) => '$' + Math.round(v).toLocaleString('en-US').replace(/,/g, ' ');
 
   // ── game data ──────────────────────────────────────────────────────────────────────────────────
@@ -85,7 +94,7 @@ DTMods.register('train-all', (rt) => {
     call('EditorNotification_ON');
     if (error) call('ErrorSound');
   }
-  const byUid = (u) => rt.getInstanceByUid(u);
+  const byUid = (u) => kit.inst(u);
   const layoutName = () => { try { return rt.layout.name; } catch { return ''; } };
   function stopTweens(inst) {
     try { for (const t of inst.behaviors.Tween.allTweens()) t.stop(); } catch { }
@@ -206,7 +215,7 @@ DTMods.register('train-all', (rt) => {
           // nothing was bought: the game shows "not enough money / points" only after 0.1 s (Wait 0.1 in the event)
           for (let w = 0; w < 30 && String(gv.EditorNotification) === 'OFF'; w++) await nextTick();
           if (String(gv.EditorNotification) !== 'OFF') { stoppedByGame = true; break outer; }
-          if (++idle >= 3) break outer;                // the click did not register
+          if (++idle >= 3) { kit.warn('a click on a training button did nothing'); break outer; }   // did not register
         }
       }
     } finally {
@@ -239,9 +248,9 @@ DTMods.register('train-all', (rt) => {
     return x >= b.left - pad && x <= b.right + pad && y >= b.top - pad && y <= b.bottom + pad;
   }
   let swallow = false;
-  function onDown(e) {
+  const onDown = kit.guard((e) => {
     if (synthetic || !ui || layoutName() !== LAYOUT) return;
-    try {
+    {
       if (String(gv.EditorNotification) !== 'OFF') return;      // the click closes the game notification
       if (ui.text.opacity < 0.05) return;
       const [x, y] = ui.btn.layer.cssPxToLayer(e.clientX, e.clientY);
@@ -251,35 +260,38 @@ DTMods.register('train-all', (rt) => {
       if (running) return;
       ui.pressAt = performance.now();
       run().catch(err => { console.warn('[train-all]', err); running = false; });
-    } catch (err) { console.warn('[train-all] onDown', err); }
-  }
-  function onOther(e) {
+    }
+  });
+  const onOther = kit.guard((e) => {
     if (synthetic || !swallow) return;
     e.stopImmediatePropagation(); e.preventDefault();
     if (e.type === 'click' || e.type === 'pointercancel') swallow = false;
-  }
+  });
   const OTHER = ['pointerup', 'mousedown', 'mouseup', 'click', 'pointercancel'];
   window.addEventListener('pointerdown', onDown, true);
   for (const t of OTHER) window.addEventListener(t, onOther, true);
 
-  function onLayoutStart() { ui = null; if (layoutName() === LAYOUT) setup(); }
+  const onLayoutStart = kit.guard(() => { ui = null; if (layoutName() === LAYOUT) setup(); });
   const onLayoutEnd = () => { ui = null; };
+  const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);
-  rt.addEventListener('tick', tick);
+  rt.addEventListener('tick', onTick);
   if (layoutName() === LAYOUT) setup();
 
+  const dispose = () => {
+    window.removeEventListener('pointerdown', onDown, true);
+    for (const t of OTHER) window.removeEventListener(t, onOther, true);
+    rt.removeEventListener('afteranylayoutstart', onLayoutStart);
+    rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
+    rt.removeEventListener('tick', onTick);
+    if (layoutName() === LAYOUT) teardown();
+    ui = null;
+  };
   globalThis.__dtTrainAll = {
-    dispose() {
-      window.removeEventListener('pointerdown', onDown, true);
-      for (const t of OTHER) window.removeEventListener(t, onOther, true);
-      rt.removeEventListener('afteranylayoutstart', onLayoutStart);
-      rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
-      rt.removeEventListener('tick', tick);
-      if (layoutName() === LAYOUT) teardown();
-      ui = null;
-    },
+    dispose,
     get state() { return { running, ui: !!ui, pending: pending() }; },
     debug: { run, pending, upgradeButtons },
   };
+  return dispose;
 });

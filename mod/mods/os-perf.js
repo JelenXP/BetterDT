@@ -8,8 +8,9 @@
 // (a blurred copy of the area under the panel, text-shadow on texts, drop-shadow only on small images),
 // and every card has its own layer (will-change), so a click repaints just that one card.
 // The values are derived from the original shadows and verified by pixel-by-pixel screenshot comparison.
-DTMods.register('os-perf', () => {
-  if (document.getElementById('dtmod-os-perf')) return;
+// Only a style sheet: if a game update renames the classes, it simply matches nothing.
+BetterDTKit.mod('os-perf', {}, () => {
+  document.getElementById('dtmod-os-perf')?.remove();
   const R = '#mostech-root ';
   const css = `
 /* parameters of the original drop-shadow per state: alpha, offset, sigma, white glow, panel transmittance */
@@ -84,4 +85,5 @@ ${R}.mostech-card.is-selected .mostech-check {
   s.id = 'dtmod-os-perf';
   s.textContent = css;
   document.head.appendChild(s);
+  return () => s.remove();
 });

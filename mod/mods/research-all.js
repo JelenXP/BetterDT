@@ -12,7 +12,16 @@
 // game's code. The list of what "everything" means is the game's own (debugResearchAllTargets, the list of the
 // sandbox button), and other tabs are opened the way the game opens them. The mod only clicks, a few hundred
 // levels per frame, with the sounds muted, and plays one sound at the end. If the game rejects a click, it stops.
-DTMods.register('research-all', (rt) => {
+// If a game update shows the game's own "Research all" outside sandbox mode too, the mod's buttons step aside.
+BetterDTKit.mod('research-all', {
+  needs: {
+    functions: ['debugResearchAllTargets'],
+    objects: ['ArrayResearchPage_Temp', 'ArrayMyResearch', 'ArrayResearch', 'ArrayLanguage', '9patch3'],
+    vars: ['MiniPage', 'ResearchCoins', 'Budget', 'Sounds', 'SandboxMode', 'WheelScrollRate'],
+    arrays: { ArrayResearch: [100, 3] },
+  },
+  texts: { 14008: 'Research all', 10974: "You don't have enough funds" },
+}, (rt, kit) => {
   if (globalThis.__dtResearchAll) globalThis.__dtResearchAll.dispose();
 
   const LAYOUT = 'RESEARCH';
@@ -48,7 +57,7 @@ DTMods.register('research-all', (rt) => {
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, v = {}) => String(TXT[key][lang()] || TXT[key][0]).replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
   const arr = (name) => rt.objects[name].getFirstInstance();
-  const gameText = (idx) => { try { return String(arr('ArrayLanguage').getAt(lang(), idx) ?? ''); } catch { return ''; } };
+  const gameText = (idx) => kit.text(idx);
   const LANG_RESEARCH_ALL = 14008, LANG_NO_FUNDS = 10974;   // the game's own texts
   const num = (v) => Math.round(v).toLocaleString('en-US').replace(/,/g, ' ');
   const layoutName = () => { try { return rt.layout.name; } catch { return ''; } };
@@ -152,11 +161,11 @@ DTMods.register('research-all', (rt) => {
     const b = document.createElement('div');
     b.className = 'bdt-ra';
     b.innerHTML = '<span class="bdt-ra-label"></span>';
-    b.addEventListener('click', () => {
+    b.addEventListener('click', kit.guard(() => {
       if (running || b.classList.contains('rc-all-empty')) return;
       globalThis.tapMain?.();
       confirm(kind, b.querySelector('.bdt-ra-label').textContent);
-    });
+    }));
     return b;
   }
   // ask first, with the price (BetterDT dialog in the look of the game's news window)
@@ -212,7 +221,10 @@ DTMods.register('research-all', (rt) => {
     // the game has its own (free) button in sandbox mode
     if (layoutName() !== LAYOUT || Number(gv.SandboxMode) === 1) return teardown();
     // the game's tables are not loaded (yet): no prices, no texts
-    if ((arr('ArrayResearch').width | 0) < 100 || (arr('ArrayLanguage').height | 0) <= LANG_RESEARCH_ALL) return teardown();
+    if ((arr('ArrayResearch').width | 0) < 100 || (arr('ArrayLanguage').height | 0) <= 1) return teardown();
+    // a game update shows its own button outside sandbox mode too
+    const own = document.getElementById('research-all');
+    if (own && own.offsetParent !== null) return teardown();
     if (!setup()) return;
     try {
       paint(ui.tab, tr('tab'), price(tabTargets()));
@@ -275,18 +287,21 @@ DTMods.register('research-all', (rt) => {
     const paid = { rp: before.rp - Number(gv.ResearchCoins), usd: before.usd - Number(gv.Budget) };
     log(kind, 'researched', done, 'of', p.levels, 'levels, paid', paid.rp, 'RP and $' + paid.usd,
       '(expected', p.rp, 'RP and $' + p.usd + ')', stop ? '– stopped: ' + stop : '');
+    // everything researched but a different price: the game's price columns have changed, stop offering it
+    if (done === p.levels && (Math.abs(paid.rp - p.rp) > 1 + p.rp * 0.01 || Math.abs(paid.usd - p.usd) > 1 + p.usd * 0.01)) {
+      return kit.fail(`price mismatch: paid ${paid.rp} RP / $${paid.usd}, expected ${p.rp} RP / $${p.usd}`);
+    }
+    if (stop && stop.startsWith('the game did not research')) kit.warn(stop);
     if (done) globalThis.researchSound?.();
     refresh();
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────────────────────────────
-  const ok = typeof globalThis.debugResearchAllTargets === 'function' && rt.objects.ArrayResearchPage_Temp
-    && rt.objects.ArrayMyResearch && rt.objects.ArrayResearch && rt.objects['9patch3'];
-  if (!ok) { log('the game has changed (research functions not found), the buttons stay off'); return; }
-  timer = setInterval(refresh, 400);
-  refresh();
+  const refreshSafe = kit.guard(refresh);
+  timer = setInterval(refreshSafe, 400);
+  refreshSafe();
 
-  globalThis.__dtResearchAll = {
-    dispose() { clearInterval(timer); teardown(); document.getElementById('bdt-research-all-css')?.remove(); },
-  };
+  const dispose = () => { clearInterval(timer); teardown(); document.getElementById('bdt-research-all-css')?.remove(); };
+  globalThis.__dtResearchAll = { dispose };
+  return dispose;
 });

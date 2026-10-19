@@ -4,8 +4,10 @@
 // before the game does and goes to the next speed of [1, 1.25, 1.5, 2, 3] with the game's own
 // setGameSpeed(), which accepts any speed: the game sets the time scale, writes "×2" on the button and keeps
 // its rules (normal speed outside gameplay, speed again after returning). The mod only adds colours for ×2 and ×3
-// (the game has them for ×1.25 and ×1.5).
-DTMods.register('game-speed', (rt) => {
+// (the game has them for ×1.25 and ×1.5). If a game update already offers ×2 or ×3 itself, the mod steps aside.
+BetterDTKit.mod('game-speed', {
+  needs: { functions: ['setGameSpeed', 'getGameSpeed'] },
+}, (rt, kit) => {
   if (globalThis.__dtGameSpeed) globalThis.__dtGameSpeed.dispose();
 
   const SPEEDS = [1, 1.25, 1.5, 2, 3];
@@ -31,31 +33,43 @@ DTMods.register('game-speed', (rt) => {
   }
 
   // capture listener on the button itself: at the target it runs before the game's click listener
-  function onClick(e) {
+  const onClick = kit.guard(function (e) {
     if (typeof globalThis.setGameSpeed !== 'function') return;   // leave it to the game
     e.stopImmediatePropagation();
     globalThis.tapMain?.();
     const el = e.currentTarget, s = next();
     Promise.resolve(globalThis.setGameSpeed(s)).then(() => paint(el)).catch(err => log(err));
-  }
+  });
   const btn = () => document.getElementById('sbx-speed');
   let bound = null;
-  const timer = setInterval(() => {
+  // the game colours its speeds with .sbx-spd-125 / .sbx-spd-150; a rule for 200 or 300 in its styles means a
+  // game update added these speeds itself, so the mod steps aside
+  function gameHasFast() {
+    for (const sh of document.styleSheets) {
+      if (sh.ownerNode === css) continue;
+      let rules = null;
+      try { rules = sh.cssRules; } catch { continue; }
+      for (const r of rules) if (/sbx-spd-(200|300)/.test(r.selectorText || '')) return true;
+    }
+    return false;
+  }
+  const timer = setInterval(kit.guard(() => {
     const el = btn();
     if (el && el !== bound) {
+      if (gameHasFast()) return kit.fail('the game itself offers ×2 / ×3 now');
       bound?.removeEventListener('click', onClick, true);
       el.addEventListener('click', onClick, true);
       bound = el;
     }
     if (el) paint(el);   // also after the game resets the speed
-  }, 500);
+  }), 500);
 
-  globalThis.__dtGameSpeed = {
-    dispose() {
-      clearInterval(timer);
-      bound?.removeEventListener('click', onClick, true);
-      bound?.classList.remove('bdt-spd-200', 'bdt-spd-300');
-      css.remove();
-    },
+  const dispose = () => {
+    clearInterval(timer);
+    bound?.removeEventListener('click', onClick, true);
+    bound?.classList.remove('bdt-spd-200', 'bdt-spd-300');
+    css.remove();
   };
+  globalThis.__dtGameSpeed = { dispose };
+  return dispose;
 });

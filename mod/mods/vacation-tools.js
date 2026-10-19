@@ -8,7 +8,23 @@
 // The rules are the same as for the game's button (event sheet "MY EMPLOYEES [Engine]"):
 //   mood + 30 to 40 (max 100), 30 days − 7 per perk, status "Vacation", and at least one person of each
 //   profession must keep working. Whoever did not fit because of that stays, and the mod says so.
-DTMods.register('vacation-tools', (rt) => {
+// The mod writes into the game's employee table, so before every write it checks that the columns still hold
+// what game 1.3.0 keeps there; if not, it writes nothing and stops (a game update changed the table).
+const VAC_UI = { t: 'Text', layout: 'EMPLOYEES' };
+BetterDTKit.mod('vacation-tools', {
+  needs: {
+    objects: ['Text', '9patch3', 'Sprite443', 'ArrayMyEmployees', 'ArrayEmployees', 'ArrayLanguage'],
+    vars: ['EmployeesType', 'EditorNotification', 'EditorNotificationText'],
+    arrays: { ArrayEmployees: [100, 5] },
+  },
+  uids: {
+    19812: { layout: 'EMPLOYEES', t: '9patch3', l: 'EMPLOYEES UI (Back)', w: 400, h: 110, x: 250, y: 320 },   // PAY THE BONUS
+    20019: { layout: 'EMPLOYEES', t: '9patch3', l: 'EMPLOYEES UI (Blur)', w: 400, h: 110, x: 250, y: 320 },
+    19814: { ...VAC_UI, l: 'EMPLOYEES UI (Top)', w: 446, h: 92, x: 250, y: 277 },
+    19831: { layout: 'EMPLOYEES', t: 'Sprite422', l: 'EMPLOYEES UI (Top)', w: 40, h: 40, x: 75, y: 425 },     // (i) icon
+    1459: { ...VAC_UI, l: 'EMPLOYEES UI (Top)', x: 50, y: 40 },                                              // screen title
+  },
+}, (rt, kit) => {
   if (globalThis.__dtVacationTools) globalThis.__dtVacationTools.dispose();
 
   const LAYOUT = 'EMPLOYEES';
@@ -87,7 +103,20 @@ DTMods.register('vacation-tools', (rt) => {
     return { send, kept };
   }
 
+  // columns of ArrayMyEmployees as the mod writes them: 0 id, 1 mood 0–100, 2 days, 3 status text
+  function tableOk() {
+    const my = arr('ArrayMyEmployees'), n = arr('ArrayEmployees').width | 0;
+    if ((my.height | 0) < 4) return false;
+    for (let x = 0; x < (my.width | 0); x++) {
+      const id = Number(my.getAt(x, 0)), mood = Number(my.getAt(x, 1)), st = my.getAt(x, 3);
+      if (!Number.isInteger(id) || id < 0 || id >= n) return false;
+      if (!Number.isFinite(mood) || mood < -1 || mood > 101) return false;
+      if (typeof st !== 'string' && st !== 0) return false;
+    }
+    return true;
+  }
   function sendTired() {
+    if (!tableOk()) return kit.fail('ArrayMyEmployees columns changed (id, mood, days, status)');
     const { send, kept } = plan();
     call('Tap_Main');
     if (!send.length) { notify(kept ? tr('kept', kept) : tr('none'), false); return; }
@@ -116,7 +145,7 @@ DTMods.register('vacation-tools', (rt) => {
     call('EditorNotification_ON');
     if (error) call('ErrorSound');
   }
-  const byUid = (u) => rt.getInstanceByUid(u);
+  const byUid = (u) => kit.inst(u);
   const layoutName = () => { try { return rt.layout.name; } catch { return ''; } };
   function stopTweens(inst) {
     try { for (const t of inst.behaviors.Tween.allTweens()) t.stop(); } catch { }
@@ -196,46 +225,49 @@ DTMods.register('vacation-tools', (rt) => {
     return hitBox(ui.back, x, y);
   }
   let swallow = false;
-  function onDown(e) {
-    try {
+  const onDown = kit.guard((e) => {
+    {
       if (!hit(e)) return;
       if (String(gv.EditorNotification) !== 'OFF') return;       // the click closes the game notification
       e.stopImmediatePropagation(); e.preventDefault();
       swallow = true;
       ui.pressAt = performance.now();
       sendTired();
-    } catch (err) { console.warn('[vacation-tools] onDown', err); }
-  }
-  function onOther(e) {
+    }
+  });
+  const onOther = kit.guard((e) => {
     if (!swallow) return;
     e.stopImmediatePropagation(); e.preventDefault();
     if (e.type === 'click' || e.type === 'pointercancel') swallow = false;
-  }
+  });
   function onMove(e) { if (ui) { try { ui.hover = hit(e); } catch { } } }
   const OTHER = ['pointerup', 'mousedown', 'mouseup', 'click', 'pointercancel'];
   window.addEventListener('pointerdown', onDown, true);
   window.addEventListener('pointermove', onMove, true);
   for (const t of OTHER) window.addEventListener(t, onOther, true);
 
-  function onLayoutStart() { ui = null; if (layoutName() === LAYOUT) setup(); }
+  const onLayoutStart = kit.guard(() => { ui = null; if (layoutName() === LAYOUT) setup(); });
   const onLayoutEnd = () => { ui = null; };
+  const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);
-  rt.addEventListener('tick', tick);
+  rt.addEventListener('tick', onTick);
   if (layoutName() === LAYOUT) setup();
 
-  globalThis.__dtVacationTools = {
-    dispose() {
-      window.removeEventListener('pointerdown', onDown, true);
-      window.removeEventListener('pointermove', onMove, true);
-      for (const t of OTHER) window.removeEventListener(t, onOther, true);
-      rt.removeEventListener('afteranylayoutstart', onLayoutStart);
-      rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
-      rt.removeEventListener('tick', tick);
-      if (layoutName() === LAYOUT) teardown();
-      ui = null;
-    },
-    get state() { return { ui: !!ui, plan: plan() }; },
-    debug: { plan, sendTired },
+  const dispose = () => {
+    window.removeEventListener('pointerdown', onDown, true);
+    window.removeEventListener('pointermove', onMove, true);
+    for (const t of OTHER) window.removeEventListener(t, onOther, true);
+    rt.removeEventListener('afteranylayoutstart', onLayoutStart);
+    rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
+    rt.removeEventListener('tick', onTick);
+    if (layoutName() === LAYOUT) teardown();
+    ui = null;
   };
+  globalThis.__dtVacationTools = {
+    dispose,
+    get state() { return { ui: !!ui, plan: plan() }; },
+    debug: { plan, sendTired, tableOk },
+  };
+  return dispose;
 });

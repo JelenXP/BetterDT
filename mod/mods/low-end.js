@@ -9,7 +9,9 @@
 //
 // "Turn off blur": the game's HTML panels blur what is behind them (backdrop-filter). The panels stay
 // semi-transparent, only without the blur, which weak integrated graphics have to redo on every frame.
-BetterDT.register('low-end', (rt) => {
+BetterDTKit.mod('low-end', {
+  needs: { objects: ['ArraySettings'], check: (rt) => ('framerateMode' in rt && 'fixedFramerate' in rt ? '' : 'runtime.framerateMode') },
+}, (rt, kit) => {
   if (globalThis.__dtLowEnd) globalThis.__dtLowEnd.dispose();
   const S = BetterDT.settings;
   const LIMIT = 30;
@@ -51,13 +53,13 @@ BetterDT.register('low-end', (rt) => {
     else if (!blur && css.isConnected) css.remove();
   }
   apply();
-  const timer = setInterval(apply, 1000);
+  const timer = setInterval(kit.guard(apply), 1000);
 
-  globalThis.__dtLowEnd = {
-    dispose() {
-      clearInterval(timer);
-      css.remove();
-      if (limited) restore();
-    },
+  const dispose = () => {
+    clearInterval(timer);
+    css.remove();
+    if (limited) restore();
   };
+  globalThis.__dtLowEnd = { dispose };
+  return dispose;
 });

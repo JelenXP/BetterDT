@@ -23,6 +23,9 @@ game file and does not touch your saves.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
   All texts are in the game's 15 languages.
+- **Safe with game updates:** every mod checks at start that the game still has what it needs. A mod that does
+  not fit a new game version turns itself off instead of misbehaving, and the settings say why (see
+  [Game updates](#game-updates)).
 
 ## How to install
 
@@ -50,9 +53,9 @@ says what happened; please attach it when you [report a problem](https://github.
 
 ## Settings (Settings → BetterDT)
 
-- **General:** version, automatic updates (on by default), "Check now" / "Install" for updates,
+- **General:** BetterDT and game version, automatic updates (on by default), "Check now" / "Install" for updates,
   high-performance GPU switch, buttons that open the mods folder, the log and the GitHub releases.
-- **Mods:** an on/off switch for every mod and the mod options:
+- **Mods:** an on/off switch for every mod (with a note when it does not fit the game version) and the mod options:
   - hire-tools: hire everyone found automatically,
   - train-all: mute the click sounds while training,
   - vacation-tools: the mood threshold for sending people on vacation (default 30),
@@ -156,18 +159,56 @@ its own layer.
 
 All buttons are built from the game's own objects (same buttons, gradients, icons and font).
 
+### Game updates
+Mods use the game's own functions, objects and tables, which a game update can rename or change. So every mod
+is registered through `BetterDTKit` (in `betterdt-settings.js`) with a list of what it needs:
+
+- **Before start** (when the game reaches the main menu): global functions, object types, global variables and
+  game texts. Texts are listed with their English wording; if an update moves a text to another index, it is
+  found again by that wording. A mod with something missing is not started.
+- **After a saved game is loaded** (the company tables are empty in the menu): table sizes and checks of what the
+  columns hold (e.g. the profession in `ArrayEmployees`). A mod that fails them is stopped.
+- **Objects on a screen** are listed by their uid in game 1.3.0 with type, layer, size and position. If the uid
+  no longer fits (wrong type, layer or size), the object of that type and layer with that size nearest to the old
+  position is used instead, and the settings note it.
+- **While running:** errors in a mod's timers and listeners are counted; after 20 the mod is stopped and cleaned
+  up (`dispose`). Mods also check their own results: `research-all` stops when the price paid differs from the
+  computed one, `vacation-tools` checks the employee table columns before every write, `autosave` gives the game
+  its own autosave back when the game stops calling `tickAutoSave()`, `hire-tools` charges the price shown on the
+  agency card, `game-speed` steps aside when the game itself styles ×2 / ×3, and `research-all` when the game shows
+  its own "Research all" outside sandbox mode.
+
+What it shows the player:
+- **Settings → BetterDT → Mods:** under a mod that does not fit, "Does not fit this game version, turned off" or
+  "Stopped after repeated errors", with the details; "Works, but something in the game has changed" when an object
+  or text had to be found again.
+- **Settings → BetterDT → General:** the game version.
+- After the game itself was updated, a dialog in the main menu: "Devices Tycoon 1.3.0 → 1.3.1. BetterDT has checked
+  its mods", with the mods that were turned off.
+- If an update changes the game's settings page so that the BetterDT section cannot be added, a **BetterDT** button
+  in the corner of the settings screen opens the mods as a plain on/off list.
+- Crash reports include the game version and the mods that are not running.
+
 ### Writing your own mod
 
 Put a `.js` file into `mods` and add it to `mods\mods.json`:
 
 ```js
-BetterDT.register('my-mod', runtime => {
-  runtime.globalVars.SomeVariable;                 // global variables from the event sheets
+BetterDTKit.mod('my-mod', {
+  needs: { functions: ['setGameSpeed'], objects: ['ArrayOffices'], vars: ['Budget'], arrays: { ArrayOffices: [5, 1] } },
+  texts: { 10974: "You don't have enough funds" },
+}, (runtime, kit) => {
+  runtime.globalVars.Budget;                       // global variables from the event sheets
   runtime.objects.ArrayOffices.getFirstInstance(); // arrays, dictionaries, sprites…
-  runtime.addEventListener('tick', () => {});      // every frame
+  const tick = kit.guard(() => {});                // errors are counted, 20 stop the mod
+  runtime.addEventListener('tick', tick);          // every frame
+  kit.text(10974);                                 // a game text in the player's language
   BetterDT.settings.bool('my-mod.option', true);   // settings from betterdt.ini
+  return () => runtime.removeEventListener('tick', tick);   // dispose
 });
 ```
+
+`BetterDT.register('my-mod', runtime => { … })` still works for a mod without checks.
 
 `DTMods` is an alias of `BetterDT` for older mods. `examples/mods` has two development helpers:
 `example.js` and `probe.js` (with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).

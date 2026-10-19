@@ -9,8 +9,210 @@
 //
 // It also shows two dialogs in the style of the game's news window: "BetterDT x.y.z is ready" (keep playing or
 // restart the game now) and, after the loader reloaded a crashed game page, "The game crashed" with a bug report.
+// After the game itself was updated, a third one says which mods still fit the new version. If a game update
+// changes the settings page so that the section cannot be added, a "BetterDT" button opens the mods as a plain list.
+//
+// ── BetterDTKit: compatibility checks for mods (runs before the other mod files) ─────────────────────
+// A mod registered with BetterDTKit.mod(name, spec, init) starts only once the game data is loaded (main menu)
+// and only when everything it needs from the game is there:
+//   spec.needs = { functions: [global functions], objects: [object types], vars: [global variables],
+//                  check: (rt) => problem text or '',
+//                  arrays: { ArrayName: [min width, min height] }, dataCheck: (rt) => problem text or '' }
+//                arrays and dataCheck are checked once a saved game is loaded (the company tables are empty in
+//                the menu); a mod that fails them then is stopped
+//   spec.texts = { index: 'English text' }   game texts; a moved text is found again by its English wording
+//   spec.uids  = { uid: { layout, t: type, l: layer, w, h, x, y } }   instances on a layout; when the uid no
+//                longer fits (type, layer, size), the instance of that type and layer with that size nearest to
+//                x, y is used
+// init(rt, kit) returns a dispose function. kit.guard(fn) wraps timers and listeners: errors are counted and after
+// 20 of them the mod is stopped. kit.inst(uid), kit.text(index), kit.fail(problem), kit.warn(problem).
+// A mod that does not fit this game version is not started; the BetterDT settings say why.
+(() => {
+  const B = globalThis.BetterDT;
+  if (!B || globalThis.BetterDTKit) return;
+  const MAX_ERRORS = 20;
+  const mods = new Map();   // name -> { state: 'waiting'|'running'|'incompatible'|'failed', problems: [], … }
+  const log = (...a) => B.log(...a);
+  let rt = null, readyAt = 0;
+  const readyWaiters = [];
+  const layoutName = () => { try { return rt.layout.name; } catch { return ''; } };
+
+  function dataReady() {
+    try {
+      const a = rt.objects.ArrayLanguage && rt.objects.ArrayLanguage.getFirstInstance();
+      if (!a || a.height <= 1) return false;
+      return layoutName() === 'MENU' || Number(rt.globalVars.DayTotal) > 0;
+    } catch { return false; }
+  }
+  function waitReady(cb) {
+    if (readyAt) return cb();
+    readyWaiters.push(cb);
+    if (readyWaiters.length > 1) return;
+    const t0 = Date.now();
+    (function poll() {
+      // a renamed menu or table must not block the mods forever: after 60 s the checks run anyway
+      if (dataReady() || Date.now() - t0 > 60000) {
+        readyAt = Date.now();
+        for (const f of readyWaiters.splice(0)) { try { f(); } catch (e) { console.error('[BetterDTKit]', e); } }
+      } else setTimeout(poll, 300);
+    })();
+  }
+
+  // game texts: index in game 1.3.0 -> index in this game version (-1 = not found)
+  const textMap = new Map();
+  function healText(idx, en) {
+    if (textMap.has(idx)) return textMap.get(idx);
+    let found = -1;
+    try {
+      const a = rt.objects.ArrayLanguage.getFirstInstance();
+      if (String(a.getAt(0, idx)) === en) found = idx;
+      else for (let y = 0; y < a.height; y++) if (String(a.getAt(0, y)) === en) { found = y; break; }
+    } catch { }
+    if (found >= 0 && found !== idx) log('[BetterDTKit] text', idx, 'moved to', found, JSON.stringify(en));
+    textMap.set(idx, found);
+    return found;
+  }
+
+  // a saved game is loaded: day > 0 for two seconds in a row (its tables are filled by then)
+  const gameWaiters = [];
+  let gameSince = 0, gameTimer = 0;
+  function whenGameLoaded(cb) {
+    gameWaiters.push(cb);
+    if (gameTimer) return;
+    gameTimer = setInterval(() => {
+      if (!(Number(rt.globalVars.DayTotal) > 0)) { gameSince = 0; return; }
+      if (!gameSince) { gameSince = Date.now(); return; }
+      if (Date.now() - gameSince < 2000) return;
+      clearInterval(gameTimer);
+      for (const f of gameWaiters.splice(0)) { try { f(); } catch (e) { console.error('[BetterDTKit]', e); } }
+    }, 500);
+  }
+
+  function check(spec) {
+    const p = [], n = spec.needs || {};
+    for (const f of n.functions || []) if (typeof globalThis[f] !== 'function') p.push('function ' + f);
+    for (const o of n.objects || []) if (!rt.objects[o]) p.push('object ' + o);
+    for (const v of n.vars || []) if (!(v in rt.globalVars)) p.push('variable ' + v);
+    for (const name of Object.keys(n.arrays || {})) if (!rt.objects[name]) p.push('table ' + name);
+    for (const [idx, en] of Object.entries(spec.texts || {})) if (healText(Number(idx), en) < 0) p.push(`text ${idx} "${en}"`);
+    if (n.check) { try { const r = n.check(rt); if (r) p.push(String(r)); } catch (e) { p.push('check: ' + e); } }
+    return p;
+  }
+  function checkData(spec) {
+    const p = [], n = spec.needs || {};
+    for (const [name, [w, h]] of Object.entries(n.arrays || {})) {
+      let a = null;
+      try { a = rt.objects[name] && rt.objects[name].getFirstInstance(); } catch { }
+      if (!a) p.push('table ' + name);
+      else if (a.width < (w || 0) || a.height < (h || 0)) p.push(`table ${name} ${a.width}×${a.height} (expected ${w || 0}×${h || 0})`);
+    }
+    if (n.dataCheck) { try { const r = n.dataCheck(rt); if (r) p.push(String(r)); } catch (e) { p.push('check: ' + e); } }
+    return p;
+  }
+
+  const near = (a, b, tol) => b === undefined || Math.abs(a - b) <= tol;
+  const fits = (i, s) => !!i && i.objectType.name === s.t && i.layer.name === s.l && near(i.width, s.w, 2) && near(i.height, s.h, 2);
+  const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
+
+  function mod(name, spec, init) {
+    const m = { name, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map() };
+    mods.set(name, m);
+    function stop(state, problem) {
+      if (m.state !== 'running' && m.state !== 'waiting') return;
+      m.state = state;
+      if (problem) m.problems.push(problem);
+      log('[BetterDTKit] mod', name, state + ':', problem);
+      if (m.dispose) { try { m.dispose(); } catch (e) { console.error('[BetterDT] mod', name, 'dispose:', e); } }
+    }
+    const kit = {
+      guard(fn) {
+        return function () {
+          if (m.state !== 'running') return undefined;
+          try { return fn.apply(this, arguments); } catch (e) {
+            m.errors++;
+            console.error('[BetterDT] mod', name, 'error', m.errors + '/' + MAX_ERRORS + ':', e);
+            if (m.errors >= MAX_ERRORS) stop('failed', String((e && e.message) || e));
+            return undefined;
+          }
+        };
+      },
+      // instances are looked up once per layout visit (before the mod moves or resizes them) and then cached
+      inst(uid) {
+        const s = spec.uids && spec.uids[uid];
+        let i = m.cache.get(uid);
+        if (i && alive(i)) return i;
+        i = null;
+        try { i = rt.getInstanceByUid(uid); } catch { }
+        if (s && !fits(i, s)) {
+          let best = null, bd = Infinity;
+          try {
+            for (const c of rt.objects[s.t].getAllInstances()) {
+              if (!fits(c, s)) continue;
+              const d = Math.hypot(c.x - (s.x ?? c.x), c.y - (s.y ?? c.y));
+              if (d < bd) { bd = d; best = c; }
+            }
+          } catch { }
+          if (best) kit.warn(`instance ${uid} found as ${best.uid}`);
+          else if (s.layout && layoutName() === s.layout) kit.warn(`instance ${uid} (${s.t}) not found on ${s.layout}`);
+          i = best;
+        }
+        if (i) m.cache.set(uid, i);
+        return i;
+      },
+      text(idx) {
+        const en = spec.texts && spec.texts[idx];
+        const y = en === undefined ? idx : healText(idx, en);
+        if (y < 0) return '';
+        try {
+          const n = Number(rt.globalVars.LanguageChoose);
+          return String(rt.objects.ArrayLanguage.getFirstInstance().getAt(n >= 0 && n < 15 ? n : 0, y));
+        } catch { return ''; }
+      },
+      warn(problem) {
+        if (m.warned.has(problem)) return;
+        m.warned.add(problem);
+        m.problems.push(problem);
+        log('[BetterDTKit]', name + ':', problem);
+      },
+      fail(problem) { stop('incompatible', problem); },
+    };
+    B.register(name, (runtime) => {
+      rt = runtime;
+      waitReady(() => {
+        const p = check(spec);
+        if (p.length) {
+          m.problems.push(...p); m.state = 'incompatible';
+          log('[BetterDTKit] mod', name, 'not started, missing:', p.join(', '));
+          return;
+        }
+        m.state = 'running';
+        try {
+          const d = init(rt, kit);
+          m.dispose = typeof d === 'function' ? d : d && typeof d.dispose === 'function' ? () => d.dispose() : null;
+          log('[BetterDTKit] started', name);
+        } catch (e) { console.error('[BetterDT] mod', name, 'failed:', e); stop('failed', 'start: ' + ((e && e.message) || e)); }
+        const n = spec.needs || {};
+        if (Object.keys(n.arrays || {}).length || n.dataCheck) whenGameLoaded(() => {
+          const q = checkData(spec);
+          if (q.length) stop('incompatible', q.join(', '));
+        });
+      });
+    });
+  }
+
+  const api = {
+    mod,
+    status: () => [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice() })),
+    // cb runs once the game data is loaded and the mods have been checked
+    whenReady(runtime, cb) { rt = rt || runtime; waitReady(() => setTimeout(cb, 0)); },
+    get gameVersion() { try { return String(rt.projectVersion || ''); } catch { return ''; } },
+  };
+  Object.defineProperty(globalThis, 'BetterDTKit', { value: Object.freeze(api), writable: false, configurable: false });
+})();
+
 BetterDT.register('betterdt-settings', (rt) => {
-  const B = globalThis.BetterDT, S = B.settings;
+  const B = globalThis.BetterDT, S = B.settings, KIT = globalThis.BetterDTKit;
+  const kitStatus = (file) => (KIT ? KIT.status().find(m => m.name + '.js' === file) : null);
   const PAGES = ['bdt-general', 'bdt-mods'];
 
   // language order as in the game (LanguageChoose): en ru de fr it es hi tr pt-BR uk id pl zh ko ja
@@ -221,6 +423,57 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Кнопка швидкості в куті пропонує також ×2 і ×3', 'Tombol kecepatan di pojok juga menawarkan ×2 dan ×3',
       'Przycisk prędkości w rogu oferuje też ×2 i ×3', '角落的速度按钮也提供 ×2 和 ×3', '모서리의 속도 버튼에서 ×2와 ×3도 선택할 수 있습니다',
       '隅の速度ボタンで ×2 と ×3 も選べます'],
+    gameVer: ['Game version', 'Версия игры', 'Spielversion', 'Version du jeu', 'Versione del gioco', 'Versión del juego', 'गेम संस्करण', 'Oyun sürümü',
+      'Versão do jogo', 'Версія гри', 'Versi game', 'Wersja gry', '游戏版本', '게임 버전', 'ゲームのバージョン'],
+    stIncompat: ['Does not fit this game version, turned off', 'Не подходит к этой версии игры, отключён', 'Passt nicht zu dieser Spielversion, ausgeschaltet',
+      'Incompatible avec cette version du jeu, désactivé', 'Non compatibile con questa versione del gioco, disattivato', 'No es compatible con esta versión del juego, desactivado',
+      'इस गेम संस्करण से मेल नहीं खाता, बंद किया गया', 'Bu oyun sürümüne uymuyor, kapatıldı', 'Não é compatível com esta versão do jogo, desativado',
+      'Не підходить до цієї версії гри, вимкнено', 'Tidak cocok dengan versi game ini, dimatikan', 'Nie pasuje do tej wersji gry, wyłączony',
+      '与此游戏版本不兼容，已关闭', '이 게임 버전과 맞지 않아 꺼졌습니다', 'このゲームバージョンに対応していないためオフにしました'],
+    stFailed: ['Stopped after repeated errors', 'Остановлен после повторных ошибок', 'Nach wiederholten Fehlern angehalten', 'Arrêté après des erreurs répétées',
+      'Fermato dopo errori ripetuti', 'Detenido tras errores repetidos', 'बार-बार त्रुटियों के बाद रोका गया', 'Tekrarlanan hatalardan sonra durduruldu',
+      'Parado após erros repetidos', 'Зупинено після повторних помилок', 'Dihentikan setelah kesalahan berulang', 'Zatrzymany po powtarzających się błędach',
+      '多次出错后已停止', '반복된 오류로 중지되었습니다', 'エラーが続いたため停止しました'],
+    stWarn: ['Works, but something in the game has changed', 'Работает, но в игре что-то изменилось', 'Läuft, aber im Spiel hat sich etwas geändert',
+      'Fonctionne, mais quelque chose a changé dans le jeu', 'Funziona, ma qualcosa nel gioco è cambiato', 'Funciona, pero algo ha cambiado en el juego',
+      'चल रहा है, पर गेम में कुछ बदल गया है', 'Çalışıyor ama oyunda bir şey değişmiş', 'Funciona, mas algo mudou no jogo',
+      'Працює, але в грі щось змінилося', 'Berjalan, tetapi ada yang berubah di game', 'Działa, ale coś w grze się zmieniło',
+      '可以运行，但游戏有所变化', '작동하지만 게임에서 무언가 바뀌었습니다', '動作していますが、ゲーム側で何かが変わっています'],
+    verTitle: ['The game has been updated', 'Игра обновилась', 'Das Spiel wurde aktualisiert', 'Le jeu a été mis à jour', 'Il gioco è stato aggiornato',
+      'El juego se ha actualizado', 'गेम अपडेट हो गया है', 'Oyun güncellendi', 'O jogo foi atualizado', 'Гру оновлено', 'Game telah diperbarui',
+      'Gra została zaktualizowana', '游戏已更新', '게임이 업데이트되었습니다', 'ゲームがアップデートされました'],
+    verText: ['Devices Tycoon {a} → {b}. BetterDT has checked its mods.', 'Devices Tycoon {a} → {b}. BetterDT проверил свои моды.',
+      'Devices Tycoon {a} → {b}. BetterDT hat seine Mods geprüft.', 'Devices Tycoon {a} → {b}. BetterDT a vérifié ses mods.',
+      'Devices Tycoon {a} → {b}. BetterDT ha controllato le sue mod.', 'Devices Tycoon {a} → {b}. BetterDT ha revisado sus mods.',
+      'Devices Tycoon {a} → {b}. BetterDT ने अपने मॉड जाँचे।', 'Devices Tycoon {a} → {b}. BetterDT modlarını kontrol etti.',
+      'Devices Tycoon {a} → {b}. O BetterDT verificou seus mods.', 'Devices Tycoon {a} → {b}. BetterDT перевірив свої моди.',
+      'Devices Tycoon {a} → {b}. BetterDT telah memeriksa mod-nya.', 'Devices Tycoon {a} → {b}. BetterDT sprawdził swoje mody.',
+      'Devices Tycoon {a} → {b}。BetterDT 已检查其模组。', 'Devices Tycoon {a} → {b}. BetterDT가 모드를 확인했습니다.', 'Devices Tycoon {a} → {b}。BetterDT が MOD を確認しました。'],
+    verAllOk: ['All mods work.', 'Все моды работают.', 'Alle Mods funktionieren.', 'Tous les mods fonctionnent.', 'Tutte le mod funzionano.', 'Todos los mods funcionan.',
+      'सभी मॉड काम कर रहे हैं।', 'Tüm modlar çalışıyor.', 'Todos os mods funcionam.', 'Усі моди працюють.', 'Semua mod berfungsi.', 'Wszystkie mody działają.',
+      '所有模组均正常。', '모든 모드가 작동합니다.', 'すべての MOD が動作しています。'],
+    verOff: ['Turned off until a BetterDT update fixes them: {list}', 'Отключены до обновления BetterDT: {list}', 'Bis zu einem BetterDT-Update ausgeschaltet: {list}',
+      "Désactivés jusqu'à une mise à jour de BetterDT : {list}", 'Disattivate fino a un aggiornamento di BetterDT: {list}', 'Desactivados hasta una actualización de BetterDT: {list}',
+      'BetterDT अपडेट तक बंद: {list}', 'BetterDT güncellemesine kadar kapalı: {list}', 'Desativados até uma atualização do BetterDT: {list}',
+      'Вимкнено до оновлення BetterDT: {list}', 'Dimatikan sampai pembaruan BetterDT: {list}', 'Wyłączone do aktualizacji BetterDT: {list}',
+      '在 BetterDT 更新前已关闭：{list}', 'BetterDT 업데이트 전까지 꺼짐: {list}', 'BetterDT のアップデートまでオフ：{list}'],
+    fbTitle: ['BetterDT mods', 'Моды BetterDT', 'BetterDT-Mods', 'Mods BetterDT', 'Mod di BetterDT', 'Mods de BetterDT', 'BetterDT मॉड', 'BetterDT modları',
+      'Mods do BetterDT', 'Моди BetterDT', 'Mod BetterDT', 'Mody BetterDT', 'BetterDT 模组', 'BetterDT 모드', 'BetterDT の MOD'],
+    fbText: ["The game's settings page has changed, so here is a simple list. Changes take effect after a restart.",
+      'Страница настроек игры изменилась, поэтому здесь простой список. Изменения сработают после перезапуска.',
+      'Die Einstellungsseite des Spiels hat sich geändert, deshalb hier eine einfache Liste. Änderungen wirken nach einem Neustart.',
+      'La page des paramètres du jeu a changé, voici donc une liste simple. Les changements prennent effet après un redémarrage.',
+      'La pagina delle impostazioni del gioco è cambiata, quindi ecco un semplice elenco. Le modifiche valgono dopo il riavvio.',
+      'La página de ajustes del juego ha cambiado, así que aquí hay una lista sencilla. Los cambios se aplican tras reiniciar.',
+      'गेम का सेटिंग पेज बदल गया है, इसलिए यहाँ एक सरल सूची है। बदलाव रीस्टार्ट के बाद लागू होंगे।',
+      'Oyunun ayarlar sayfası değişti, bu yüzden burada basit bir liste var. Değişiklikler yeniden başlatınca geçerli olur.',
+      'A página de configurações do jogo mudou, então aqui está uma lista simples. As alterações valem após reiniciar.',
+      'Сторінка налаштувань гри змінилася, тому тут простий список. Зміни запрацюють після перезапуску.',
+      'Halaman pengaturan game berubah, jadi ini daftar sederhana. Perubahan berlaku setelah dimulai ulang.',
+      'Strona ustawień gry się zmieniła, więc tu jest prosta lista. Zmiany zadziałają po ponownym uruchomieniu.',
+      '游戏的设置页面已改变，因此这里提供一个简单列表。更改将在重启后生效。',
+      '게임 설정 페이지가 바뀌어 간단한 목록을 표시합니다. 변경 사항은 재시작 후 적용됩니다.',
+      'ゲームの設定画面が変わったため、簡易リストを表示しています。変更は再起動後に反映されます。'],
     'low-end': ['Low-end mode', 'Режим для слабых ПК', 'Modus für schwache PCs', 'Mode PC modeste', 'Modalità PC datati', 'Modo para PC modestos',
       'कमज़ोर पीसी मोड', 'Düşük donanım modu', 'Modo para PCs fracos', 'Режим для слабких ПК', 'Mode PC lawas', 'Tryb dla słabszych PC', '低配模式', '저사양 모드', '低スペックモード'],
     'low-end.d': ['Lighter rendering for older computers', 'Облегчённая отрисовка для старых компьютеров', 'Leichtere Darstellung für ältere Computer',
@@ -403,6 +656,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     const vctl = row(c1, t('version'));
     el('div', 'gs-row-hint bdt-val', vctl).textContent = 'v' + B.version;
     btn(vctl, t('releases'), () => B.api('open', { what: 'github' }));
+    el('div', 'gs-row-hint bdt-val', row(c1, t('gameVer'))).textContent = KIT ? KIT.gameVersion || '?' : '?';
 
     sw(row(c1, t('autoUpdate'), t('autoUpdateHint')), S.bool('autoupdate', true), (on) => save('autoupdate', on));
     updRow = row(c1, t('updates')).parentNode;
@@ -464,7 +718,17 @@ BetterDT.register('betterdt-settings', (rt) => {
       if (m.file === 'betterdt-settings.js') continue;
       const card = el('div', 'gs-card', body);
       const on = S.bool('mod.' + m.file, true);
-      sw(row(card, modTitle(m.file), modDesc(m.file)), on, (v) => { save('mod.' + m.file, v); paintOpts(); });
+      const mctl = row(card, modTitle(m.file), modDesc(m.file));
+      sw(mctl, on, (v) => { save('mod.' + m.file, v); paintOpts(); });
+      // what the compatibility check found (BetterDTKit)
+      const st = m.enabled && kitStatus(m.file);
+      if (st && (st.state !== 'running' || st.problems.length)) {
+        const key = st.state === 'incompatible' ? 'stIncompat' : st.state === 'failed' ? 'stFailed' : st.state === 'running' ? 'stWarn' : '';
+        if (key) {
+          const h = el('div', 'gs-row-hint bdt-warn', mctl.parentNode.querySelector('.gs-row-label'));
+          h.textContent = t(key) + (st.problems.length ? ': ' + st.problems.join('; ') : '');
+        }
+      }
       const opts = [];
       for (const o of OPTIONS[m.file] || []) {
         const ctl = row(card, t(o.key));
@@ -571,6 +835,26 @@ BetterDT.register('betterdt-settings', (rt) => {
     if (!s || dlg || !inMenu()) return;
     if (s.crash) showCrash();
     else if (s.update && s.update.state === 'installed' && !s.update.acked) showUpdate(s.update);
+    else if (gameUpdated) showGameUpdated();
+  }
+
+  // the game itself was updated since the last start: say which mods still run (once, after the checks)
+  let gameUpdated = null;
+  if (KIT) KIT.whenReady(rt, () => {
+    const v = KIT.gameVersion, prev = String(S.get('game.version', ''));
+    if (!v || v === prev) return;
+    if (prev) gameUpdated = { a: prev, b: v };
+    S.set('game.version', v);
+    BetterDT.log('game version', prev || '(first start)', '->', v);
+  });
+  function showGameUpdated() {
+    const { a, b } = gameUpdated;
+    gameUpdated = null;
+    const off = B.mods.filter(m => m.enabled).map(m => kitStatus(m.file))
+      .filter(st => st && (st.state === 'incompatible' || st.state === 'failed')).map(st => modTitle(st.name + '.js'));
+    dialog(t('verTitle'), t('verText', { a, b }), (c) => {
+      el('div', 'bdt-hint', c).textContent = off.length ? t('verOff', { list: off.join(', ') }) : t('verAllOk');
+    }, [{ label: t('ok'), go: true, cb: () => { } }]);
   }
   const nextDialog = () => B.api('state').then(checkDialogs, () => {});
   setInterval(() => { if (!dlg && inMenu()) nextDialog(); }, 2000);
@@ -581,7 +865,9 @@ BetterDT.register('betterdt-settings', (rt) => {
     let layout = '';
     try { layout = rt.layout.name; } catch { }
     const heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : '';
-    B.api('beat', { layout, day: gv.DayTotal ?? '', year: gv.Year ?? '', heap, dom: document.getElementsByTagName('*').length }).catch(() => {});
+    const mods = KIT ? KIT.status().filter(m => m.state !== 'running' && m.state !== 'waiting').map(m => m.name + ' (' + m.state + ')').join(', ') : '';
+    B.api('beat', { layout, day: gv.DayTotal ?? '', year: gv.Year ?? '', heap, dom: document.getElementsByTagName('*').length,
+      game: KIT ? KIT.gameVersion : '', mods: mods.slice(0, 200) }).catch(() => {});
   }, 15000);
 
   // ── hooking into the settings page ───────────────────────────────────────────────────────────
@@ -612,12 +898,53 @@ BetterDT.register('betterdt-settings', (rt) => {
     addNav();
   }
   // the settings page is created when the SETTINGS layout starts; watching there is enough
+  let settingsSince = 0;
   setInterval(() => {
     let name = '';
     try { name = rt.layout.name; } catch { return; }
-    if (name === 'SETTINGS') attach();
-    else if (nav) { if (navObs) navObs.disconnect(); navObs = null; nav = root = null; active = null; stopPoll(); }
+    if (name === 'SETTINGS') {
+      attach();
+      // a game update changed the settings page so that the BetterDT section cannot be added: offer a plain list
+      if (!settingsSince) settingsSince = Date.now();
+      fallbackButton(!nav && Date.now() - settingsSince > 3000);
+    } else {
+      settingsSince = 0;
+      fallbackButton(false);
+      if (nav) { if (navObs) navObs.disconnect(); navObs = null; nav = root = null; active = null; stopPoll(); }
+    }
   }, 200);
+
+  // ── fallback: the mods as a simple list in a dialog ─────────────────────────────────────────────
+  let fbBtn = null;
+  function fallbackButton(show) {
+    if (!show) { if (fbBtn) { fbBtn.remove(); fbBtn = null; } return; }
+    if (fbBtn) return;
+    fbBtn = el('div', '', document.body);
+    fbBtn.id = 'bdt-fallback';
+    fbBtn.textContent = 'BetterDT';
+    fbBtn.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147482000;padding:10px 20px;border-radius:8px;cursor:pointer;' +
+      'font:20px "SofiaSansExtraCondensed-Bold","Segoe UI",sans-serif;color:#fff;background:linear-gradient(180deg,#a8d418 0%,#63b303 100%);' +
+      'box-shadow:0 6px 18px -6px rgba(0,0,0,.55)';
+    fbBtn.addEventListener('click', () => { globalThis.tapMain?.(); fallbackDialog(); });
+  }
+  function fallbackDialog() {
+    dialog(t('fbTitle'), t('fbText'), (c) => {
+      const list = el('div', 'bdt-notes', c);
+      for (const m of B.mods) {
+        if (m.file === 'betterdt-settings.js') continue;
+        const line = el('label', '', list);
+        line.style.cssText = 'display:block;cursor:pointer;margin:4px 0';
+        const box = el('input', '', line);
+        box.type = 'checkbox';
+        box.checked = S.bool('mod.' + m.file, true);
+        box.style.cssText = 'width:20px;height:20px;margin-right:10px;vertical-align:middle';
+        box.addEventListener('change', () => S.set('mod.' + m.file, box.checked));
+        const st = m.enabled && kitStatus(m.file);
+        const bad = st && (st.state === 'incompatible' || st.state === 'failed');
+        el('span', '', line).textContent = modTitle(m.file) + (bad ? ' – ' + t(st.state === 'failed' ? 'stFailed' : 'stIncompat') : '');
+      }
+    }, [{ label: t('ok'), go: true, cb: () => { } }]);
+  }
 
   globalThis.__betterdtSettings = { get active() { return active; }, open(p) { attach(); nav?.querySelector(`[data-page="${p}"]`)?.click(); } };
 });

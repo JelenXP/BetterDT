@@ -690,7 +690,7 @@ static HRESULT OnProcessFailed(ICoreWebView2 *wv, ICoreWebView2ProcessFailedEven
   g_crashTimes = recent;
   {
     std::lock_guard<std::mutex> lk(g_mx);
-    g_crash = g_beat;   // layout, day, year, heap, dom
+    g_crash = g_beat;   // layout, day, year, heap, dom, game, mods
     g_crash["kind"] = KindName(kind);
     g_crash["reason"] = ReasonName(reason);
     g_crash["exitCode"] = code;
@@ -806,6 +806,9 @@ static void OpenReport() {
     Field(c, "crashesInSession") + ", GPU process restarts: " + Field(c, "gpuRestarts") + "\n"
     "- Memory in use: " + Field(c, "memoryLoad") + " % (" + Field(c, "freeMB") + " MB free), game JS heap " +
     Field(c, "heap") + " MB, page elements " + Field(c, "dom") + "\n\n"
+    "### Versions\n"
+    "- Devices Tycoon " + Field(c, "game") + ", BetterDT " BETTERDT_VERSION "\n"
+    "- Mods not running: " + (Field(c, "mods", "").empty() ? std::string("none") : Field(c, "mods")) + "\n\n"
     "### System\n" + SystemInfo();
   CopyToClipboard(title + "\n\n" + body);
   std::string url = "https://github.com/" + std::string(kRepo) + "/issues/new?title=" + UrlEncode(title) + "&body=" + UrlEncode(body);
@@ -860,9 +863,9 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
   if (cmd == "restart") return RestartGame() ? "{\"ok\":true}" : "{\"ok\":false}";
   if (cmd == "beat") {   // what the game is doing, for crash reports
     std::lock_guard<std::mutex> lk(g_mx);
-    for (const char *k : { "layout", "day", "year", "heap", "dom" }) {
+    for (const char *k : { "layout", "day", "year", "heap", "dom", "game", "mods" }) {
       std::string v = QueryParam(query, k);
-      if (v.size() > 60 || v.find_first_of("\r\n") != std::string::npos) v.clear();
+      if (v.size() > 200 || v.find_first_of("\r\n") != std::string::npos) v.clear();
       g_beat[k] = v;
     }
     return "{\"ok\":true}";
