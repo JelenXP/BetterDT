@@ -23,6 +23,8 @@ game file and does not touch your saves.
   by default).
 - **Endless game:** keep playing after the end of the game in 2101. The final screen gets a **Continue game**
   button, and the calendar goes on right away, no reload needed. Based on a mod by **M1lan.**
+- **Real company names:** the other companies are called Sony, Intel, Samsung, … instead of Somy, Infel,
+  Samsong, … (game 1.4+), without downloading and loading the names file in the game's editor.
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -136,6 +138,18 @@ its own layer.
 - The game's own **Quality: Low** setting helps only on displays larger than 1920×1080: it then draws
   at 1920×1080 and stretches the picture (about 30 % less GPU work on the main menu at 1440p). On a 1080p or smaller
   display it changes nothing.
+
+### `real-names.js`: real company names
+- Game 1.4 can rename companies: **Main menu → Editor → Load file** reads a text file with one name per line
+  (line = company id) into `ArrayCompanyNames` (column 0 = the game's name, column 1 = the name shown everywhere).
+  The developer publishes such a file with the real names; the mod has the same 469 renames built in.
+- The pairs are matched by the game's name (`Somy` → `Sony`), not by the line, so a game update that adds or
+  reorders companies does not mix them up. Only cells that still hold the game's name are changed, so a company
+  you renamed yourself in the editor keeps your name.
+- Only in memory, nothing is written to the game's files. The game loads `Settings.dt` (where the editor keeps the
+  names) on the start page, so the mod checks the table every 2 seconds. If fewer than half of the game's names
+  are found, the mod turns itself off. Turning it off brings the game's names back after a restart, unless the
+  editor saved them in the meantime (its reset buttons undo that).
 
 ### `no-ending.js`: endless game
 Based on the "prevent retirement" mod by **M1lan.** – thank you!
