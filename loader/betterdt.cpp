@@ -45,7 +45,7 @@ extern "C" const int VT_ENV10_CREATE_CONTROLLER_OPT;
 extern "C" const int VT_ENV10_CREATE_COMPOSITION_OPT;
 
 #ifndef BETTERDT_VERSION
-#define BETTERDT_VERSION "0.2.2"
+#define BETTERDT_VERSION "0.3.0"
 #endif
 #define WIDE2(s) L##s
 #define WIDE(s) WIDE2(s)
