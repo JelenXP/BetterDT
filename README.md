@@ -129,6 +129,31 @@ vlastní vrstvu.
 - Všechny texty jsou v 15 jazycích hry. Grafika je složená z herních prvků (stejná tlačítka,
   přechody, ikony a písmo).
 
+### `train-all.js`: školení všech (UPGRADE EMPLOYEES)
+- V levém panelu pod legendou je zelené tlačítko **TRAIN ALL (N)**, kde N je počet lidí zvolené profese,
+  kteří ještě nemají MAX LEVEL. Kliknutí projde všechny stránky profese a školí, dokud nemají všichni
+  maximum nebo dokud nedojdou peníze či body výzkumu.
+- Školí se klikáním na herní tlačítka, takže cenu (součet tří úrovní × 1 500 $ a ⌈součet × 0,015⌉ bodů),
+  přírůstky, plat i perky počítá hra. Mod jen přepíná stránky (`SubPage`) a kliká.
+- Během dávky jsou vypnuté zvuky (`Sounds`), na konci zazní jedno cinknutí. Souhrn („Training finished: 29
+  upgrades“, utracené peníze a body) se ukáže v herním oznámení. Když dojdou peníze, připíše se pod
+  herní hlášku.
+- Ověřeno: 14 návrhářů (29 vylepšení) za necelou sekundu. Při 1 mil. $ se dávka zastavila na herní
+  hlášce „You don't have enough funds“.
+
+### `vacation-tools.js`: dovolená pro unavené (MY EMPLOYEES)
+- Pod herními tlačítky SEND ON VACATION a PAY THE BONUS je třetí stejné tlačítko
+  **VACATION FOR THE TIRED – N NEED A REST**. Pošle na dovolenou všechny zaměstnance všech profesí
+  s náladou pod 30 (hra u nich ukazuje „Vacation needed“ nebo „Risk of dismissal“), nejdřív ty
+  nejunavenější.
+- Pravidla jsou převzatá z eventu herního tlačítka: nálada +30 až 40 (max 100), 30 dní − 7 za perk,
+  stav `Vacation`. Z každé profese musí aspoň jeden člověk zůstat v práci. Kdo se proto nevešel,
+  zůstane v práci a oznámení to napíše.
+- Ověřeno: 67 ze 70 unavených odešlo, 3 zůstali (profese, kde byli unavení všichni). Karta zobrazeného
+  zaměstnance se hned přepnula na „ON VACATION – 30 DAYS LEFT“.
+
+Texty obou modů jsou v 15 jazycích hry a tlačítka jsou složená z herních objektů.
+
 ## Výkonná grafika (notebooky se dvěma GPU)
 
 WebView2 jinak kreslí hru na úsporné integrované grafice. Na notebooku s Intel UHD a RTX 5070 to

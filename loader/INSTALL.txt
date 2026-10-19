@@ -16,6 +16,10 @@ Included mods
 - os-perf.js     smoother OS upgrade cards (same look, no heavy blur filters)
 - hire-tools.js  FIND EMPLOYEES: second button that searches until the office is full,
                  AUTO-HIRE checkbox (top right) that hires everyone found
+- train-all.js   UPGRADE EMPLOYEES: TRAIN ALL button that trains the whole profession to the
+                 max level while money and research points last (uses the game's own buttons)
+- vacation-tools.js  MY EMPLOYEES: VACATION FOR THE TIRED button that sends everyone with mood
+                 below 30 on vacation (same rules as the game; one per profession keeps working)
 - dtmodloader.ini  gpu=1 asks Windows for the high-performance GPU (any vendor: NVIDIA,
                    AMD, Intel Arc). With integrated graphics only, nothing changes.
                    Set gpu=0 to turn it off (e.g. to save battery).
