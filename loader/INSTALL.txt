@@ -1,32 +1,55 @@
-BetterDT for Devices Tycoon
-===========================
+BetterDT - quality-of-life mods for Devices Tycoon
+==================================================
 
-INSTALL
-1. Steam > Library > Devices Tycoon > right click > Manage > Browse local files.
-2. Extract everything from this zip into that folder
-   (BetterDT_x64.ext.dll next to "Devices Tycoon.exe", the "mods" folder next to it).
-3. Start the game. The settings are in the game: Settings > BetterDT.
+BetterDT adds a few handy buttons to the game (see "What you get" below).
+It does not change any game file and it does not touch your saves.
 
-UNINSTALL
-Delete BetterDT_x64.ext.dll and the "mods" folder.
 
-No game file is modified, so game updates do not remove the mods.
-BetterDT updates itself from GitHub (can be turned off in Settings > BetterDT).
-If an older DTModLoader_x64.ext.dll is present, BetterDT disables it on the first start.
+HOW TO INSTALL
+--------------
+1. Open the game folder:
+   Steam > Library > right-click "Devices Tycoon" > Manage > Browse local files.
+   A folder opens. You should see "Devices Tycoon.exe" in it.
 
-Included mods (each can be turned off in Settings > BetterDT > Mods)
-- os-perf.js         smoother OS upgrade cards (same look, no heavy blur filters)
-- hire-tools.js      FIND EMPLOYEES: second button that searches until the office is full,
-                     AUTO-HIRE checkbox (top right) that hires everyone found
-- train-all.js       UPGRADE EMPLOYEES: TRAIN ALL button that trains the whole profession to the
-                     max level while money and research points last (uses the game's own buttons)
-- vacation-tools.js  MY EMPLOYEES: VACATION FOR THE TIRED button that sends everyone with low mood
-                     on vacation (same rules as the game; one per profession keeps working)
+2. Copy everything from this zip into that folder:
+   - BetterDT_x64.ext.dll   (goes right next to "Devices Tycoon.exe")
+   - the "mods" folder      (also right next to "Devices Tycoon.exe")
+   - BetterDT-INSTALL.txt   (this file)
+   Do not put them into a new subfolder like "BetterDT\" - the game would not find them.
 
-The high-performance GPU switch (on by default) asks Windows for the dedicated GPU on laptops
-with two GPUs (any vendor). With integrated graphics only, nothing changes.
+3. Start the game as usual from Steam.
 
-Add your own mods: put a .js file into "mods" and list it in mods\mods.json.
-A mod calls BetterDT.register('name', runtime => { ... }) and gets the Construct 3 runtime.
+4. Check that it works: open the game Settings. On the left there is a new "BetterDT" section.
 
-Settings are stored in mods\betterdt.ini, the log in mods\betterdt.log.
+
+WHAT YOU GET
+------------
+- FIND EMPLOYEES: next to every agency there is a second button with a number. It keeps searching
+  until your office is full. The AUTO-HIRE checkbox (top right) hires everyone who is found.
+- UPGRADE EMPLOYEES: a TRAIN ALL button trains the whole profession to the maximum level
+  (as long as you have money and research points).
+- MY EMPLOYEES: a VACATION FOR THE TIRED button sends everyone with low mood on vacation
+  (one person of each profession always keeps working).
+- MY OS UPGRADE: the screen no longer stutters.
+- Laptops with two graphics cards: the game runs on the faster one.
+
+Each of these can be turned off in Settings > BetterDT > Mods.
+
+
+UPDATES
+-------
+BetterDT updates itself: when a new version is out, it downloads it when the game starts
+and uses it the next time you start the game. You can turn this off in Settings > BetterDT.
+
+
+HOW TO UNINSTALL
+----------------
+Delete BetterDT_x64.ext.dll and the "mods" folder from the game folder. That's it.
+
+
+PROBLEMS?
+---------
+- No "BetterDT" section in the settings: BetterDT_x64.ext.dll is not next to "Devices Tycoon.exe".
+- A game update or "Verify integrity of game files" in Steam does not remove BetterDT.
+- If something goes wrong, the file mods\betterdt.log says what happened.
+  Report problems at https://github.com/JelenXP/BetterDT/issues

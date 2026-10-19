@@ -1,22 +1,41 @@
 # BetterDT – mods for Devices Tycoon
 
-BetterDT is a mod loader and a set of quality-of-life mods for **Devices Tycoon**. It does not modify
-any game file, so game updates do not remove it. It adds a **BetterDT** section to the game settings,
-where you can turn mods on and off, change their options and update BetterDT from GitHub.
+Handy extra buttons for **Devices Tycoon** that save you a lot of clicking. BetterDT does not change any
+game file and does not touch your saves.
 
-## Install
+## What you get
 
-1. Download `BetterDT.zip` from the [latest release](https://github.com/JelenXP/BetterDT/releases/latest).
-2. Steam → Library → Devices Tycoon → right click → Manage → Browse local files.
-3. Extract everything into that folder (`BetterDT_x64.ext.dll` next to `Devices Tycoon.exe`,
-   the `mods` folder next to it) and start the game.
+- **Hiring (FIND EMPLOYEES):** a second button next to every agency keeps searching until your office is
+  full. With **AUTO-HIRE** (checkbox in the top right) everyone found is hired right away.
+- **Training (UPGRADE EMPLOYEES):** **TRAIN ALL** trains the whole profession to the maximum level, as long
+  as you have money and research points.
+- **Vacations (MY EMPLOYEES):** **VACATION FOR THE TIRED** sends everyone with low mood on vacation.
+  One person of each profession always keeps working.
+- **MY OS UPGRADE** no longer stutters.
+- **Laptops with two graphics cards:** the game runs on the faster one.
+- A **BetterDT** section in the game settings, where you can turn each of these on or off.
+  All texts are in the game's 15 languages.
 
-Uninstall: delete `BetterDT_x64.ext.dll` and the `mods` folder.
+## How to install
 
-If you used the older `DTModLoader_x64.ext.dll`, BetterDT disables it on the first start
-(renames it to `.disabled`) and takes over its settings.
+1. Download **BetterDT.zip** from the [latest release](https://github.com/JelenXP/BetterDT/releases/latest)
+   (under "Assets").
+2. Open the game folder: Steam → Library → right-click **Devices Tycoon** → Manage → **Browse local files**.
+   A folder with `Devices Tycoon.exe` opens.
+3. Open the zip and copy everything in it into that folder: `BetterDT_x64.ext.dll` and the `mods` folder
+   must end up right next to `Devices Tycoon.exe`, not in a new subfolder.
+4. Start the game. In Settings there is now a **BetterDT** section on the left – that means it works.
 
-## Settings in the game (Settings → BetterDT)
+**Updates** are automatic: BetterDT downloads a new version when the game starts and uses it the next time
+you start the game. You can turn this off in Settings → BetterDT.
+
+**Uninstall:** delete `BetterDT_x64.ext.dll` and the `mods` folder from the game folder.
+
+**Problems?** If there is no BetterDT section in the settings, the DLL is not next to `Devices Tycoon.exe`.
+Game updates and "Verify integrity of game files" do not remove BetterDT. The file `mods\betterdt.log`
+says what happened; please attach it when you [report a problem](https://github.com/JelenXP/BetterDT/issues).
+
+## Settings (Settings → BetterDT)
 
 - **General:** version, automatic updates (on by default), "Check now" / "Install" for updates,
   high-performance GPU switch, buttons that open the mods folder, the log and the GitHub releases.
@@ -26,28 +45,9 @@ If you used the older `DTModLoader_x64.ext.dll`, BetterDT disables it on the fir
   - vacation-tools: the mood threshold for sending people on vacation (default 30).
 
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
-effect after restarting the game; the page says so. All texts are in the game's 15 languages.
+effect after restarting the game; the page says so.
 
-## Automatic updates
-
-At game start BetterDT downloads `manifest.txt` from the latest GitHub release. When the version is
-newer, it downloads every listed file, checks its size and SHA-256, and only then replaces the files
-(the loaded DLL is renamed to `BetterDT_x64.old` and deleted on the next start). The new version is
-used after a restart. `mods\mods.json` keeps any mods you added yourself.
-
-Manifest format:
-
-```
-betterdt-manifest 1
-version 0.2.0
-note <release notes line>
-mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
-file <sha256> <size> <asset name> <dest>      dest: dll | INSTALL.txt | mods/<file>.js
-```
-
-Updates can be turned off in the settings (`autoupdate=0` in `betterdt.ini`).
-
-## Mods (`mod/mods`)
+## The mods in detail (`mod/mods`)
 
 ### `os-perf.js`: smooth OS upgrade cards
 The MY OS UPGRADE screen stuttered when clicking quickly. Each of the 35 cards had a `backdrop-filter: blur()`
@@ -133,11 +133,25 @@ BetterDT.register('my-mod', runtime => {
 - `https://betterdt.localhost/…` is served through `WebResourceRequested` (registered after the game's own
   handler, which would otherwise overwrite the response). The settings page uses it for `state`, `set`,
   `check`, `install` and `open`. Only requests from the game page are accepted.
+- **Updates:** `github.com/JelenXP/BetterDT/releases/latest` redirects to `…/tag/v<version>`, which tells the
+  loader the latest version without downloading anything. When it is newer, the loader downloads the release's
+  only asset, `BetterDT.zip` (the same zip players install by hand), checks the CRC-32 of every file and the
+  version in `mods/betterdt-version.txt`, and only then replaces the files. The loaded DLL is renamed to
+  `BetterDT_x64.old` and deleted on the next start; the new version is used after a restart.
+  `mods\mods.json` keeps any mods you added yourself. The zip is uncompressed so the loader can read it
+  without an inflate library. `mods/betterdt-version.txt`:
+
+  ```
+  betterdt-manifest 2
+  version 0.2.1
+  note <release notes line, shown in the settings>
+  mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
+  ```
 - Everything it does is written to `mods\betterdt.log`.
 
 **Build:** `loader\build.bat` (Visual Studio 2022 with C++; the WebView2 header is downloaded from NuGet),
-then `loader\package.ps1` creates `dist\BetterDT.zip` and the release assets with `manifest.txt` in
-`dist\release`. Publish: `gh release create v<version> loader/dist/release/*`.
+then `loader\package.ps1 -Notes "…"` creates `loader\dist\BetterDT.zip`.
+Publish: `gh release create v<version> loader/dist/BetterDT.zip`.
 
 ## How the game is built
 
@@ -188,3 +202,7 @@ node dtmod.mjs restore "D:\SteamLibrary\steamapps\common\Devices Tycoon"
 - Tested on game version 1.3 (build 26033576).
 - Changing logic in `data.json` is possible but hard (a compiled, positional structure without names).
   JS mods and the data JSON files are the practical way.
+
+## License
+
+[MIT](LICENSE). BetterDT is a fan project and is not affiliated with the developers of Devices Tycoon.

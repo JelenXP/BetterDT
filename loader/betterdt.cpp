@@ -16,13 +16,12 @@
 // Settings: mods\betterdt.ini (key=value lines, written by the BetterDT section in the game settings):
 //   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 disables a mod,
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
-// Updates: from the latest GitHub release (manifest.txt; every file checked by size and SHA-256).
+// Updates: BetterDT.zip from the latest GitHub release (every file checked by its CRC-32).
 // Log: mods\betterdt.log (overwritten on every start).
 
 #include <windows.h>
 #include <dxgi1_6.h>
 #include <winhttp.h>
-#include <bcrypt.h>
 #include <shlwapi.h>
 #include <shellapi.h>
 #include <wrl.h>
@@ -43,7 +42,7 @@ extern "C" const int VT_ENV10_CREATE_CONTROLLER_OPT;
 extern "C" const int VT_ENV10_CREATE_COMPOSITION_OPT;
 
 #ifndef BETTERDT_VERSION
-#define BETTERDT_VERSION "0.2.0"
+#define BETTERDT_VERSION "0.2.1"
 #endif
 #define WIDE2(s) L##s
 #define WIDE(s) WIDE2(s)
@@ -239,7 +238,9 @@ static void SetUpd(const char *state, const std::string &error = "") {
 }
 
 // ── HTTPS (WinHTTP follows the redirect from github.com to the file storage) ──────────────────────
-static bool HttpGet(const std::string &url, std::string &out, size_t maxSize, std::string &err) {
+// redirect != nullptr: do not follow redirects, return the Location header instead
+static bool HttpGet(const std::string &url, std::string &out, size_t maxSize, std::string &err,
+                    std::string *redirect = nullptr) {
   out.clear();
   std::wstring wurl = Widen(url);
   URL_COMPONENTS uc{};
@@ -261,11 +262,22 @@ static bool HttpGet(const std::string &url, std::string &out, size_t maxSize, st
   bool ok = false;
   HINTERNET c = WinHttpConnect(s, host, uc.nPort, 0);
   HINTERNET r = c ? WinHttpOpenRequest(c, L"GET", path, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, secure ? WINHTTP_FLAG_SECURE : 0) : nullptr;
+  if (r && redirect) {
+    DWORD off = WINHTTP_DISABLE_REDIRECTS;
+    WinHttpSetOption(r, WINHTTP_OPTION_DISABLE_FEATURE, &off, sizeof(off));
+  }
   if (r && WinHttpSendRequest(r, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
       WinHttpReceiveResponse(r, nullptr)) {
     DWORD status = 0, sz = sizeof(status);
     WinHttpQueryHeaders(r, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &sz, nullptr);
-    if (status == 200) {
+    if (redirect && status >= 301 && status <= 308) {
+      wchar_t loc[2048];
+      DWORD lsz = sizeof(loc);
+      if (WinHttpQueryHeaders(r, WINHTTP_QUERY_LOCATION, nullptr, loc, &lsz, nullptr)) {
+        *redirect = Narrow(std::wstring(loc, lsz / sizeof(wchar_t)));
+        ok = true;
+      } else err = "no location";
+    } else if (status == 200) {
       ok = true;
       for (;;) {
         DWORD avail = 0;
@@ -286,15 +298,6 @@ static bool HttpGet(const std::string &url, std::string &out, size_t maxSize, st
   return ok;
 }
 
-static std::string Sha256Hex(const std::string &data) {
-  unsigned char h[32];
-  if (BCryptHash(BCRYPT_SHA256_ALG_HANDLE, nullptr, 0, (PUCHAR)data.data(), (ULONG)data.size(), h, 32) != 0) return "";
-  static const char *hx = "0123456789abcdef";
-  std::string o;
-  for (unsigned char b : h) { o += hx[b >> 4]; o += hx[b & 15]; }
-  return o;
-}
-
 static bool NewerThan(const std::string &a, const std::string &b) {   // a > b ("1.2.3")
   int x[3] = {}, y[3] = {};
   sscanf(a.c_str(), "%d.%d.%d", &x[0], &x[1], &x[2]);
@@ -303,23 +306,65 @@ static bool NewerThan(const std::string &a, const std::string &b) {   // a > b (
   return false;
 }
 
-// ── release manifest (asset manifest.txt in the latest GitHub release) ────────────────────────────
-//   betterdt-manifest 1
+// ── release: one asset, BetterDT.zip ──────────────────────────────────────────────────────────────
+// The same zip players extract by hand. It is uncompressed ("stored", made by package.ps1), so it is read
+// without an inflate library; every entry is checked against its CRC-32. mods/betterdt-version.txt:
+//   betterdt-manifest 2
 //   version 0.2.1
 //   note <line of release notes>
 //   mods betterdt-settings.js os-perf.js …        (official order in mods.json)
-//   file <sha256> <size> <asset name> <dest>     (dest: dll | INSTALL.txt | mods/<file>.js)
-struct ManFile { std::string sha, asset, dest; size_t size = 0; };
-struct Manifest { std::string version, notes; std::vector<std::string> mods; std::vector<ManFile> files; };
+struct Manifest { std::string version, notes; std::vector<std::string> mods; };
+struct ZipEntry { std::string name, data; };
+static const char kZipAsset[] = "BetterDT.zip";
+static const char kManifestEntry[] = "mods/betterdt-version.txt";
 
-static bool ValidAsset(const std::string &a) {
-  if (a.empty() || a.size() > 100 || a.find("..") != std::string::npos) return false;
-  for (char c : a) if (!(isalnum((unsigned char)c) || c == '.' || c == '_' || c == '-')) return false;
-  return true;
+static uint32_t Crc32(const std::string &d) {
+  static uint32_t t[256];
+  if (!t[1]) for (uint32_t i = 0; i < 256; i++) {
+    uint32_t c = i;
+    for (int k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+    t[i] = c;
+  }
+  uint32_t c = 0xFFFFFFFFu;
+  for (unsigned char b : d) c = t[(c ^ b) & 255] ^ (c >> 8);
+  return c ^ 0xFFFFFFFFu;
 }
-static bool ValidDest(const std::string &d) {
-  if (d == "dll" || d == "INSTALL.txt") return true;
-  return d.compare(0, 5, "mods/") == 0 && ValidModName(d.substr(5));
+
+static uint32_t Le(const std::string &z, size_t at, int bytes) {
+  uint32_t v = 0;
+  for (int i = bytes - 1; i >= 0; i--) v = v << 8 | (unsigned char)z[at + i];
+  return v;
+}
+
+static bool ReadStoredZip(const std::string &z, std::vector<ZipEntry> &out, std::string &err) {
+  err = "bad zip";
+  if (z.size() < 22) return false;
+  size_t eocd = std::string::npos;
+  for (size_t i = z.size() - 22, stop = z.size() > 65557 ? z.size() - 65557 : 0;; i--) {
+    if (Le(z, i, 4) == 0x06054b50) { eocd = i; break; }
+    if (i == stop) break;
+  }
+  if (eocd == std::string::npos) return false;
+  size_t count = Le(z, eocd + 10, 2), p = Le(z, eocd + 16, 4);
+  for (size_t n = 0; n < count; n++) {
+    if (p + 46 > z.size() || Le(z, p, 4) != 0x02014b50) return false;
+    uint32_t flags = Le(z, p + 8, 2), method = Le(z, p + 10, 2), crc = Le(z, p + 16, 4);
+    size_t csize = Le(z, p + 20, 4), usize = Le(z, p + 24, 4), nlen = Le(z, p + 28, 2);
+    size_t skip = nlen + Le(z, p + 30, 2) + Le(z, p + 32, 2), local = Le(z, p + 42, 4);
+    if (p + 46 + nlen > z.size()) return false;
+    std::string name = z.substr(p + 46, nlen);
+    p += 46 + skip;
+    if (!name.empty() && name.back() == '/') continue;   // folder
+    if ((flags & 1) || method != 0 || csize != usize) { err = "compressed zip entry " + name; return false; }
+    if (local + 30 > z.size() || Le(z, local, 4) != 0x04034b50) return false;
+    size_t data = local + 30 + Le(z, local + 26, 2) + Le(z, local + 28, 2);
+    if (data + usize > z.size()) return false;
+    ZipEntry e{ name, z.substr(data, usize) };
+    if (Crc32(e.data) != crc) { err = "CRC " + name; return false; }
+    out.push_back(std::move(e));
+  }
+  err.clear();
+  return true;
 }
 
 static bool ParseManifest(const std::string &text, Manifest &m, std::string &err) {
@@ -334,7 +379,7 @@ static bool ParseManifest(const std::string &text, Manifest &m, std::string &err
     if (line.empty() || line[0] == '#') continue;
     size_t sp = line.find(' ');
     std::string cmd = line.substr(0, sp), rest = sp == std::string::npos ? "" : line.substr(sp + 1);
-    if (cmd == "betterdt-manifest") magic = rest == "1";
+    if (cmd == "betterdt-manifest") magic = rest == "2";
     else if (cmd == "version") m.version = rest;
     else if (cmd == "note") m.notes += (m.notes.empty() ? "" : "\n") + rest;
     else if (cmd == "mods") {
@@ -345,19 +390,9 @@ static bool ParseManifest(const std::string &text, Manifest &m, std::string &err
         if (ValidModName(n)) m.mods.push_back(n);
         i = j + 1;
       }
-    } else if (cmd == "file") {
-      char sha[80] = {}, asset[128] = {}, dest[128] = {};
-      unsigned long long size = 0;
-      if (sscanf(rest.c_str(), "%79s %llu %127s %127s", sha, &size, asset, dest) != 4) { err = "bad file line"; return false; }
-      ManFile f;
-      f.sha = sha; f.size = (size_t)size; f.asset = asset; f.dest = dest;
-      if (f.sha.size() != 64 || !ValidAsset(f.asset) || !ValidDest(f.dest) || f.size > kMaxAsset) {
-        err = "invalid entry " + f.asset; return false;
-      }
-      m.files.push_back(f);
     }
   }
-  if (!magic || m.version.empty() || m.files.empty()) { err = "invalid manifest"; return false; }
+  if (!magic || m.version.empty()) { err = "invalid manifest"; return false; }
   return true;
 }
 
@@ -368,33 +403,35 @@ static std::string ReleaseUrl(const std::string &tail) {
   return std::string("https://github.com/") + kRepo + "/releases/" + tail;
 }
 
-// Downloads, verifies and installs a release. Files are replaced right away and take effect after a restart.
-static bool InstallRelease(const Manifest &m) {
-  SetUpd("downloading");
+// Where a zip entry is installed; empty = skipped (mods.json is merged, the manifest is only read).
+static std::wstring EntryDest(const std::string &name) {
+  if (name == "BetterDT_x64.ext.dll") return g_gameDir + L"BetterDT_x64.ext.dll";
+  if (name == "BetterDT-INSTALL.txt") return g_gameDir + L"BetterDT-INSTALL.txt";
+  if (name.compare(0, 5, "mods/") == 0 && ValidModName(name.substr(5))) return g_modsDir + Widen(name.substr(5));
+  return L"";
+}
+
+// Installs the files of a downloaded and verified zip. They take effect after a restart.
+static bool InstallRelease(const Manifest &m, const std::vector<ZipEntry> &zip) {
   std::wstring stage = g_modsDir + L".update\\";
   CreateDirectoryW(stage.c_str(), nullptr);
-  std::vector<std::pair<std::wstring, const ManFile *>> staged;
-  for (const ManFile &f : m.files) {
-    std::string data, err;
-    if (!HttpGet(ReleaseUrl("download/v" + m.version + "/" + f.asset), data, kMaxAsset, err)) {
-      Log("update: cannot download %s (%s)", f.asset.c_str(), err.c_str());
-      SetUpd("error", "download " + f.asset + ": " + err);
-      return false;
-    }
-    if (data.size() != f.size || Sha256Hex(data) != f.sha) {
-      Log("update: %s – size or SHA-256 mismatch", f.asset.c_str());
-      SetUpd("error", "checksum " + f.asset);
-      return false;
-    }
-    std::wstring tmp = stage + Widen(f.asset);
-    if (!WriteFileAtomic(tmp, data)) { SetUpd("error", "write " + f.asset); return false; }
-    staged.push_back({ tmp, &f });
+  const std::wstring dllPath = g_gameDir + L"BetterDT_x64.ext.dll";
+  std::vector<std::pair<std::wstring, std::wstring>> staged;   // temp file -> destination
+  bool dll = false;
+  for (const ZipEntry &e : zip) {
+    std::wstring dest = EntryDest(e.name);
+    if (dest.empty()) continue;
+    std::string flat = e.name;
+    for (char &c : flat) if (c == '/') c = '_';
+    std::wstring tmp = stage + Widen(flat);
+    if (!WriteFileAtomic(tmp, e.data)) { SetUpd("error", "write " + e.name); return false; }
+    staged.push_back({ tmp, dest });
+    dll |= dest == dllPath;
   }
-  // everything is downloaded and verified → replace
+  if (!dll) { SetUpd("error", "the zip has no DLL"); return false; }
+  // everything is written → replace
   for (auto &sf : staged) {
-    const ManFile &f = *sf.second;
-    std::wstring dest;
-    if (f.dest == "dll") {
+    if (sf.second == dllPath) {
       // a loaded DLL cannot be overwritten but can be renamed; the old one is deleted on the next start
       // (.old extension so that Construct does not load it as an extension)
       std::wstring old = g_gameDir + L"BetterDT_x64.old";
@@ -404,15 +441,13 @@ static bool InstallRelease(const Manifest &m) {
         SetUpd("error", "replace dll");
         return false;
       }
-      dest = g_gameDir + L"BetterDT_x64.ext.dll";
-    } else if (f.dest == "INSTALL.txt") dest = g_gameDir + L"BetterDT-INSTALL.txt";
-    else dest = g_modsDir + Widen(f.dest.substr(5));
-    if (!MoveFileExW(sf.first.c_str(), dest.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
-      Log("update: cannot replace %s (%lu)", f.asset.c_str(), GetLastError());
-      SetUpd("error", "replace " + f.asset);
+    }
+    if (!MoveFileExW(sf.first.c_str(), sf.second.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
+      Log("update: cannot replace %ls (%lu)", sf.second.c_str(), GetLastError());
+      SetUpd("error", "replace " + Narrow(sf.second));
       return false;
     }
-    Log("update: %s -> %ls", f.asset.c_str(), dest.c_str());
+    Log("update: %ls", sf.second.c_str());
   }
   RemoveDirectoryW(stage.c_str());
   // mods.json: official mods in release order + the player's own mods that were already listed
@@ -432,30 +467,56 @@ static bool InstallRelease(const Manifest &m) {
   return true;
 }
 
-// Checks the latest release; install = install it right away when it is newer.
+// Checks the latest release (github.com/…/releases/latest redirects to …/releases/tag/v<version>);
+// when it is newer, downloads the zip and, with install = true, installs it right away.
 static void RunUpdate(bool install) {
-  std::string text, err;
-  Manifest m;
-  if (!HttpGet(ReleaseUrl("latest/download/manifest.txt"), text, 64 * 1024, err)) {
-    Log("update: cannot download the manifest (%s)", err.c_str());
-    SetUpd("error", err == "HTTP 404" ? "no public release" : err);
+  std::string body, loc, err;
+  if (!HttpGet(ReleaseUrl("latest"), body, 1024 * 1024, err, &loc)) {
+    Log("update: cannot check the latest release (%s)", err.c_str());
+    SetUpd("error", err);
     return;
   }
-  if (!ParseManifest(text, m, err)) { Log("update: %s", err.c_str()); SetUpd("error", err); return; }
+  size_t t = loc.rfind("/tag/v");
+  std::string latest = t == std::string::npos ? "" : loc.substr(t + 6);
+  if (latest.empty() || latest.find_first_not_of("0123456789.") != std::string::npos) {
+    Log("update: no release found (%s)", loc.c_str());
+    SetUpd("error", "no public release");
+    return;
+  }
   {
     std::lock_guard<std::mutex> lk(g_mx);
-    g_upd.latest = m.version;
-    g_upd.notes = m.notes;
+    g_upd.latest = latest;
     g_upd.checkedAt = (long long)time(nullptr);
   }
-  if (!NewerThan(m.version, BETTERDT_VERSION)) {
+  if (!NewerThan(latest, BETTERDT_VERSION)) {
     SetUpd("uptodate");
-    Log("update: up to date (%s)", m.version.c_str());
+    Log("update: up to date (%s)", latest.c_str());
     return;
   }
-  Log("update: %s available", m.version.c_str());
+  Log("update: %s available", latest.c_str());
+  SetUpd("downloading");
+  std::string zipData;
+  std::vector<ZipEntry> zip;
+  if (!HttpGet(ReleaseUrl("download/v" + latest + "/" + kZipAsset), zipData, kMaxAsset, err)) {
+    Log("update: cannot download %s (%s)", kZipAsset, err.c_str());
+    SetUpd("error", "download: " + err);
+    return;
+  }
+  if (!ReadStoredZip(zipData, zip, err)) { Log("update: %s", err.c_str()); SetUpd("error", err); return; }
+  Manifest m;
+  const ZipEntry *man = nullptr;
+  for (auto &e : zip) if (e.name == kManifestEntry) man = &e;
+  if (!man || !ParseManifest(man->data, m, err) || m.version != latest) {
+    Log("update: the zip has no valid %s", kManifestEntry);
+    SetUpd("error", "invalid release zip");
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lk(g_mx);
+    g_upd.notes = m.notes;
+  }
   SetUpd("available");
-  if (install) InstallRelease(m);
+  if (install) InstallRelease(m, zip);
 }
 
 static DWORD WINAPI UpdateThread(LPVOID p) {
