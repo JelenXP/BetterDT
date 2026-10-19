@@ -38,8 +38,9 @@ Each of these can be turned off in Settings > BetterDT > Mods.
 
 UPDATES
 -------
-BetterDT updates itself: when a new version is out, it downloads it when the game starts
-and uses it the next time you start the game. You can turn this off in Settings > BetterDT.
+BetterDT updates itself: when a new version is out, it downloads it when the game starts and
+tells you in the main menu. "Restart now" uses it right away, "Keep playing" uses it the next
+time you start the game. You can turn this off in Settings > BetterDT.
 
 
 HOW TO UNINSTALL
@@ -50,6 +51,8 @@ Delete BetterDT_x64.ext.dll and the "mods" folder from the game folder. That's i
 PROBLEMS?
 ---------
 - No "BetterDT" section in the settings: BetterDT_x64.ext.dll is not next to "Devices Tycoon.exe".
+- White screen with a small sad face: BetterDT reloads the game by itself (load your last save).
+  The main menu then offers "Report problem", which prepares a bug report for you.
 - A game update or "Verify integrity of game files" in Steam does not remove BetterDT.
 - If something goes wrong, the file mods\betterdt.log says what happened.
   Report problems at https://github.com/JelenXP/BetterDT/issues

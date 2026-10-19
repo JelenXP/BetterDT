@@ -26,8 +26,13 @@ game file and does not touch your saves.
    must end up right next to `Devices Tycoon.exe`, not in a new subfolder.
 4. Start the game. In Settings there is now a **BetterDT** section on the left – that means it works.
 
-**Updates** are automatic: BetterDT downloads a new version when the game starts and uses it the next time
-you start the game. You can turn this off in Settings → BetterDT.
+**Updates** are automatic: when a new version is out, BetterDT downloads it when the game starts and tells you
+in the main menu. Click **Restart now** to use it right away, or **Keep playing** and it starts the next time
+you launch the game. You can turn automatic updates off in Settings → BetterDT.
+
+**White screen?** If the game screen ever turns white with a small sad face, BetterDT reloads the game by itself
+(you are back in the main menu; load your last save). The main menu then offers **Report problem**, which opens
+a prefilled bug report and copies it, so you can also paste it into the Steam discussion.
 
 **Uninstall:** delete `BetterDT_x64.ext.dll` and the `mods` folder from the game folder.
 
@@ -147,6 +152,16 @@ BetterDT.register('my-mod', runtime => {
   note <release notes line, shown in the settings>
   mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
   ```
+- **Restart:** "Restart now" starts the exe again with `BETTERDT_WAIT_PID` set (the environment Steam gave the
+  game is inherited) and closes the game window. The new instance waits in the hooked environment creation until
+  the old process and its WebView2 browser process have exited, because it needs their browser profile.
+  Downloaded files are replaced only after the running game has read its mods, so a session never mixes versions.
+- **Crashes:** the loader handles WebView2's `ProcessFailed`. When the page process dies (Chromium's white page
+  with a sad face), it logs the kind, reason, exit code and free memory, reloads the page (at most 3 times in
+  10 minutes) and keeps the details in `mods\betterdt-crash.txt`. When the browser process itself dies, it
+  restarts the game. The settings mod reports what the game is doing every 15 s (screen, game day, JS heap), so
+  the crash dialog's "Report problem" can open a prefilled GitHub issue with that and the system (Windows, CPU,
+  RAM, GPUs with driver versions, WebView2 version) and copy it to the clipboard. Nothing is sent automatically.
 - Everything it does is written to `mods\betterdt.log`.
 
 **Build:** `loader\build.bat` (Visual Studio 2022 with C++; the WebView2 header is downloaded from NuGet),

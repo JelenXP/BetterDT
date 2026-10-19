@@ -17,5 +17,5 @@ for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -property installationPat
 call "%VS%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 mkdir build 2>nul
 cl /nologo /LD /O2 /MT /EHsc /W3 /std:c++17 /utf-8 /D_CRT_SECURE_NO_WARNINGS /Isdk /Fobuild\ betterdt.cpp vtidx.c ^
-   /link /OUT:build\BetterDT_x64.ext.dll /IMPLIB:build\betterdt.lib ole32.lib dxgi.lib winhttp.lib shlwapi.lib shell32.lib || exit /b 1
+   /link /OUT:build\BetterDT_x64.ext.dll /IMPLIB:build\betterdt.lib ole32.lib dxgi.lib winhttp.lib shlwapi.lib shell32.lib user32.lib advapi32.lib || exit /b 1
 echo OK: build\BetterDT_x64.ext.dll

@@ -6,6 +6,9 @@
 // like the game's. The game rebuilds the navigation on every change (innerHTML = ''), so a MutationObserver
 // watches it. Settings are saved immediately (through the loader into mods\betterdt.ini); the Apply button
 // belongs to the game pages only.
+//
+// It also shows two dialogs in the style of the game's news window: "BetterDT x.y.z is ready" (keep playing or
+// restart the game now) and, after the loader reloaded a crashed game page, "The game crashed" with a bug report.
 BetterDT.register('betterdt-settings', (rt) => {
   const B = globalThis.BetterDT, S = B.settings;
   const PAGES = ['bdt-general', 'bdt-mods'];
@@ -126,6 +129,63 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Envoyer en vacances sous l’humeur', 'Manda in ferie sotto l’umore', 'Enviar de vacaciones con ánimo menor que', 'इस मूड से नीचे छुट्टी पर भेजें',
       'Bu ruh halinin altında tatile gönder', 'Mandar de férias com humor abaixo de', 'Відправляти у відпустку при настрої нижче', 'Kirim cuti jika mood di bawah',
       'Wysyłaj na urlop poniżej nastroju', '心情低于此值时休假', '이 기분 미만이면 휴가', 'この気分未満で休暇へ'],
+    updTitle: ['BetterDT {v} is ready', 'BetterDT {v} готов', 'BetterDT {v} ist bereit', 'BetterDT {v} est prêt', 'BetterDT {v} è pronto', 'BetterDT {v} está listo',
+      'BetterDT {v} तैयार है', 'BetterDT {v} hazır', 'BetterDT {v} está pronto', 'BetterDT {v} готовий', 'BetterDT {v} siap', 'BetterDT {v} jest gotowy',
+      'BetterDT {v} 已就绪', 'BetterDT {v} 준비 완료', 'BetterDT {v} の準備ができました'],
+    updText: ['The new version starts the next time you launch the game. Restart now to use it right away – if you are playing, save first.',
+      'Новая версия запустится при следующем запуске игры. Перезапустите сейчас, чтобы использовать её сразу – если вы играете, сначала сохранитесь.',
+      'Die neue Version startet beim nächsten Spielstart. Starte jetzt neu, um sie sofort zu nutzen – wenn du gerade spielst, speichere vorher.',
+      'La nouvelle version démarrera au prochain lancement du jeu. Redémarrez maintenant pour l’utiliser tout de suite – si vous jouez, sauvegardez d’abord.',
+      'La nuova versione partirà al prossimo avvio del gioco. Riavvia ora per usarla subito – se stai giocando, salva prima.',
+      'La nueva versión se iniciará la próxima vez que abras el juego. Reinicia ahora para usarla ya; si estás jugando, guarda antes.',
+      'नया संस्करण अगली बार गेम शुरू करने पर चलेगा। इसे अभी इस्तेमाल करने के लिए फिर से शुरू करें – अगर आप खेल रहे हैं, तो पहले सेव करें।',
+      'Yeni sürüm oyunu bir sonraki açışınızda başlar. Hemen kullanmak için şimdi yeniden başlatın – oynuyorsanız önce kaydedin.',
+      'A nova versão será usada na próxima vez que você abrir o jogo. Reinicie agora para usá-la já – se estiver jogando, salve antes.',
+      'Нова версія запуститься під час наступного запуску гри. Перезапустіть зараз, щоб скористатися нею одразу – якщо ви граєте, спершу збережіться.',
+      'Versi baru akan dipakai saat game dibuka lagi. Mulai ulang sekarang untuk langsung memakainya – jika sedang bermain, simpan dulu.',
+      'Nowa wersja uruchomi się przy następnym starcie gry. Uruchom ponownie teraz, aby używać jej od razu – jeśli grasz, najpierw zapisz grę.',
+      '新版本将在下次启动游戏时生效。立即重启即可马上使用——如果正在游戏中，请先存档。',
+      '새 버전은 다음에 게임을 시작할 때 적용됩니다. 바로 사용하려면 지금 다시 시작하세요. 플레이 중이라면 먼저 저장하세요.',
+      '新しいバージョンは次回ゲームを起動したときに使われます。すぐ使うには今すぐ再起動してください。プレイ中なら先にセーブしてください。'],
+    later: ['Keep playing', 'Продолжить игру', 'Weiterspielen', 'Continuer à jouer', 'Continua a giocare', 'Seguir jugando', 'खेलना जारी रखें', 'Oynamaya devam et',
+      'Continuar jogando', 'Продовжити гру', 'Lanjut bermain', 'Graj dalej', '继续游戏', '계속 플레이', 'このまま遊ぶ'],
+    restart: ['Restart now', 'Перезапустить', 'Jetzt neu starten', 'Redémarrer', 'Riavvia ora', 'Reiniciar ahora', 'अभी फिर से शुरू करें', 'Şimdi yeniden başlat',
+      'Reiniciar agora', 'Перезапустити', 'Mulai ulang', 'Uruchom ponownie', '立即重启', '지금 다시 시작', '今すぐ再起動'],
+    crashTitle: ['The game crashed', 'Сбой игры', 'Das Spiel ist abgestürzt', 'Le jeu a planté', 'Il gioco si è bloccato', 'El juego se ha bloqueado', 'गेम क्रैश हो गया',
+      'Oyun çöktü', 'O jogo travou', 'Збій гри', 'Game mengalami crash', 'Gra uległa awarii', '游戏崩溃了', '게임이 충돌했습니다', 'ゲームがクラッシュしました'],
+    crashText: ['The game screen stopped working (white screen), so BetterDT reloaded the game. Load your last save to continue.',
+      'Экран игры перестал работать (белый экран), поэтому BetterDT перезагрузил игру. Загрузите последнее сохранение, чтобы продолжить.',
+      'Der Spielbildschirm funktionierte nicht mehr (weißer Bildschirm), deshalb hat BetterDT das Spiel neu geladen. Lade deinen letzten Spielstand, um weiterzuspielen.',
+      'L’écran du jeu a cessé de fonctionner (écran blanc), BetterDT a donc rechargé le jeu. Chargez votre dernière sauvegarde pour continuer.',
+      'La schermata del gioco ha smesso di funzionare (schermo bianco), quindi BetterDT ha ricaricato il gioco. Carica l’ultimo salvataggio per continuare.',
+      'La pantalla del juego dejó de funcionar (pantalla blanca), así que BetterDT recargó el juego. Carga tu última partida guardada para continuar.',
+      'गेम की स्क्रीन ने काम करना बंद कर दिया (सफ़ेद स्क्रीन), इसलिए BetterDT ने गेम फिर से लोड किया। जारी रखने के लिए अपना आख़िरी सेव लोड करें।',
+      'Oyun ekranı çalışmayı durdurdu (beyaz ekran), bu yüzden BetterDT oyunu yeniden yükledi. Devam etmek için son kaydınızı yükleyin.',
+      'A tela do jogo parou de funcionar (tela branca), então o BetterDT recarregou o jogo. Carregue seu último save para continuar.',
+      'Екран гри перестав працювати (білий екран), тому BetterDT перезавантажив гру. Завантажте останнє збереження, щоб продовжити.',
+      'Layar game berhenti bekerja (layar putih), jadi BetterDT memuat ulang game. Muat simpanan terakhir untuk melanjutkan.',
+      'Ekran gry przestał działać (biały ekran), więc BetterDT wczytał grę ponownie. Wczytaj ostatni zapis, aby kontynuować.',
+      '游戏画面停止工作（白屏），BetterDT 已重新加载游戏。请读取最近的存档继续。',
+      '게임 화면이 멈춰서(흰 화면) BetterDT가 게임을 다시 불러왔습니다. 마지막 저장을 불러와 계속하세요.',
+      'ゲーム画面が動かなくなった（白い画面）ため、BetterDT がゲームを再読み込みしました。最後のセーブをロードして続けてください。'],
+    crashHint: ['“Report problem” opens a prefilled report on GitHub and copies it, so you can also paste it into the Steam discussion.',
+      '«Сообщить о проблеме» откроет готовый отчёт на GitHub и скопирует его – его можно вставить и в обсуждение в Steam.',
+      '„Problem melden“ öffnet einen vorausgefüllten Bericht auf GitHub und kopiert ihn, damit du ihn auch in die Steam-Diskussion einfügen kannst.',
+      '« Signaler le problème » ouvre un rapport prérempli sur GitHub et le copie, pour le coller aussi dans la discussion Steam.',
+      '“Segnala il problema” apre una segnalazione precompilata su GitHub e la copia, così puoi incollarla anche nella discussione di Steam.',
+      '«Informar del problema» abre un informe ya rellenado en GitHub y lo copia, para que también puedas pegarlo en la discusión de Steam.',
+      '“समस्या की रिपोर्ट करें” GitHub पर भरी हुई रिपोर्ट खोलता है और उसे कॉपी करता है, ताकि आप उसे Steam चर्चा में भी चिपका सकें।',
+      '“Sorunu bildir” GitHub’da hazır bir rapor açar ve kopyalar; Steam tartışmasına da yapıştırabilirsiniz.',
+      '“Relatar problema” abre um relatório preenchido no GitHub e o copia, para você também colar na discussão da Steam.',
+      '«Повідомити про проблему» відкриє готовий звіт на GitHub і скопіює його – його можна вставити й в обговорення в Steam.',
+      '“Laporkan masalah” membuka laporan yang sudah terisi di GitHub dan menyalinnya, jadi bisa juga ditempel di diskusi Steam.',
+      '„Zgłoś problem” otwiera wypełniony raport na GitHubie i kopiuje go, więc możesz go też wkleić do dyskusji na Steamie.',
+      '“报告问题”会在 GitHub 上打开已填好的报告并复制它，你也可以把它粘贴到 Steam 讨论区。',
+      '“문제 신고”는 GitHub에 미리 채워진 보고서를 열고 복사해 두므로 Steam 토론에도 붙여 넣을 수 있습니다.',
+      '「問題を報告」は記入済みのレポートを GitHub で開いてコピーします。Steam のディスカッションにも貼り付けられます。'],
+    ok: ['OK', 'ОК', 'OK', 'OK', 'OK', 'Aceptar', 'ठीक है', 'Tamam', 'OK', 'Гаразд', 'OK', 'OK', '确定', '확인', 'OK'],
+    report: ['Report problem', 'Сообщить о проблеме', 'Problem melden', 'Signaler le problème', 'Segnala il problema', 'Informar del problema',
+      'समस्या की रिपोर्ट करें', 'Sorunu bildir', 'Relatar problema', 'Повідомити про проблему', 'Laporkan masalah', 'Zgłoś problem', '报告问题', '문제 신고', '問題を報告'],
   };
   const lang = () => { const n = Number(rt.globalVars.LanguageChoose); return n >= 0 && n < 15 ? n : 0; };
   const t = (k, vars) => {
@@ -338,6 +398,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     poll = setInterval(() => {
       B.api('state').then((s) => {
         paintUpdate();
+        checkDialogs(s);
         if (!s.update || !s.update.busy || !active) stopPoll();
       }, stopPoll);
     }, 600);
@@ -366,6 +427,108 @@ BetterDT.register('betterdt-settings', (rt) => {
       paintOpts();
     }
   }
+
+  // ── dialogs: new version ready, game page crashed ──────────────────────────────────────────────
+  // Look of the game's own news window (#office-news-*): dark blurred panel, centered text, coloured buttons.
+  // Built in 1920×1080 units and scaled with the window like the game's HTML overlays.
+  function dialogCss() {
+    if (document.getElementById('betterdt-dialog-css')) return;
+    const s = el('style', '', document.head);
+    s.id = 'betterdt-dialog-css';
+    s.textContent = `
+#bdt-dlg { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center;
+  font-family: "SofiaSansExtraCondensed-Medium", "Oswald", "Segoe UI", sans-serif; }
+#bdt-dlg .bdt-dim { position: absolute; inset: 0; background: rgba(4, 10, 20, .46); animation: bdt-fade .24s ease both; }
+#bdt-dlg .bdt-panel { position: relative; width: 820px; transform: scale(var(--bdt-scale, 1)); }
+#bdt-dlg .bdt-blur { position: absolute; inset: 0; border-radius: 16px; background: rgba(12, 15, 22, .72);
+  backdrop-filter: blur(16px) saturate(1.25); border: 1px solid rgba(255, 255, 255, .10);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .65), inset 0 0 24px -8px rgba(255, 255, 255, .18); animation: bdt-fade .22s ease both; }
+#bdt-dlg .bdt-content { position: relative; box-sizing: border-box; padding: 28px 52px 32px; text-align: center; color: #fff;
+  animation: bdt-open .34s cubic-bezier(.30, 1.35, .45, 1) both; }
+#bdt-dlg .bdt-title { font-size: 36px; text-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+#bdt-dlg .bdt-divider { height: 1px; margin: 16px 0 14px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, .28) 18%, rgba(255, 255, 255, .28) 82%, transparent 100%); }
+#bdt-dlg .bdt-text { font-size: 26px; line-height: 1.45; text-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+#bdt-dlg .bdt-notes { margin: 14px auto 0; display: inline-block; text-align: left; font-size: 22px; line-height: 1.4; opacity: .8; }
+#bdt-dlg .bdt-hint { margin-top: 14px; font-size: 20px; line-height: 1.35; opacity: .65; }
+#bdt-dlg .bdt-buttons { display: flex; justify-content: center; gap: 40px; margin-top: 24px; }
+#bdt-dlg .bdt-btn { box-sizing: border-box; min-width: 240px; padding: 0 28px; height: 50px; line-height: 50px; border-radius: 8px;
+  font-size: 25px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .35); cursor: pointer; user-select: none;
+  background: linear-gradient(180deg, #5d6878 0%, #434c5a 100%); box-shadow: 0 6px 18px -6px rgba(0, 0, 0, .55);
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease; }
+#bdt-dlg .bdt-btn.bdt-go { background: linear-gradient(180deg, #a8d418 0%, #63b303 100%); box-shadow: 0 6px 18px -6px rgba(120, 190, 20, .55); }
+#bdt-dlg .bdt-btn:hover { transform: translateY(-2px); filter: brightness(1.12); }
+#bdt-dlg .bdt-btn:active { transform: translateY(0) scale(.96); filter: brightness(.95); }
+#bdt-dlg .bdt-btn.bdt-off { pointer-events: none; opacity: .55; }
+@keyframes bdt-fade { from { opacity: 0; } }
+@keyframes bdt-open { from { opacity: 0; transform: translateY(26px) scale(.94); } }
+`;
+  }
+  let dlg = null;
+  function dialog(title, text, extra, buttons) {
+    if (dlg) return null;
+    dialogCss();
+    dlg = el('div', '', document.body);
+    dlg.id = 'bdt-dlg';
+    el('div', 'bdt-dim', dlg);
+    const panel = el('div', 'bdt-panel', dlg);
+    el('div', 'bdt-blur', panel);
+    const c = el('div', 'bdt-content', panel);
+    el('div', 'bdt-title', c).textContent = title;
+    el('div', 'bdt-divider', c);
+    el('div', 'bdt-text', c).textContent = text;
+    if (extra) extra(c);
+    const row = el('div', 'bdt-buttons', c);
+    const scale = () => { if (dlg) dlg.style.setProperty('--bdt-scale', Math.min(innerWidth / 1920, innerHeight / 1080).toFixed(4)); };
+    scale();
+    addEventListener('resize', scale);
+    const close = () => { removeEventListener('resize', scale); dlg?.remove(); dlg = null; nextDialog(); };
+    for (const b of buttons) {
+      const e = el('div', 'bdt-btn' + (b.go ? ' bdt-go' : ''), row);
+      e.textContent = b.label;
+      e.addEventListener('click', () => {
+        globalThis.tapMain?.();
+        for (const x of row.children) x.classList.add('bdt-off');
+        Promise.resolve(b.cb()).catch(() => {}).then(() => { if (!b.keep) close(); });
+      });
+    }
+    return dlg;
+  }
+
+  function showUpdate(u) {
+    dialog(t('updTitle', { v: u.latest }), t('updText'), (c) => {
+      const notes = String(u.notes || '').split('\n').filter(Boolean);
+      if (notes.length) { const n = el('div', 'bdt-notes', c); for (const line of notes) el('div', '', n).textContent = '• ' + line; }
+    }, [
+      { label: t('later'), cb: () => B.api('update-ack') },
+      { label: t('restart'), go: true, keep: true, cb: () => B.api('update-ack').then(() => B.api('restart')) },
+    ]);
+  }
+  function showCrash() {
+    dialog(t('crashTitle'), t('crashText'), (c) => { el('div', 'bdt-hint', c).textContent = t('crashHint'); }, [
+      { label: t('report'), cb: () => B.api('report').then(() => B.api('crash-ack')) },
+      { label: t('ok'), go: true, cb: () => B.api('crash-ack') },
+    ]);
+  }
+  // Shown only in the main menu (never in the middle of a game, and only after the game's settings with the
+  // language are loaded). A crash comes first; a ready update right after that dialog is closed.
+  const inMenu = () => { try { return rt.layout.name === 'MENU'; } catch { return false; } };
+  function checkDialogs(s) {
+    if (!s || dlg || !inMenu()) return;
+    if (s.crash) showCrash();
+    else if (s.update && s.update.state === 'installed' && !s.update.acked) showUpdate(s.update);
+  }
+  const nextDialog = () => B.api('state').then(checkDialogs, () => {});
+  setInterval(() => { if (!dlg && inMenu()) nextDialog(); }, 2000);
+
+  // what the game is doing, so that a crash report can say it (sent every 15 s, kept in memory by the loader)
+  setInterval(() => {
+    const gv = rt.globalVars;
+    let layout = '';
+    try { layout = rt.layout.name; } catch { }
+    const heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : '';
+    B.api('beat', { layout, day: gv.DayTotal ?? '', year: gv.Year ?? '', heap, dom: document.getElementsByTagName('*').length }).catch(() => {});
+  }, 15000);
 
   // ── hooking into the settings page ───────────────────────────────────────────────────────────
   function css() {

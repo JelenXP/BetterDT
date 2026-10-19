@@ -17,6 +17,7 @@
 //   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 disables a mod,
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
 // Updates: BetterDT.zip from the latest GitHub release (every file checked by its CRC-32).
+// Crashes: a crashed game page is reloaded automatically (see OnProcessFailed).
 // Log: mods\betterdt.log (overwritten on every start).
 
 #include <windows.h>
@@ -24,7 +25,9 @@
 #include <winhttp.h>
 #include <shlwapi.h>
 #include <shellapi.h>
+#include <tlhelp32.h>
 #include <wrl.h>
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <string>
@@ -42,7 +45,7 @@ extern "C" const int VT_ENV10_CREATE_CONTROLLER_OPT;
 extern "C" const int VT_ENV10_CREATE_COMPOSITION_OPT;
 
 #ifndef BETTERDT_VERSION
-#define BETTERDT_VERSION "0.2.1"
+#define BETTERDT_VERSION "0.2.2"
 #endif
 #define WIDE2(s) L##s
 #define WIDE(s) WIDE2(s)
@@ -57,6 +60,7 @@ static std::wstring g_gameDir;   // ...\Devices Tycoon\ (with trailing slash)
 static std::wstring g_modsDir;   // ...\Devices Tycoon\mods\ (with trailing slash)
 static ULONGLONG g_t0;
 static std::mutex g_mx;          // settings and update state (update thread × UI thread)
+static std::atomic<bool> g_scriptBuilt{ false };   // the mods of this session have been read
 
 // ── log ──────────────────────────────────────────────────────────────────────────────────────────
 static void Log(const char *fmt, ...) {
@@ -217,17 +221,25 @@ struct UpdateState {
   std::string latest, error, notes;
   long long checkedAt = 0;
   bool busy = false;
+  bool acked = false;           // the player has closed the "new version" dialog
 };
 static UpdateState g_upd;
+static std::map<std::string, std::string> g_crash;   // last crash of the game page, empty = none (see Crashes)
+
+static std::string MapJson(const std::map<std::string, std::string> &m) {
+  std::string j = "{";
+  for (auto &kv : m) j += (j.size() > 1 ? "," : "") + JsonStr(kv.first) + ":" + JsonStr(kv.second);
+  return j + "}";
+}
 
 static std::string StateJson() {
   std::lock_guard<std::mutex> lk(g_mx);
-  std::string j = "{\"version\":" + JsonStr(BETTERDT_VERSION) + ",\"repo\":" + JsonStr(kRepo) + ",\"settings\":{";
-  bool first = true;
-  for (auto &kv : g_ini) { j += (first ? "" : ",") + JsonStr(kv.first) + ":" + JsonStr(kv.second); first = false; }
-  j += "},\"update\":{\"state\":" + JsonStr(g_upd.state) + ",\"latest\":" + JsonStr(g_upd.latest) +
+  std::string j = "{\"version\":" + JsonStr(BETTERDT_VERSION) + ",\"repo\":" + JsonStr(kRepo) + ",\"settings\":" + MapJson(g_ini);
+  j += ",\"update\":{\"state\":" + JsonStr(g_upd.state) + ",\"latest\":" + JsonStr(g_upd.latest) +
        ",\"error\":" + JsonStr(g_upd.error) + ",\"notes\":" + JsonStr(g_upd.notes) +
-       ",\"checkedAt\":" + std::to_string(g_upd.checkedAt) + ",\"busy\":" + (g_upd.busy ? "true" : "false") + "}}";
+       ",\"checkedAt\":" + std::to_string(g_upd.checkedAt) + ",\"busy\":" + (g_upd.busy ? "true" : "false") +
+       ",\"acked\":" + (g_upd.acked ? "true" : "false") + "}";
+  j += ",\"crash\":" + (g_crash.empty() ? std::string("null") : MapJson(g_crash)) + "}";
   return j;
 }
 
@@ -516,7 +528,12 @@ static void RunUpdate(bool install) {
     g_upd.notes = m.notes;
   }
   SetUpd("available");
-  if (install) InstallRelease(m, zip);
+  if (!install) return;
+  // the running game keeps the mods it started with: replace the files only after the script with the
+  // mods has been built, so old and new files are never mixed (the new version starts after a restart)
+  SetUpd("downloading");
+  for (int i = 0; i < 600 && !g_scriptBuilt; i++) Sleep(200);
+  InstallRelease(m, zip);
 }
 
 static DWORD WINAPI UpdateThread(LPVOID p) {
@@ -536,6 +553,268 @@ static void StartUpdate(bool install) {
   HANDLE t = CreateThread(nullptr, 0, UpdateThread, install ? (LPVOID)1 : nullptr, 0, nullptr);
   if (t) CloseHandle(t);
   else { std::lock_guard<std::mutex> lk(g_mx); g_upd.busy = false; g_upd.state = "error"; g_upd.error = "thread"; }
+}
+
+// ── restart of the whole game ────────────────────────────────────────────────────────────────────
+// We start the exe again right away (it inherits the environment Steam gave the game, so it stays
+// connected to Steam) with BETTERDT_WAIT_PID set, and close this instance. The new instance waits in
+// WaitForPreviousInstance until this process and its WebView2 browser process are gone, because it needs
+// the browser profile they hold. No helper process or script is involved.
+static const wchar_t kWaitVar[] = L"BETTERDT_WAIT_PID";
+
+static BOOL CALLBACK CloseOwnWindow(HWND w, LPARAM) {
+  DWORD pid = 0;
+  GetWindowThreadProcessId(w, &pid);
+  if (pid == GetCurrentProcessId() && IsWindowVisible(w)) PostMessageW(w, WM_CLOSE, 0, 0);
+  return TRUE;
+}
+
+static bool RestartGame() {
+  wchar_t buf[MAX_PATH];
+  DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+  std::wstring exe(buf, n), dir = exe.substr(0, exe.find_last_of(L"\\/"));
+  std::wstring cmd = L"\"" + exe + L"\"";
+  SetEnvironmentVariableW(kWaitVar, std::to_wstring(GetCurrentProcessId()).c_str());
+  STARTUPINFOW si{ sizeof(si) };
+  PROCESS_INFORMATION pi{};
+  BOOL ok = CreateProcessW(exe.c_str(), &cmd[0], nullptr, nullptr, FALSE, 0, nullptr, dir.c_str(), &si, &pi);
+  SetEnvironmentVariableW(kWaitVar, nullptr);
+  if (!ok) { Log("restart: cannot start the game (%lu)", GetLastError()); return false; }
+  CloseHandle(pi.hThread);
+  CloseHandle(pi.hProcess);
+  Log("restart: new instance started, closing this one");
+  // close the game like its window's close button would; end it if it is still running after 10 s
+  EnumWindows(CloseOwnWindow, 0);
+  HANDLE t = CreateThread(nullptr, 0, [](LPVOID) -> DWORD {
+    Sleep(10000);
+    Log("restart: the game did not close, ending it");
+    TerminateProcess(GetCurrentProcess(), 0);
+    return 0;
+  }, nullptr, 0, nullptr);
+  if (t) CloseHandle(t);
+  return true;
+}
+
+// In the instance started by RestartGame: wait (max 20 s) until the previous game process and the
+// WebView2 processes it started have exited. Called before the WebView2 environment is created.
+static void WaitForPreviousInstance() {
+  wchar_t v[16];
+  DWORD len = GetEnvironmentVariableW(kWaitVar, v, 16);
+  if (!len || len >= 16) return;
+  SetEnvironmentVariableW(kWaitVar, nullptr);
+  DWORD pid = wcstoul(v, nullptr, 10);
+  ULONGLONG start = GetTickCount64();
+  if (HANDLE h = OpenProcess(SYNCHRONIZE, FALSE, pid)) {
+    WaitForSingleObject(h, 15000);
+    CloseHandle(h);
+  }
+  for (;;) {   // the browser process (msedgewebview2.exe, child of the old game) closes the rest
+    bool child = false;
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap != INVALID_HANDLE_VALUE) {
+      PROCESSENTRY32W pe{ sizeof(pe) };
+      for (BOOL more = Process32FirstW(snap, &pe); more; more = Process32NextW(snap, &pe))
+        if (pe.th32ParentProcessID == pid && _wcsicmp(pe.szExeFile, L"msedgewebview2.exe") == 0) child = true;
+      CloseHandle(snap);
+    }
+    if (!child || GetTickCount64() - start > 20000) break;
+    Sleep(200);
+  }
+  Log("restart: waited %llu ms for the previous instance", GetTickCount64() - start);
+}
+
+// ── crashes of the game page (white screen with a sad face) ──────────────────────────────────────────
+// WebView2 reports a crashed or killed page process through ProcessFailed. The game does not handle it and
+// shows Chromium's white error page. We log the details, reload the page (the game starts again at the main
+// menu, the saves are on disk) and the settings mod tells the player and offers a prefilled bug report.
+// The last crash is kept in mods\betterdt-crash.txt until the player closes that dialog, so it also
+// survives a restart of the whole game (when the browser process itself died).
+static ComPtr<ICoreWebView2Environment> g_env;
+static ComPtr<ICoreWebView2> g_wv;
+static std::map<std::string, std::string> g_beat;   // last state reported by the page (every 15 s)
+static std::vector<long long> g_crashTimes;          // reloads in this session (protection against a loop)
+static int g_gpuExits;
+
+static const char *KindName(int k) {
+  static const char *n[] = { "browser process exited", "page process exited", "page not responding",
+    "frame process exited", "utility process exited", "sandbox helper exited", "GPU process exited",
+    "plugin process exited", "plugin broker exited", "unknown process exited" };
+  return k >= 0 && k < 10 ? n[k] : "?";
+}
+static const char *ReasonName(int r) {
+  static const char *n[] = { "unexpected", "unresponsive", "terminated", "crashed", "launch failed",
+    "out of memory", "profile deleted" };
+  return r >= 0 && r < 7 ? n[r] : "?";
+}
+
+static void SaveCrashLocked() {
+  std::string text;
+  for (auto &kv : g_crash) text += kv.first + "=" + kv.second + "\n";
+  WriteFileAtomic(g_modsDir + L"betterdt-crash.txt", text);
+}
+static void LoadCrash() {
+  std::string text;
+  std::lock_guard<std::mutex> lk(g_mx);
+  if (ReadFileUtf8(g_modsDir + L"betterdt-crash.txt", text)) ParseIni(text, g_crash);
+}
+
+static HRESULT OnProcessFailed(ICoreWebView2 *wv, ICoreWebView2ProcessFailedEventArgs *a) {
+  COREWEBVIEW2_PROCESS_FAILED_KIND kind = COREWEBVIEW2_PROCESS_FAILED_KIND_UNKNOWN_PROCESS_EXITED;
+  COREWEBVIEW2_PROCESS_FAILED_REASON reason = COREWEBVIEW2_PROCESS_FAILED_REASON_UNEXPECTED;
+  int exitCode = 0;
+  std::string desc;
+  a->get_ProcessFailedKind(&kind);
+  ComPtr<ICoreWebView2ProcessFailedEventArgs2> a2;
+  if (SUCCEEDED(a->QueryInterface(IID_PPV_ARGS(&a2)))) {
+    a2->get_Reason(&reason);
+    a2->get_ExitCode(&exitCode);
+    LPWSTR d = nullptr;
+    if (SUCCEEDED(a2->get_ProcessDescription(&d)) && d) { desc = Narrow(d); CoTaskMemFree(d); }
+  }
+  MEMORYSTATUSEX ms{ sizeof(ms) };
+  GlobalMemoryStatusEx(&ms);
+  char code[16];
+  sprintf(code, "0x%08X", (unsigned)exitCode);
+  Log("process failed: %s, reason: %s, exit code %s%s%s; memory in use %lu %%, %llu MB free",
+      KindName(kind), ReasonName(reason), code, desc.empty() ? "" : ", ", desc.c_str(),
+      ms.dwMemoryLoad, (unsigned long long)(ms.ullAvailPhys >> 20));
+  if (kind == COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED) { g_gpuExits++; return S_OK; }   // restarts by itself
+  const bool page = kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED;
+  const bool browser = kind == COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED;
+  if (!page && !browser) return S_OK;   // a hanging page or a helper process: log only
+
+  long long now = (long long)time(nullptr);
+  std::vector<long long> recent;
+  for (long long t : g_crashTimes) if (now - t < 600) recent.push_back(t);
+  recent.push_back(now);
+  g_crashTimes = recent;
+  {
+    std::lock_guard<std::mutex> lk(g_mx);
+    g_crash = g_beat;   // layout, day, year, heap, dom
+    g_crash["kind"] = KindName(kind);
+    g_crash["reason"] = ReasonName(reason);
+    g_crash["exitCode"] = code;
+    g_crash["process"] = desc;
+    g_crash["at"] = std::to_string(now);
+    g_crash["uptime"] = std::to_string((GetTickCount64() - g_t0) / 1000);
+    g_crash["memoryLoad"] = std::to_string(ms.dwMemoryLoad);
+    g_crash["freeMB"] = std::to_string(ms.ullAvailPhys >> 20);
+    g_crash["gpuRestarts"] = std::to_string(g_gpuExits);
+    g_crash["crashesInSession"] = std::to_string(g_crashTimes.size());
+    SaveCrashLocked();
+  }
+  if (recent.size() > 3) { Log("more than 3 crashes within 10 minutes, not reloading again"); return S_OK; }
+  if (page) {
+    HRESULT hr = wv->Reload();
+    Log("page reloaded (hr=0x%08lx)", hr);
+  } else RestartGame();
+  return S_OK;
+}
+
+// ── bug report (prefilled GitHub issue + clipboard) ────────────────────────────────────────────────
+static std::string UrlEncode(const std::string &s) {
+  static const char *hx = "0123456789ABCDEF";
+  std::string o;
+  for (unsigned char c : s) {
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') o += (char)c;
+    else { o += '%'; o += hx[c >> 4]; o += hx[c & 15]; }
+  }
+  return o;
+}
+
+static std::string Field(const std::map<std::string, std::string> &m, const char *k, const char *def = "?") {
+  auto it = m.find(k);
+  return it == m.end() || it->second.empty() ? def : it->second;
+}
+
+static std::string SystemInfo() {
+  std::string s;
+  typedef LONG(WINAPI * RtlGetVersionFn)(OSVERSIONINFOW *);
+  OSVERSIONINFOW ov{ sizeof(ov) };
+  auto rgv = (RtlGetVersionFn)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
+  if (rgv && rgv(&ov) == 0) s += "- Windows " + std::to_string(ov.dwMajorVersion) + "." + std::to_string(ov.dwMinorVersion) +
+                                 " build " + std::to_string(ov.dwBuildNumber) + "\n";
+  wchar_t cpu[256];
+  DWORD sz = sizeof(cpu);
+  if (RegGetValueW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", L"ProcessorNameString",
+                   RRF_RT_REG_SZ, nullptr, cpu, &sz) == ERROR_SUCCESS) s += "- CPU: " + Narrow(cpu) + "\n";
+  MEMORYSTATUSEX ms{ sizeof(ms) };
+  GlobalMemoryStatusEx(&ms);
+  s += "- RAM: " + std::to_string((ms.ullTotalPhys + (1ull << 29)) >> 30) + " GB\n";
+  ComPtr<IDXGIFactory1> f;
+  if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&f)))) {
+    for (UINT i = 0;; i++) {
+      ComPtr<IDXGIAdapter1> ad;
+      if (f->EnumAdapters1(i, &ad) != S_OK) break;
+      DXGI_ADAPTER_DESC1 d{};
+      ad->GetDesc1(&d);
+      if (d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+      LARGE_INTEGER v{};
+      std::string drv = "?";
+      if (SUCCEEDED(ad->CheckInterfaceSupport(__uuidof(IDXGIDevice), &v)))
+        drv = std::to_string(HIWORD(v.HighPart)) + "." + std::to_string(LOWORD(v.HighPart)) + "." +
+              std::to_string(HIWORD(v.LowPart)) + "." + std::to_string(LOWORD(v.LowPart));
+      s += "- GPU: " + Narrow(d.Description) + ", driver " + drv + ", " +
+           std::to_string(d.DedicatedVideoMemory >> 20) + " MB dedicated\n";
+    }
+  }
+  ComPtr<ICoreWebView2Environment> env = g_env;
+  LPWSTR bv = nullptr;
+  if (env && SUCCEEDED(env->get_BrowserVersionString(&bv)) && bv) { s += "- WebView2 " + Narrow(bv) + "\n"; CoTaskMemFree(bv); }
+  std::string pkg, game = "?";
+  if (ReadFileUtf8(g_gameDir + L"package.json", pkg)) {
+    size_t p = pkg.find("\"version\"");
+    p = p == std::string::npos ? p : pkg.find('"', pkg.find(':', p));
+    if (p != std::string::npos) game = pkg.substr(p + 1, pkg.find('"', p + 1) - p - 1);
+  }
+  s += "- Devices Tycoon " + game + ", BetterDT " BETTERDT_VERSION;
+  s += std::string(", high-performance GPU switch ") + (IniOn("gpu", true) ? "on" : "off") + "\n- Mods:";
+  for (const std::string &m : ModList()) if (ModEnabled(m)) s += " " + m;
+  return s + "\n";
+}
+
+static void CopyToClipboard(const std::string &text) {
+  std::wstring w = Widen(text);
+  if (!OpenClipboard(nullptr)) return;
+  EmptyClipboard();
+  HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
+  if (h) {
+    memcpy(GlobalLock(h), w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+    GlobalUnlock(h);
+    if (!SetClipboardData(CF_UNICODETEXT, h)) GlobalFree(h);
+  }
+  CloseClipboard();
+}
+
+// Copies the report to the clipboard (to paste it anywhere, e.g. into the Steam discussion) and opens
+// a new GitHub issue with it. Nothing is sent without the player submitting the form.
+static void OpenReport() {
+  std::map<std::string, std::string> c;
+  {
+    std::lock_guard<std::mutex> lk(g_mx);
+    c = g_crash;
+  }
+  long long up = atoll(Field(c, "uptime", "0").c_str());
+  std::string title = "Game crash: " + Field(c, "kind") + " (" + Field(c, "reason") + ")";
+  std::string body =
+    "**What were you doing when it happened?**\n\n\n"
+    "### Crash\n"
+    "- " + Field(c, "kind") + ", reason: " + Field(c, "reason") + ", exit code " + Field(c, "exitCode") +
+    (Field(c, "process", "").empty() ? "" : ", " + Field(c, "process")) + "\n"
+    "- Screen: " + Field(c, "layout") + ", game day " + Field(c, "day") + " (year " + Field(c, "year") + ")\n"
+    "- Played for " + std::to_string(up / 3600) + " h " + std::to_string(up / 60 % 60) + " min, crashes this session: " +
+    Field(c, "crashesInSession") + ", GPU process restarts: " + Field(c, "gpuRestarts") + "\n"
+    "- Memory in use: " + Field(c, "memoryLoad") + " % (" + Field(c, "freeMB") + " MB free), game JS heap " +
+    Field(c, "heap") + " MB, page elements " + Field(c, "dom") + "\n\n"
+    "### System\n" + SystemInfo();
+  CopyToClipboard(title + "\n\n" + body);
+  std::string url = "https://github.com/" + std::string(kRepo) + "/issues/new?title=" + UrlEncode(title) + "&body=" + UrlEncode(body);
+#ifdef BETTERDT_TEST_BASE
+  Log("crash report (test build, not opened): %s", url.c_str());
+#else
+  ShellExecuteW(nullptr, L"open", Widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  Log("crash report opened");
+#endif
 }
 
 // ── API for the page: https://betterdt.localhost/<command>?k=…&v=… ─────────────────────────────────
@@ -577,6 +856,24 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
   }
   if (cmd == "check") { StartUpdate(false); return StateJson(); }
   if (cmd == "install") { StartUpdate(true); return StateJson(); }
+  if (cmd == "update-ack") { { std::lock_guard<std::mutex> lk(g_mx); g_upd.acked = true; } return StateJson(); }
+  if (cmd == "restart") return RestartGame() ? "{\"ok\":true}" : "{\"ok\":false}";
+  if (cmd == "beat") {   // what the game is doing, for crash reports
+    std::lock_guard<std::mutex> lk(g_mx);
+    for (const char *k : { "layout", "day", "year", "heap", "dom" }) {
+      std::string v = QueryParam(query, k);
+      if (v.size() > 60 || v.find_first_of("\r\n") != std::string::npos) v.clear();
+      g_beat[k] = v;
+    }
+    return "{\"ok\":true}";
+  }
+  if (cmd == "crash-ack") {
+    std::lock_guard<std::mutex> lk(g_mx);
+    g_crash.clear();
+    DeleteFileW((g_modsDir + L"betterdt-crash.txt").c_str());
+    return "{\"ok\":true}";
+  }
+  if (cmd == "report") { OpenReport(); return "{\"ok\":true}"; }
   if (cmd == "open") {
     std::string what = QueryParam(query, "what");
     if (what == "folder") ShellExecuteW(nullptr, L"open", g_modsDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -588,8 +885,6 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
   status = 404;
   return "{\"error\":\"unknown\"}";
 }
-
-static ComPtr<ICoreWebView2Environment> g_env;
 
 static void InstallApi(ICoreWebView2 *wv) {
   HRESULT hr = wv->AddWebResourceRequestedFilter(L"https://betterdt.localhost/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
@@ -634,6 +929,10 @@ static void InstallApi(ICoreWebView2 *wv) {
     [](ICoreWebView2 *, ICoreWebView2NavigationCompletedEventArgs *a) -> HRESULT {
       BOOL ok = FALSE; COREWEBVIEW2_WEB_ERROR_STATUS st{}; a->get_IsSuccess(&ok); a->get_WebErrorStatus(&st);
       Log("page loaded (ok=%d, status=%d)", ok, (int)st); return S_OK; }).Get(), &t2);
+  g_wv = wv;
+  EventRegistrationToken t3{};
+  hr = wv->add_ProcessFailed(Callback<ICoreWebView2ProcessFailedEventHandler>(OnProcessFailed).Get(), &t3);
+  Log("crash handler (hr=0x%08lx)", hr);
 }
 
 // ── page script ────────────────────────────────────────────────────────────────────────────────
@@ -715,6 +1014,7 @@ static void Inject(ICoreWebView2Controller *ctl) {
   ComPtr<ICoreWebView2> wv;
   if (FAILED(ctl->get_CoreWebView2(&wv)) || !wv) { Log("get_CoreWebView2 selhalo"); return; }
   std::wstring script = BuildScript();
+  g_scriptBuilt = true;
   HRESULT hr = wv->AddScriptToExecuteOnDocumentCreated(script.c_str(),
     Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
       [](HRESULT hr, LPCWSTR) -> HRESULT { Log("script registered (hr=0x%08lx)", hr); return S_OK; }).Get());
@@ -815,7 +1115,9 @@ static CreateEnvFn g_realCreateEnv;
 static HRESULT STDAPICALLTYPE HookCreateEnv(bool checkRunning, int runtimeType, PCWSTR userData, IUnknown *options,
                                            ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler *h) {
   Log("CreateWebViewEnvironmentWithOptionsInternal");
+  WaitForPreviousInstance();
   LoadIni();
+  LoadCrash();
   if (IniOn("autoupdate", true)) StartUpdate(true);
   else Log("automatic updates disabled");
   const bool gpu = IniOn("gpu", true);
