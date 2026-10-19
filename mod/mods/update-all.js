@@ -4,7 +4,8 @@
 // 1.0.3 → 1.0.4, and the app's name, platform, monetization and icon), then the next app. A "Select all" button
 // next to the game's "Update" does that for every released app that is not selected yet: it clicks the card and the
 // editor's "Save" itself, so the version, the price and the level are the game's own. The game's "Update" button
-// then updates them all at once (and checks the money), and "×" on a card still takes one out again.
+// then updates them all at once (and checks the money), and "×" on a card still takes one out again. When every app
+// is selected, the same button ("Clear all") clicks "×" on all of them.
 BetterDTKit.mod('update-all', {
   needs: {
     functions: ['initSoftwareUpdatePage', 'updateSoftwareUpdatePage'],
@@ -33,6 +34,8 @@ BetterDTKit.mod('update-all', {
       'Zaznacz wszystkie aplikacje do aktualizacji (następna wersja, te same ustawienia)',
       '选中所有应用进行更新（下一版本，设置不变）', '모든 앱을 업데이트 대상으로 선택 (다음 버전, 같은 설정)',
       'すべてのアプリを更新対象に選択（次のバージョン、同じ設定）'],
+    none: ['Clear all', 'Снять все', 'Alle abwählen', 'Tout désélectionner', 'Deseleziona tutto', 'Quitar todo',
+      'सभी हटाएँ', 'Tümünü kaldır', 'Desmarcar tudo', 'Зняти всі', 'Hapus semua', 'Odznacz wszystko', '全部取消', '모두 해제', 'すべて解除'],
   };
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (k) => TXT[k][lang()] || TXT[k][0];
@@ -50,16 +53,41 @@ BetterDTKit.mod('update-all', {
   letter-spacing: calc(var(--rs,1) * 0.8px); transition: filter 0.15s ease, transform 0.12s ease, opacity 0.15s ease; }
 #bdt-swc-all:hover:not(:disabled) { filter: brightness(1.2); }
 #bdt-swc-all:active:not(:disabled) { transform: scale(0.98); }
+#bdt-swc-all.is-clear { border-color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.08); }
 #bdt-swc-all:disabled { opacity: 0.4; cursor: default; }`;
   document.head.appendChild(css);
 
   const root = () => document.querySelector('#swc-root');
   // released apps that are not selected yet (the game's card classes on the update page)
   const open = () => [...document.querySelectorAll('#swc-grid .swc-card.is-open:not(.is-chosen)')];
+  const chosen = () => [...document.querySelectorAll('#swc-grid .swc-card.is-chosen')];
+  // every app is selected → the button takes them all out again
+  const clearMode = () => open().length === 0 && chosen().length > 0;
 
   let busy = false;
+  function clearAll() {
+    let n = 0;
+    for (let guard = 0; guard < 60; guard++) {
+      const x = chosen()[0]?.querySelector('.swc-x');
+      if (!x) break;
+      x.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      n++;
+      // "×" re-renders the grid; a card that stays selected means the click did nothing
+      if (chosen().length > 0 && chosen()[0].querySelector('.swc-x') === x) { kit.fail('"×" did not remove the app'); break; }
+    }
+    BetterDT.log('[update-all] cleared', n, 'apps');
+  }
+
   function selectAll() {
     if (busy) return;
+    if (clearMode()) {
+      busy = true;
+      const sounds = gv.Sounds;
+      gv.Sounds = 'OFF';
+      try { clearAll(); } finally { gv.Sounds = sounds; busy = false; }
+      globalThis.tapMain?.();
+      return paint();
+    }
     busy = true;
     const sounds = gv.Sounds;
     gv.Sounds = 'OFF';
@@ -91,7 +119,12 @@ BetterDTKit.mod('update-all', {
 
   let btn = null;
   function paint() {
-    if (btn) btn.disabled = busy || open().length === 0;
+    if (!btn) return;
+    const clear = clearMode();
+    btn.textContent = tr(clear ? 'none' : 'all');
+    btn.classList.toggle('is-clear', clear);
+    btn.title = clear ? '' : tr('hint');
+    btn.disabled = busy || (!clear && open().length === 0);
   }
   const tick = kit.guard(() => {
     const top = layoutName() === LAYOUT && root() && root().querySelector('#swc-top');
@@ -103,8 +136,6 @@ BetterDTKit.mod('update-all', {
       btn.addEventListener('click', kit.guard(selectAll));
       top.insertBefore(btn, top.querySelector('#swc-create'));
     }
-    btn.textContent = tr('all');
-    btn.title = tr('hint');
     paint();
   });
   const timer = setInterval(tick, 300);
