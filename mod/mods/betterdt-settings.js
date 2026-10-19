@@ -495,6 +495,12 @@ BetterDT.register('betterdt-settings', (rt) => {
     'no-ending.skip': ['Skip the final screen', 'Пропустить финальный экран', 'Abschlussbildschirm überspringen', "Passer l'écran final",
       'Salta la schermata finale', 'Omitir la pantalla final', 'अंतिम स्क्रीन छोड़ें', 'Son ekranı atla', 'Pular a tela final', 'Пропустити фінальний екран',
       'Lewati layar akhir', 'Pomiń ekran końcowy', '跳过结束画面', '마지막 화면 건너뛰기', '最終画面をスキップ'],
+    'research-all.gameButton': ["Use the game's own Research all button", 'Использовать кнопку игры «Исследовать все»',
+      'Eigene Schaltfläche „Alles erforschen“ des Spiels verwenden', 'Utiliser le bouton « Tout rechercher » du jeu',
+      'Usa il pulsante «Ricerca tutto» del gioco', 'Usar el botón «Investigar todo» del juego', 'गेम का अपना "सब शोध करें" बटन इस्तेमाल करें',
+      'Oyunun kendi "Tümünü araştır" düğmesini kullan', 'Usar o botão "Pesquisar tudo" do próprio jogo',
+      'Використовувати кнопку гри «Дослідити все»', 'Pakai tombol "Riset semua" bawaan game', 'Używaj przycisku gry „Zbadaj wszystko”',
+      '使用游戏自带的“全部研究”按钮', '게임 자체의 "모두 연구" 버튼 사용', 'ゲーム本来の「すべて研究」ボタンを使う'],
     credit: ['Original mod by {n}', 'Автор оригинального мода: {n}', 'Ursprünglicher Mod von {n}', 'Mod original de {n}', 'Mod originale di {n}',
       'Mod original de {n}', 'मूल मॉड: {n}', 'Orijinal mod: {n}', 'Mod original de {n}', 'Автор оригінального мода: {n}', 'Mod asli oleh {n}',
       'Oryginalny mod: {n}', '原始模组作者：{n}', '원본 모드 제작: {n}', '元のMOD作者：{n}'],
@@ -517,6 +523,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'autosave.js': [{ key: 'autosave.days', type: 'range', def: 90, min: 5, max: 180, step: 5 }],
     'low-end.js': [{ key: 'low-end.fps', type: 'bool', def: false }, { key: 'low-end.blur', type: 'bool', def: false }],
     'no-ending.js': [{ key: 'no-ending.skip', type: 'bool', def: false }],
+    'research-all.js': [{ key: 'research-all.gameButton', type: 'bool', def: false }],
   };
   // mods based on someone else's work: shown under the mod in the settings
   const CREDITS = { 'no-ending.js': 'M1lan.' };

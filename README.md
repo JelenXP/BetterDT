@@ -14,6 +14,8 @@ game file and does not touch your saves.
 - **Research (RESEARCH LAB):** **Research tab** researches everything left on the tab you have open (e.g. all
   of GPU), **Research all** everything on all tabs, for research points and money. A button is greyed out
   when you cannot afford all of it; hovering it shows the price, and a click first asks with the price.
+  Since game 1.4 they replace the game's own "Research all" (which spends at most half of your money and often
+  researches only a part); a switch in the settings brings the game's button back.
 - **Game speed ×2 and ×3:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3.
 - **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
   crash costs you less progress.
@@ -63,7 +65,8 @@ says what happened; please attach it when you [report a problem](https://github.
   - vacation-tools: the mood threshold for sending people on vacation (default 30),
   - autosave: save every N game days (default 90, 5 to 180),
   - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away),
-  - no-ending: skip the final screen and continue right away (off by default).
+  - no-ending: skip the final screen and continue right away (off by default),
+  - research-all: use the game's own Research all button instead (game 1.4+, off by default; takes effect right away).
 
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
 effect after restarting the game; the page says so.
@@ -158,7 +161,11 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 
 ### `research-all.js`: Research tab / Research all
 - Two buttons in the top bar of the research page, styled with a copy of the CSS of the game's own **Research all**
-  button (which the game shows only in sandbox mode, where research is free). In sandbox mode the mod stays off.
+  button. In sandbox mode, where the game's button is free, the mod stays off.
+- **Game 1.4+:** the game shows its own button outside sandbox mode too. It researches only the open category,
+  recommended functions first, with all research points but at most half of the money (`debugResearchAllPlan()`),
+  so often only a part. The mod hides it (`#research-root.bdt-ra-on #research-all { display: none }`) and shows its
+  two buttons in its place. With the option "Use the game's own Research all button" the mod steps aside instead.
 - **Research tab** = every card on the open tab that can be researched (`ArrayResearchPage_Temp`), up to its max level.
   **Research all** = the game's own list for its sandbox button (`debugResearchAllTargets()`).
 - Price = remaining levels × price per level (`ArrayResearch` columns 1 and 2, the same the cards show). The button
@@ -191,8 +198,7 @@ is registered through `BetterDTKit` (in `betterdt-settings.js`) with a list of w
   up (`dispose`). Mods also check their own results: `research-all` stops when the price paid differs from the
   computed one, `vacation-tools` checks the employee table columns before every write, `autosave` gives the game
   its own autosave back when the game stops calling `tickAutoSave()`, `hire-tools` charges the price shown on the
-  agency card, `game-speed` steps aside when the game itself styles ×2 / ×3, and `research-all` when the game shows
-  its own "Research all" outside sandbox mode.
+  agency card, and `game-speed` steps aside when the game itself styles ×2 / ×3.
 
 What it shows the player:
 - **Settings → BetterDT → Mods:** under a mod that does not fit, "Does not fit this game version, turned off" or
@@ -329,7 +335,7 @@ node dtmod.mjs restore "D:\SteamLibrary\steamapps\common\Devices Tycoon"
 ## Notes
 
 - A Steam update or "Verify integrity of game files" does not touch BetterDT (it only adds files).
-- Tested on game version 1.3 (build 26033576).
+- Tested on game versions 1.3 (build 26033576) and 1.4.
 - Changing logic in `data.json` is possible but hard (a compiled, positional structure without names).
   JS mods and the data JSON files are the practical way.
 

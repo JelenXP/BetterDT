@@ -12,7 +12,11 @@
 // game's code. The list of what "everything" means is the game's own (debugResearchAllTargets, the list of the
 // sandbox button), and other tabs are opened the way the game opens them. The mod only clicks, a few hundred
 // levels per frame, with the sounds muted, and plays one sound at the end. If the game rejects a click, it stops.
-// If a game update shows the game's own "Research all" outside sandbox mode too, the mod's buttons step aside.
+//
+// Since game 1.4 the game has its own paid "Research all" outside sandbox mode too: it researches the open
+// category, recommended functions first, with all research points but at most half of the money, so often only a
+// part. The mod's two buttons take its place (the game's button is hidden); the option "Use the game's own
+// Research all button" (Settings → BetterDT → Mods) brings the game's button back instead of the mod's.
 BetterDTKit.mod('research-all', {
   needs: {
     functions: ['debugResearchAllTargets'],
@@ -26,6 +30,7 @@ BetterDTKit.mod('research-all', {
 
   const LAYOUT = 'RESEARCH';
   const gv = rt.globalVars;
+  const S = BetterDT.settings;
 
   // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
@@ -152,7 +157,8 @@ BetterDTKit.mod('research-all', {
 .bdt-ra + .bdt-ra { margin-left: 0; }
 .bdt-ra.rc-all-empty { cursor: default; }
 .bdt-ra.bdt-busy { pointer-events: none; }
-#research-root.bdt-ra-on #research-hide-wrap { margin-left: 0; }`;
+#research-root.bdt-ra-on #research-hide-wrap { margin-left: 0; }
+#research-root.bdt-ra-on #research-all { display: none !important; }`;
     document.head.appendChild(s);
   }
 
@@ -222,9 +228,9 @@ BetterDTKit.mod('research-all', {
     if (layoutName() !== LAYOUT || Number(gv.SandboxMode) === 1) return teardown();
     // the game's tables are not loaded (yet): no prices, no texts
     if ((arr('ArrayResearch').width | 0) < 100 || (arr('ArrayLanguage').height | 0) <= 1) return teardown();
-    // a game update shows its own button outside sandbox mode too
-    const own = document.getElementById('research-all');
-    if (own && own.offsetParent !== null) return teardown();
+    // game 1.4+ shows its own paid button outside sandbox mode too: the player picks which one (ours hide it)
+    // (the paid button came with debugResearchAllPlan; before it the option does nothing)
+    if (S.bool('research-all.gameButton', false) && typeof globalThis.debugResearchAllPlan === 'function') return teardown();
     if (!setup()) return;
     try {
       paint(ui.tab, tr('tab'), price(tabTargets()));
