@@ -11,6 +11,9 @@ game file and does not touch your saves.
   as you have money and research points.
 - **Vacations (MY EMPLOYEES):** **VACATION FOR THE TIRED** sends everyone with low mood on vacation.
   One person of each profession always keeps working.
+- **Research (RESEARCH LAB):** **Research tab** researches everything left on the tab you have open (e.g. all
+  of GPU), **Research all** everything on all tabs, for research points and money. A button is greyed out
+  when you cannot afford all of it; hovering it shows the price.
 - **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
   crash costs you less progress.
 - **MY OS UPGRADE** no longer stutters.
@@ -110,6 +113,22 @@ its own layer.
   bankruptcy and end-game screens. The mod then tries again the next day.
 - Like the game, it counts from the day a game is started or loaded. With the mod off the game keeps its own interval.
 - Tested on a copy with file writes blocked: with the interval set to 30, it saved every 30 days over 700 game days.
+
+### `research-all.js`: Research tab / Research all
+- Two buttons in the top bar of the research page, styled with a copy of the CSS of the game's own **Research all**
+  button (which the game shows only in sandbox mode, where research is free). In sandbox mode the mod stays off.
+- **Research tab** = every card on the open tab that can be researched (`ArrayResearchPage_Temp`), up to its max level.
+  **Research all** = the game's own list for its sandbox button (`debugResearchAllTargets()`).
+- Price = remaining levels × price per level (`ArrayResearch` columns 1 and 2, the same the cards show). The button
+  gets the game's grey `rc-all-empty` look and ignores clicks when nothing is left or the points or money are not
+  enough for all of it.
+- Every level is a click on the research card, so the game checks the price, deducts the tax, pays and raises
+  the level itself (the card click reaches the game's `research-buy-signal` event synchronously). Other tabs are
+  opened like a click on them does (`MiniPage`, `Research_ButtonsOpacity`, `ResearchPage`), and the tab you had open
+  comes back at the end. Sounds are muted during the batch (one plays at the end); if the game rejects a click,
+  the mod stops.
+- Tested: a whole tab cost exactly the shown price, the tax base dropped by the same money, and "all" (about
+  4000 levels) took about 10 s with the game still drawing (a progress percentage shows on the button).
 
 All buttons are built from the game's own objects (same buttons, gradients, icons and font).
 
