@@ -109,7 +109,7 @@ its own layer.
   read-back check), which skips saving outside gameplay, while paused, while a save is in progress, and on the
   bankruptcy and end-game screens. The mod then tries again the next day.
 - Like the game, it counts from the day a game is started or loaded. With the mod off the game keeps its own interval.
-- Tested on a copy with file writes blocked: over 700 game days set to 30 days it saved every 30 days.
+- Tested on a copy with file writes blocked: with the interval set to 30, it saved every 30 days over 700 game days.
 
 All buttons are built from the game's own objects (same buttons, gradients, icons and font).
 
