@@ -14,6 +14,7 @@ game file and does not touch your saves.
 - **Research (RESEARCH LAB):** **Research tab** researches everything left on the tab you have open (e.g. all
   of GPU), **Research all** everything on all tabs, for research points and money. A button is greyed out
   when you cannot afford all of it; hovering it shows the price, and a click first asks with the price.
+- **Game speed ×2 and ×3:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3.
 - **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
   crash costs you less progress.
 - **MY OS UPGRADE** no longer stutters.
@@ -104,6 +105,12 @@ its own layer.
   status `Vacation`. At least one person of each profession must keep working. Whoever did not fit because
   of that keeps working and the notification says so.
 - Tested: 67 of 70 tired employees left, 3 stayed (professions where everyone was tired).
+
+### `game-speed.js`: game speed ×2 and ×3
+- The game's speed button (`#sbx-speed`) cycles through a fixed list `[1, 1.25, 1.5]`. The mod catches its click
+  first (capture listener on the button) and goes to the next of `[1, 1.25, 1.5, 2, 3]` with the game's own
+  `setGameSpeed()`, which accepts any speed. So the time scale, the "×2" label and the game's rules (normal speed
+  outside gameplay) stay the game's; the mod only adds colours for ×2 and ×3.
 
 ### `autosave.js`: adjustable autosave
 - The game autosaves on its own at a fixed interval of game days. It calls `globalThis.tickAutoSave()` once per game day; the mod

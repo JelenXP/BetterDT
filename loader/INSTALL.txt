@@ -32,6 +32,7 @@ WHAT YOU GET
   (one person of each profession always keeps working).
 - RESEARCH LAB: "Research tab" researches everything left on the open tab, "Research all" everything,
   for research points and money (the button is grey when you cannot afford it).
+- Game speed: the speed button in the corner also offers x2 and x3.
 - Adjustable autosave: choose how often the game saves by itself (5 to 180 game days, default 90).
 - MY OS UPGRADE: the screen no longer stutters.
 - Laptops with two graphics cards: the game runs on the faster one.
