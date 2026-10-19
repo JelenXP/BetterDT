@@ -186,6 +186,26 @@ BetterDT.register('betterdt-settings', (rt) => {
     ok: ['OK', 'ОК', 'OK', 'OK', 'OK', 'Aceptar', 'ठीक है', 'Tamam', 'OK', 'Гаразд', 'OK', 'OK', '确定', '확인', 'OK'],
     report: ['Report problem', 'Сообщить о проблеме', 'Problem melden', 'Signaler le problème', 'Segnala il problema', 'Informar del problema',
       'समस्या की रिपोर्ट करें', 'Sorunu bildir', 'Relatar problema', 'Повідомити про проблему', 'Laporkan masalah', 'Zgłoś problem', '报告问题', '문제 신고', '問題を報告'],
+    autosave: ['Autosave', 'Автосохранение', 'Automatisches Speichern', 'Sauvegarde auto', 'Salvataggio automatico', 'Autoguardado', 'ऑटो-सेव',
+      'Otomatik kayıt', 'Salvamento automático', 'Автозбереження', 'Simpan otomatis', 'Autozapis', '自动存档', '자동 저장', 'オートセーブ'],
+    'autosave.d': ['The game saves by itself every 90 game days; here you choose how often (default 30)',
+      'Игра сама сохраняется каждые 90 игровых дней; здесь можно выбрать, как часто (по умолчанию 30)',
+      'Das Spiel speichert selbst alle 90 Spieltage; hier wählst du, wie oft (Standard 30)',
+      'Le jeu sauvegarde tout seul tous les 90 jours de jeu ; choisissez ici la fréquence (30 par défaut)',
+      'Il gioco salva da solo ogni 90 giorni di gioco; qui scegli ogni quanto (predefinito 30)',
+      'El juego guarda solo cada 90 días de juego; aquí eliges cada cuánto (30 por defecto)',
+      'गेम खुद हर 90 गेम दिनों में सेव करता है; यहाँ चुनें कितनी बार (डिफ़ॉल्ट 30)',
+      'Oyun her 90 oyun gününde kendiliğinden kaydeder; burada sıklığını seçin (varsayılan 30)',
+      'O jogo salva sozinho a cada 90 dias de jogo; aqui você escolhe a frequência (padrão 30)',
+      'Гра сама зберігається кожні 90 ігрових днів; тут можна вибрати, як часто (типово 30)',
+      'Game menyimpan sendiri setiap 90 hari game; di sini pilih seberapa sering (bawaan 30)',
+      'Gra sama zapisuje co 90 dni gry; tutaj wybierasz, jak często (domyślnie 30)',
+      '游戏默认每 90 个游戏日自动存档；可在此选择频率（默认 30）',
+      '게임은 기본적으로 게임 일수 90일마다 저장합니다. 여기서 주기를 선택하세요(기본 30)',
+      'ゲームは 90 ゲーム日ごとに自動セーブします。ここで間隔を選べます（既定 30）'],
+    'autosave.days': ['Save every (game days)', 'Сохранять каждые (игровых дней)', 'Speichern alle (Spieltage)', 'Sauvegarder tous les (jours de jeu)',
+      'Salva ogni (giorni di gioco)', 'Guardar cada (días de juego)', 'हर (गेम दिन) में सेव करें', 'Kaydetme aralığı (oyun günü)', 'Salvar a cada (dias de jogo)',
+      'Зберігати кожні (ігрових днів)', 'Simpan setiap (hari game)', 'Zapisuj co (dni gry)', '每隔（游戏日）存档', '저장 주기 (게임 일)', 'セーブ間隔（ゲーム日）'],
   };
   const lang = () => { const n = Number(rt.globalVars.LanguageChoose); return n >= 0 && n < 15 ? n : 0; };
   const t = (k, vars) => {
@@ -199,6 +219,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'hire-tools.js': [{ key: 'hire-tools.autoHire', type: 'bool', def: false }],
     'train-all.js': [{ key: 'train-all.mute', type: 'bool', def: true }],
     'vacation-tools.js': [{ key: 'vacation-tools.threshold', type: 'range', def: 30, min: 10, max: 90, step: 5 }],
+    'autosave.js': [{ key: 'autosave.days', type: 'range', def: 30, min: 5, max: 180, step: 5 }],
   };
   // what only takes effect after a restart: state at game start
   const boot = { gpu: S.bool('gpu', true) };
