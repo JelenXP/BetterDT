@@ -1,11 +1,11 @@
-// Autosave interval – the game saves by itself every 90 game days; with this mod the player chooses how often
-// (Settings → BetterDT → Mods, default 30 days, 5 to 180).
+// Adjustable autosave – the game saves by itself at a fixed interval of game days; with this mod the player
+// chooses how often (Settings → BetterDT → Mods, default 30 days, 5 to 180).
 //
 // The game calls globalThis.tickAutoSave() once per game day (c3main.js). We replace it with the same logic
 // and our interval. The save itself stays the game's: debugAutoSave() runs the game's own autosave
 // (SaveGame with its backup and read-back check), which skips saving outside gameplay, while paused,
 // while a save is in progress, on the bankruptcy and end-game screens. Then we try again the next day.
-// With the mod turned off the game keeps its own 90 days.
+// With the mod turned off the game keeps its own interval.
 BetterDT.register('autosave', (rt) => {
   const S = BetterDT.settings, gv = rt.globalVars;
   const every = () => Math.min(180, Math.max(5, S.num('autosave.days', 30)));

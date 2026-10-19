@@ -11,7 +11,7 @@ game file and does not touch your saves.
   as you have money and research points.
 - **Vacations (MY EMPLOYEES):** **VACATION FOR THE TIRED** sends everyone with low mood on vacation.
   One person of each profession always keeps working.
-- **Autosave every 30 game days** instead of the game's 90 (you choose 5 to 180 days in the settings), so a
+- **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 30), so a
   crash costs you less progress.
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
@@ -102,13 +102,13 @@ its own layer.
   of that keeps working and the notification says so.
 - Tested: 67 of 70 tired employees left, 3 stayed (professions where everyone was tired).
 
-### `autosave.js`: adjustable autosave interval
-- The game autosaves every 90 game days. It calls `globalThis.tickAutoSave()` once per game day; the mod
+### `autosave.js`: adjustable autosave
+- The game autosaves on its own at a fixed interval of game days. It calls `globalThis.tickAutoSave()` once per game day; the mod
   replaces it with the same logic and the interval from the settings (default 30, 5 to 180 days).
 - The save itself is the game's own: `debugAutoSave()` runs the game's autosave (SaveGame with its backup and
   read-back check), which skips saving outside gameplay, while paused, while a save is in progress, and on the
   bankruptcy and end-game screens. The mod then tries again the next day.
-- Like the game, it counts from the day a game is started or loaded. With the mod off the game keeps its 90 days.
+- Like the game, it counts from the day a game is started or loaded. With the mod off the game keeps its own interval.
 - Tested on a copy with file writes blocked: over 700 game days it saved every 30 days.
 
 All buttons are built from the game's own objects (same buttons, gradients, icons and font).
