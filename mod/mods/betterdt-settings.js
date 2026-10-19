@@ -523,6 +523,9 @@ BetterDT.register('betterdt-settings', (rt) => {
     }
     return dlg;
   }
+  // for other mods (BetterDT itself is frozen by the loader):
+  // BetterDTUI.dialog(title, text, [{ label, go, cb }], extra(contentElement)); null while another one is open
+  globalThis.BetterDTUI = Object.freeze({ dialog: (title, text, buttons, extra) => dialog(title, text, extra, buttons) });
 
   function showUpdate(u) {
     dialog(t('updTitle', { v: u.latest }), t('updText'), (c) => {

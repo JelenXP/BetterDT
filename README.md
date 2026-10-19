@@ -13,7 +13,7 @@ game file and does not touch your saves.
   One person of each profession always keeps working.
 - **Research (RESEARCH LAB):** **Research tab** researches everything left on the tab you have open (e.g. all
   of GPU), **Research all** everything on all tabs, for research points and money. A button is greyed out
-  when you cannot afford all of it; hovering it shows the price.
+  when you cannot afford all of it; hovering it shows the price, and a click first asks with the price.
 - **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
   crash costs you less progress.
 - **MY OS UPGRADE** no longer stutters.
@@ -121,7 +121,8 @@ its own layer.
   **Research all** = the game's own list for its sandbox button (`debugResearchAllTargets()`).
 - Price = remaining levels × price per level (`ArrayResearch` columns 1 and 2, the same the cards show). The button
   gets the game's grey `rc-all-empty` look and ignores clicks when nothing is left or the points or money are not
-  enough for all of it.
+  enough for all of it. A click first opens a confirmation with the price and the number of levels
+  (`BetterDTUI.dialog`, the BetterDT dialog that other mods can use too).
 - Every level is a click on the research card, so the game checks the price, deducts the tax, pays and raises
   the level itself (the card click reaches the game's `research-buy-signal` event synchronously). Other tabs are
   opened like a click on them does (`MiniPage`, `Research_ButtonsOpacity`, `ResearchPage`), and the tab you had open

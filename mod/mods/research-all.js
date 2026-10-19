@@ -5,7 +5,7 @@
 //   RESEARCH TAB  – researches everything still open on the tab shown on the left (e.g. all of GPU),
 //   RESEARCH ALL  – researches everything still open on all tabs.
 // A button is greyed out and cannot be clicked when nothing is left or when the research points or the
-// money are not enough for all of it. Hovering shows the price.
+// money are not enough for all of it. Hovering shows the price, and a click first asks with the price.
 //
 // The game does the research itself: every level is a click on the research card (the same as with the
 // mouse), so the price check, the tax deduction, paying, the new level and refreshing the page are all the
@@ -30,6 +30,20 @@ DTMods.register('research-all', (rt) => {
       'Preço: {rp} pontos de pesquisa e {usd}', 'Ціна: {rp} очок досліджень і {usd}',
       'Harga: {rp} poin riset dan {usd}', 'Cena: {rp} punktów badań i {usd}',
       '价格：{rp} 研究点数和 {usd}', '가격: 연구 포인트 {rp}와 {usd}', '価格：研究ポイント {rp} と {usd}'],
+    askTab: ['Research everything on this tab?', 'Исследовать всё на этой вкладке?', 'Alles auf diesem Tab erforschen?',
+      'Rechercher tout cet onglet ?', 'Ricercare tutto in questa scheda?', '¿Investigar todo en esta pestaña?',
+      'इस टैब पर सब कुछ शोध करें?', 'Bu sekmedeki her şey araştırılsın mı?', 'Pesquisar tudo nesta aba?',
+      'Дослідити все на цій вкладці?', 'Riset semua di tab ini?', 'Zbadać wszystko na tej karcie?',
+      '研究此页的全部内容？', '이 탭의 모든 항목을 연구할까요?', 'このタブをすべて研究しますか？'],
+    askAll: ['Research everything?', 'Исследовать всё?', 'Alles erforschen?', 'Tout rechercher ?', 'Ricercare tutto?',
+      '¿Investigar todo?', 'सब कुछ शोध करें?', 'Her şey araştırılsın mı?', 'Pesquisar tudo?', 'Дослідити все?',
+      'Riset semuanya?', 'Zbadać wszystko?', '研究全部内容？', '모두 연구할까요?', 'すべて研究しますか？'],
+    levels: ['{n} research levels', 'Уровней исследований: {n}', '{n} Forschungsstufen', '{n} niveaux de recherche',
+      '{n} livelli di ricerca', '{n} niveles de investigación', '{n} शोध स्तर', '{n} araştırma seviyesi',
+      '{n} níveis de pesquisa', 'Рівнів досліджень: {n}', '{n} level riset', 'Poziomów badań: {n}',
+      '{n} 个研究等级', '연구 레벨 {n}개', '研究レベル {n}'],
+    cancel: ['Cancel', 'Отмена', 'Abbrechen', 'Annuler', 'Annulla', 'Cancelar', 'रद्द करें', 'İptal', 'Cancelar',
+      'Скасувати', 'Batal', 'Anuluj', '取消', '취소', 'キャンセル'],
   };
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, v = {}) => String(TXT[key][lang()] || TXT[key][0]).replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
@@ -141,9 +155,31 @@ DTMods.register('research-all', (rt) => {
     b.addEventListener('click', () => {
       if (running || b.classList.contains('rc-all-empty')) return;
       globalThis.tapMain?.();
-      start(kind);
+      confirm(kind, b.querySelector('.bdt-ra-label').textContent);
     });
     return b;
+  }
+  // ask first, with the price (BetterDT dialog in the look of the game's news window)
+  function confirm(kind, label) {
+    const p = price(kind === 'tab' ? tabTargets() : allTargets());
+    if (!p.levels) return refresh();
+    const title = tr(kind === 'tab' ? 'askTab' : 'askAll');
+    const text = tr('cost', { rp: num(p.rp), usd: '$' + num(p.usd) });
+    const go = () => { setTimeout(() => start(kind)); };
+    const api = globalThis.BetterDTUI;   // from betterdt-settings.js
+    if (!api || typeof api.dialog !== 'function') {
+      if (window.confirm(title + '\n' + text)) go();
+      return;
+    }
+    api.dialog(title, text, [
+      { label: tr('cancel'), cb: () => { } },
+      { label, go: true, cb: go },
+    ], (c) => {
+      const h = document.createElement('div');
+      h.className = 'bdt-hint';
+      h.textContent = tr('levels', { n: num(p.levels) });
+      c.appendChild(h);
+    });
   }
   function setup() {
     const r = root(), bar = r && r.querySelector('#research-topbar');
@@ -175,6 +211,8 @@ DTMods.register('research-all', (rt) => {
     if (running) return;
     // the game has its own (free) button in sandbox mode
     if (layoutName() !== LAYOUT || Number(gv.SandboxMode) === 1) return teardown();
+    // the game's tables are not loaded (yet): no prices, no texts
+    if ((arr('ArrayResearch').width | 0) < 100 || (arr('ArrayLanguage').height | 0) <= LANG_RESEARCH_ALL) return teardown();
     if (!setup()) return;
     try {
       paint(ui.tab, tr('tab'), price(tabTargets()));
