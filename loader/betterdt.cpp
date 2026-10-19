@@ -45,7 +45,7 @@ extern "C" const int VT_ENV10_CREATE_CONTROLLER_OPT;
 extern "C" const int VT_ENV10_CREATE_COMPOSITION_OPT;
 
 #ifndef BETTERDT_VERSION
-#define BETTERDT_VERSION "0.3.1"
+#define BETTERDT_VERSION "0.3.2"
 #endif
 #define WIDE2(s) L##s
 #define WIDE(s) WIDE2(s)
@@ -323,9 +323,14 @@ static bool NewerThan(const std::string &a, const std::string &b) {   // a > b (
 // without an inflate library; every entry is checked against its CRC-32. mods/betterdt-version.txt:
 //   betterdt-manifest 2
 //   version 0.2.1
-//   note <line of release notes>
+//   change 0.2.1 <line of release notes>          (the whole history from CHANGES.txt, newest first)
+//   note <line of release notes>                  (for BetterDT up to 0.3.1, which only reads these)
 //   mods betterdt-settings.js os-perf.js …        (official order in mods.json)
-struct Manifest { std::string version, notes; std::vector<std::string> mods; };
+struct Manifest {
+  std::string version, notes;
+  std::vector<std::pair<std::string, std::string>> changes;   // version, note
+  std::vector<std::string> mods;
+};
 struct ZipEntry { std::string name, data; };
 static const char kZipAsset[] = "BetterDT.zip";
 static const char kManifestEntry[] = "mods/betterdt-version.txt";
@@ -394,6 +399,10 @@ static bool ParseManifest(const std::string &text, Manifest &m, std::string &err
     if (cmd == "betterdt-manifest") magic = rest == "2";
     else if (cmd == "version") m.version = rest;
     else if (cmd == "note") m.notes += (m.notes.empty() ? "" : "\n") + rest;
+    else if (cmd == "change") {
+      size_t s = rest.find(' ');
+      if (s != std::string::npos && s + 1 < rest.size()) m.changes.emplace_back(rest.substr(0, s), rest.substr(s + 1));
+    }
     else if (cmd == "mods") {
       for (size_t i = 0; i < rest.size();) {
         size_t j = rest.find(' ', i);
@@ -406,6 +415,22 @@ static bool ParseManifest(const std::string &text, Manifest &m, std::string &err
   }
   if (!magic || m.version.empty()) { err = "invalid manifest"; return false; }
   return true;
+}
+
+// release notes of every version newer than the installed one (newest first, "0.3.1: …" when there are
+// several versions; at most 12 lines); the plain "note" lines when the zip has no history
+static std::string ChangesSince(const Manifest &m, const std::string &installed) {
+  std::vector<std::pair<std::string, std::string>> news;
+  for (auto &c : m.changes) if (NewerThan(c.first, installed) && !NewerThan(c.first, m.version)) news.push_back(c);
+  if (news.empty()) return m.notes;
+  bool multi = false;
+  for (auto &c : news) if (c.first != news[0].first) multi = true;
+  std::string out;
+  const size_t kMax = 12;
+  for (size_t i = 0; i < news.size() && i < kMax; i++)
+    out += (out.empty() ? "" : "\n") + (multi ? news[i].first + ": " : std::string()) + news[i].second;
+  if (news.size() > kMax) out += "\n…";
+  return out;
 }
 
 static std::string ReleaseUrl(const std::string &tail) {
@@ -525,7 +550,7 @@ static void RunUpdate(bool install) {
   }
   {
     std::lock_guard<std::mutex> lk(g_mx);
-    g_upd.notes = m.notes;
+    g_upd.notes = ChangesSince(m, BETTERDT_VERSION);
   }
   SetUpd("available");
   if (!install) return;

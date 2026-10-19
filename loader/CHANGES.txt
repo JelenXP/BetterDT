@@ -1,0 +1,13 @@
+# Release notes shown in the game's update dialog: "<version> <one line>", newest first.
+# package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.3.2 The update message lists the changes of every version since yours, not just the newest
+0.3.1 Endless game: keep playing after the end of the game in 2101 (based on a mod by M1lan.)
+0.3.0 Research tab / Research all buttons in the research lab
+0.3.0 Game speed x2 and x3
+0.3.0 Low-end mode for older computers (30 FPS, no blur)
+0.3.0 Mods check that they fit the game version after game updates
+0.2.2 New version dialog with a restart button
+0.2.2 A crashed game page (white screen) is reloaded automatically
+0.2.2 Adjustable autosave
+0.2.1 Simpler release: just BetterDT.zip
+0.2.1 Clearer install guide

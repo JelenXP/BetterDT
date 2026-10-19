@@ -1,8 +1,8 @@
 # Builds dist\BetterDT.zip, the only release asset. Players extract it into the game folder by hand and
 # the auto-updater downloads the same zip. The entries are stored uncompressed so the updater can read
 # them without an inflate library (the zip is small anyway).
-# The version is read from betterdt.cpp (BETTERDT_VERSION); -Notes lines are shown in the game settings.
-param([string[]]$Notes = @())
+# The version is read from betterdt.cpp (BETTERDT_VERSION); the release notes from CHANGES.txt, which must
+# have lines for this version.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $root 'dist'
@@ -13,8 +13,16 @@ $modsDir = Join-Path $root '..\mod\mods'
 $mods = Get-Content -Raw (Join-Path $modsDir 'mods.json') | ConvertFrom-Json
 $utf8 = New-Object Text.UTF8Encoding($false)
 
+# CHANGES.txt: "<version> <note>", newest first
+$changes = @(Get-Content -Encoding UTF8 (Join-Path $root 'CHANGES.txt') | Where-Object { $_ -match '^\d+\.\d+\.\d+ \S' })
+if (-not ($changes | Where-Object { $_.StartsWith("$version ") })) { throw "CHANGES.txt has no notes for $version" }
 $manifest = @('betterdt-manifest 2', "version $version")
-foreach ($n in $Notes) { $manifest += "note $n" }
+# "change": the whole history; BetterDT 0.3.2+ shows the versions newer than the installed one
+foreach ($c in $changes) { $manifest += "change $c" }
+# "note": what older versions (up to 0.3.1) show, which cannot pick by version: everything since 0.3.0
+$old = @($changes | Where-Object { [version]($_ -split ' ')[0] -ge [version]'0.3.0' })
+$multi = @($old | ForEach-Object { ($_ -split ' ')[0] } | Select-Object -Unique).Count -gt 1
+foreach ($c in $old) { $v, $n = $c -split ' ', 2; $manifest += 'note ' + $(if ($multi) { "$v`: $n" } else { $n }) }
 $manifest += 'mods ' + ($mods -join ' ')
 
 # zip entry name -> content

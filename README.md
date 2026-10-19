@@ -260,10 +260,12 @@ BetterDTKit.mod('my-mod', {
 
   ```
   betterdt-manifest 2
-  version 0.2.1
-  note <release notes line, shown in the settings>
+  version 0.3.2
+  change 0.3.2 <release notes line>     (the whole history from loader/CHANGES.txt, newest first)
+  note <release notes line>             (for BetterDT up to 0.3.1, which only reads these)
   mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
   ```
+  The new-version dialog lists the notes of every version newer than the installed one (at most 12 lines).
 - **Restart:** "Restart now" starts the exe again with `BETTERDT_WAIT_PID` set (the environment Steam gave the
   game is inherited) and closes the game window. The new instance waits in the hooked environment creation until
   the old process and its WebView2 browser process have exited, because it needs their browser profile.
@@ -277,7 +279,8 @@ BetterDTKit.mod('my-mod', {
 - Everything it does is written to `mods\betterdt.log`.
 
 **Build:** `loader\build.bat` (Visual Studio 2022 with C++; the WebView2 header is downloaded from NuGet),
-then `loader\package.ps1 -Notes "…"` creates `loader\dist\BetterDT.zip`.
+then add the release notes to `loader\CHANGES.txt` and run `loader\package.ps1`, which creates
+`loader\dist\BetterDT.zip`.
 Publish: `gh release create v<version> loader/dist/BetterDT.zip`.
 
 ## How the game is built
