@@ -485,6 +485,19 @@ BetterDT.register('betterdt-settings', (rt) => {
       '30 FPS तक सीमित करें', '30 FPS ile sınırla', 'Limitar a 30 FPS', 'Обмежити до 30 FPS', 'Batasi ke 30 FPS', 'Ogranicz do 30 FPS', '限制为 30 FPS', '30 FPS로 제한', '30 FPS に制限'],
     'low-end.blur': ['Turn off blur', 'Отключить размытие', 'Unschärfe ausschalten', 'Désactiver le flou', 'Disattiva la sfocatura', 'Desactivar el desenfoque',
       'ब्लर बंद करें', 'Bulanıklığı kapat', 'Desativar o desfoque', 'Вимкнути розмиття', 'Matikan efek blur', 'Wyłącz rozmycie', '关闭模糊效果', '흐림 효과 끄기', 'ぼかしをオフ'],
+    'no-ending': ['Endless game', 'Бесконечная игра', 'Endloses Spiel', 'Partie sans fin', 'Partita infinita', 'Partida infinita',
+      'अंतहीन खेल', 'Sonsuz oyun', 'Jogo infinito', 'Нескінченна гра', 'Permainan tanpa akhir', 'Gra bez końca', '无尽模式', '끝없는 게임', 'エンドレスゲーム'],
+    'no-ending.d': ['Keep playing after the end of the game in 2101', 'Играть дальше после конца игры в 2101 году',
+      'Nach dem Spielende 2101 weiterspielen', 'Continuer à jouer après la fin du jeu en 2101', 'Continua a giocare dopo la fine del gioco nel 2101',
+      'Seguir jugando tras el final del juego en 2101', '2101 में खेल खत्म होने के बाद भी खेलते रहें', '2101’deki oyun sonundan sonra oynamaya devam et',
+      'Continuar jogando depois do fim do jogo em 2101', 'Грати далі після кінця гри у 2101 році', 'Terus bermain setelah game berakhir di 2101',
+      'Graj dalej po końcu gry w 2101 roku', '在 2101 年游戏结束后继续游玩', '2101년 게임 종료 후에도 계속 플레이', '2101年のゲーム終了後もプレイを続ける'],
+    'no-ending.skip': ['Skip the final screen', 'Пропустить финальный экран', 'Abschlussbildschirm überspringen', "Passer l'écran final",
+      'Salta la schermata finale', 'Omitir la pantalla final', 'अंतिम स्क्रीन छोड़ें', 'Son ekranı atla', 'Pular a tela final', 'Пропустити фінальний екран',
+      'Lewati layar akhir', 'Pomiń ekran końcowy', '跳过结束画面', '마지막 화면 건너뛰기', '最終画面をスキップ'],
+    credit: ['Original mod by {n}', 'Автор оригинального мода: {n}', 'Ursprünglicher Mod von {n}', 'Mod original de {n}', 'Mod originale di {n}',
+      'Mod original de {n}', 'मूल मॉड: {n}', 'Orijinal mod: {n}', 'Mod original de {n}', 'Автор оригінального мода: {n}', 'Mod asli oleh {n}',
+      'Oryginalny mod: {n}', '原始模组作者：{n}', '원본 모드 제작: {n}', '元のMOD作者：{n}'],
     'autosave.days': ['Save every (game days)', 'Сохранять каждые (игровых дней)', 'Speichern alle (Spieltage)', 'Sauvegarder tous les (jours de jeu)',
       'Salva ogni (giorni di gioco)', 'Guardar cada (días de juego)', 'हर (गेम दिन) में सेव करें', 'Kaydetme aralığı (oyun günü)', 'Salvar a cada (dias de jogo)',
       'Зберігати кожні (ігрових днів)', 'Simpan setiap (hari game)', 'Zapisuj co (dni gry)', '每隔（游戏日）存档', '저장 주기 (게임 일)', 'セーブ間隔（ゲーム日）'],
@@ -503,7 +516,10 @@ BetterDT.register('betterdt-settings', (rt) => {
     'vacation-tools.js': [{ key: 'vacation-tools.threshold', type: 'range', def: 30, min: 10, max: 90, step: 5 }],
     'autosave.js': [{ key: 'autosave.days', type: 'range', def: 90, min: 5, max: 180, step: 5 }],
     'low-end.js': [{ key: 'low-end.fps', type: 'bool', def: false }, { key: 'low-end.blur', type: 'bool', def: false }],
+    'no-ending.js': [{ key: 'no-ending.skip', type: 'bool', def: false }],
   };
+  // mods based on someone else's work: shown under the mod in the settings
+  const CREDITS = { 'no-ending.js': 'M1lan.' };
   // what only takes effect after a restart: state at game start
   const boot = { gpu: S.bool('gpu', true) };
   for (const m of B.mods) boot['mod.' + m.file] = m.enabled;
@@ -720,6 +736,9 @@ BetterDT.register('betterdt-settings', (rt) => {
       const on = S.bool('mod.' + m.file, true);
       const mctl = row(card, modTitle(m.file), modDesc(m.file));
       sw(mctl, on, (v) => { save('mod.' + m.file, v); paintOpts(); });
+      if (CREDITS[m.file]) {
+        el('div', 'gs-row-hint bdt-credit', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('credit', { n: CREDITS[m.file] });
+      }
       // what the compatibility check found (BetterDTKit)
       const st = m.enabled && kitStatus(m.file);
       if (st && (st.state !== 'running' || st.problems.length)) {

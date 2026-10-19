@@ -19,6 +19,8 @@ game file and does not touch your saves.
   crash costs you less progress.
 - **Low-end mode** for older computers: limit the game to 30 FPS and turn off the blur behind panels (both off
   by default).
+- **Endless game:** keep playing after the end of the game in 2101. The final screen gets a **Continue game**
+  button, and the calendar goes on right away, no reload needed. Based on a mod by **M1lan.**
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -60,7 +62,8 @@ says what happened; please attach it when you [report a problem](https://github.
   - train-all: mute the click sounds while training,
   - vacation-tools: the mood threshold for sending people on vacation (default 30),
   - autosave: save every N game days (default 90, 5 to 180),
-  - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away).
+  - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away),
+  - no-ending: skip the final screen and continue right away (off by default).
 
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
 effect after restarting the game; the page says so.
@@ -130,6 +133,19 @@ its own layer.
 - The game's own **Quality: Low** setting helps only on displays larger than 1920×1080: it then draws
   at 1920×1080 and stretches the picture (about 30 % less GPU work on the main menu at 1440p). On a 1080p or smaller
   display it changes nothing.
+
+### `no-ending.js`: endless game
+Based on the "prevent retirement" mod by **M1lan.** – thank you!
+- **How the game ends:** on game day 34000 (early 2101) the event sheet calls `triggerEndGame()`. It sets the
+  global `class` to `"END GAME"` and shows the final summary, whose only button goes to the main menu. The date
+  engine only runs while `class` is `"GAMEPLAY"`, so a game kept open behind the screen has a frozen calendar.
+- **Continue game** (the game's own text, so in every language) is added under the game's button. It calls the
+  game's `resetEndGame()` and sets `class` back to `"GAMEPLAY"`: the calendar runs on in the same session.
+  The game only ends on that one day, so the screen does not come back. The "game finished" achievement still
+  counts, as the game checks it before the screen is shown.
+- **Skip the final screen** (option, off by default) continues right away without the summary.
+- A game stuck in `"END GAME"` without the screen (e.g. after a mod that only removed the screen) is put back to
+  `"GAMEPLAY"` after 3 seconds.
 
 ### `autosave.js`: adjustable autosave
 - The game autosaves on its own at a fixed interval of game days. It calls `globalThis.tickAutoSave()` once per game day; the mod
@@ -313,6 +329,10 @@ node dtmod.mjs restore "D:\SteamLibrary\steamapps\common\Devices Tycoon"
 - Tested on game version 1.3 (build 26033576).
 - Changing logic in `data.json` is possible but hard (a compiled, positional structure without names).
   JS mods and the data JSON files are the practical way.
+
+## Thanks
+
+- **M1lan.** for the original endless game mod, which `no-ending.js` is based on.
 
 ## License
 
