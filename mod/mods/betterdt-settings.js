@@ -221,6 +221,17 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Кнопка швидкості в куті пропонує також ×2 і ×3', 'Tombol kecepatan di pojok juga menawarkan ×2 dan ×3',
       'Przycisk prędkości w rogu oferuje też ×2 i ×3', '角落的速度按钮也提供 ×2 和 ×3', '모서리의 속도 버튼에서 ×2와 ×3도 선택할 수 있습니다',
       '隅の速度ボタンで ×2 と ×3 も選べます'],
+    'low-end': ['Low-end mode', 'Режим для слабых ПК', 'Modus für schwache PCs', 'Mode PC modeste', 'Modalità PC datati', 'Modo para PC modestos',
+      'कमज़ोर पीसी मोड', 'Düşük donanım modu', 'Modo para PCs fracos', 'Режим для слабких ПК', 'Mode PC lawas', 'Tryb dla słabszych PC', '低配模式', '저사양 모드', '低スペックモード'],
+    'low-end.d': ['Lighter rendering for older computers', 'Облегчённая отрисовка для старых компьютеров', 'Leichtere Darstellung für ältere Computer',
+      'Rendu plus léger pour les ordinateurs anciens', 'Grafica più leggera per computer datati', 'Renderizado más ligero para ordenadores antiguos',
+      'पुराने कंप्यूटरों के लिए हल्की रेंडरिंग', 'Eski bilgisayarlar için daha hafif çizim', 'Renderização mais leve para computadores antigos',
+      'Легше відмальовування для старих комп’ютерів', 'Tampilan lebih ringan untuk komputer lama', 'Lżejsze renderowanie dla starszych komputerów',
+      '为旧电脑减轻渲染负担', '오래된 컴퓨터를 위한 가벼운 렌더링', '古いパソコン向けに描画を軽くします'],
+    'low-end.fps': ['Limit to 30 FPS', 'Ограничить до 30 FPS', 'Auf 30 FPS begrenzen', 'Limiter à 30 FPS', 'Limita a 30 FPS', 'Limitar a 30 FPS',
+      '30 FPS तक सीमित करें', '30 FPS ile sınırla', 'Limitar a 30 FPS', 'Обмежити до 30 FPS', 'Batasi ke 30 FPS', 'Ogranicz do 30 FPS', '限制为 30 FPS', '30 FPS로 제한', '30 FPS に制限'],
+    'low-end.blur': ['Turn off blur', 'Отключить размытие', 'Unschärfe ausschalten', 'Désactiver le flou', 'Disattiva la sfocatura', 'Desactivar el desenfoque',
+      'ब्लर बंद करें', 'Bulanıklığı kapat', 'Desativar o desfoque', 'Вимкнути розмиття', 'Matikan efek blur', 'Wyłącz rozmycie', '关闭模糊效果', '흐림 효과 끄기', 'ぼかしをオフ'],
     'autosave.days': ['Save every (game days)', 'Сохранять каждые (игровых дней)', 'Speichern alle (Spieltage)', 'Sauvegarder tous les (jours de jeu)',
       'Salva ogni (giorni di gioco)', 'Guardar cada (días de juego)', 'हर (गेम दिन) में सेव करें', 'Kaydetme aralığı (oyun günü)', 'Salvar a cada (dias de jogo)',
       'Зберігати кожні (ігрових днів)', 'Simpan setiap (hari game)', 'Zapisuj co (dni gry)', '每隔（游戏日）存档', '저장 주기 (게임 일)', 'セーブ間隔（ゲーム日）'],
@@ -238,6 +249,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'train-all.js': [{ key: 'train-all.mute', type: 'bool', def: true }],
     'vacation-tools.js': [{ key: 'vacation-tools.threshold', type: 'range', def: 30, min: 10, max: 90, step: 5 }],
     'autosave.js': [{ key: 'autosave.days', type: 'range', def: 90, min: 5, max: 180, step: 5 }],
+    'low-end.js': [{ key: 'low-end.fps', type: 'bool', def: false }, { key: 'low-end.blur', type: 'bool', def: false }],
   };
   // what only takes effect after a restart: state at game start
   const boot = { gpu: S.bool('gpu', true) };

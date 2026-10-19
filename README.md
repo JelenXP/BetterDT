@@ -17,6 +17,8 @@ game file and does not touch your saves.
 - **Game speed ×2 and ×3:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3.
 - **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
   crash costs you less progress.
+- **Low-end mode** for older computers: limit the game to 30 FPS and turn off the blur behind panels (both off
+  by default).
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -54,7 +56,8 @@ says what happened; please attach it when you [report a problem](https://github.
   - hire-tools: hire everyone found automatically,
   - train-all: mute the click sounds while training,
   - vacation-tools: the mood threshold for sending people on vacation (default 30),
-  - autosave: save every N game days (default 90, 5 to 180).
+  - autosave: save every N game days (default 90, 5 to 180),
+  - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away).
 
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
 effect after restarting the game; the page says so.
@@ -111,6 +114,19 @@ its own layer.
   first (capture listener on the button) and goes to the next of `[1, 1.25, 1.5, 2, 3]` with the game's own
   `setGameSpeed()`, which accepts any speed. So the time scale, the "×2" label and the game's rules (normal speed
   outside gameplay) stay the game's; the mod only adds colours for ×2 and ×3.
+
+### `low-end.js`: low-end mode
+- **Limit to 30 FPS:** the game draws at the monitor's refresh rate (vsync) by default, also on static menus where
+  nothing moves. The mod sets `runtime.framerateMode = 'fixed'` and `fixedFramerate = 30` at runtime only; the
+  game's own FPS setting is not changed. When the game applies its settings again, the mod sets the limit back
+  within a second; turning the option off brings the game's setting back. A game setting of a fixed 30 FPS or less
+  is kept. Game time does not depend on the frame rate. Measured on the main menu (1440p, vsync 165 Hz):
+  CPU 10 % → 2 %, GPU 13 % → 2 %. Office screens already redraw only about 15 times a second, so there it changes little.
+- **Turn off blur:** a style rule sets `backdrop-filter: none` on every element. The game's panels stay
+  semi-transparent, only without the blur behind them, which weak integrated graphics redo on every frame.
+- The game's own **Quality: Low** setting helps only on displays larger than 1920×1080: it then draws
+  at 1920×1080 and stretches the picture (about 30 % less GPU work on the main menu at 1440p). On a 1080p or smaller
+  display it changes nothing.
 
 ### `autosave.js`: adjustable autosave
 - The game autosaves on its own at a fixed interval of game days. It calls `globalThis.tickAutoSave()` once per game day; the mod
