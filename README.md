@@ -30,6 +30,8 @@ game file and does not touch your saves.
   out again).
 - **OS upgrade (MY OS UPGRADE):** **Select all** picks all of the about 35 technologies at once (**Clear all**
   takes them out again).
+- **Fixed FPS above 60 at full speed:** with a high fixed FPS in the game settings the game used to run slower
+  (at 240 FPS about 78 % of normal speed, at 500 FPS about 37 %). Now it runs at normal speed with any setting.
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -171,6 +173,16 @@ its own layer.
   clicks every technology that is not selected yet through the game's own click handler, so the game adds up the
   price and the rating itself, exactly as with single clicks. When everything is selected the button turns into
   **Clear all**. Single cards can still be clicked as before.
+
+### `fixed-fps.js`: fixed FPS at full speed
+- **The problem:** in Construct's "fixed" frame rate mode every tick moves the game time by exactly 1 / FPS, no
+  matter how much time really passed. The ticks are timed with `setTimeout`, and the browser does not run them much
+  faster than about 190 per second. So above that the game time falls behind: measured in game 1.4, fixed 60 and
+  144 FPS run at full speed, 240 FPS at 78 % and 500 FPS at 37 % (the calendar too: 4 days instead of 10).
+- **The fix:** in fixed mode the runtime measures the real time between ticks, exactly as in the default vsync mode
+  (same limits). The ticks are still paced at the chosen FPS, and when the computer keeps up nothing changes.
+  Technically `C3.Runtime.prototype._MeasureDt` is wrapped, and during that call only `GetFramerateMode()` answers
+  "vsync". If the runtime's code changes, the mod does not start.
 
 ### `no-ending.js`: endless game
 Based on the "prevent retirement" mod by **M1lan.** – thank you!
