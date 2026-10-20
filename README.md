@@ -34,6 +34,8 @@ game file and does not touch your saves.
   out again).
 - **OS upgrade (MY OS UPGRADE):** **Select all** picks all of the about 35 technologies at once (**Clear all**
   takes them out again).
+- **Unlimited shares (INVESTING):** the exchange offers as many shares of a company as you can afford, so one
+  purchase can go up to the game's own 49 % limit instead of a few percent at a time. Based on a mod by **M1lan.**
 - **Stores (MY STORES):** **Upgrade all stores** pays "PAY ALL" in every country with stores at once (the price is
   on the button), and **All to max** keeps upgrading every store for as long as the money lasts (it asks first and
   says how much it will spend).
@@ -203,6 +205,25 @@ its own layer.
 - Tested in game 1.4 with 3 countries: the button price was exactly what the game took ($1 978 479), and "to the
   max" from $12.3 billion bought 25 497 upgrades in 8 s, spent within 0.001 % of the estimate and left less than
   the cheapest next upgrade.
+
+### `unlimited-shares.js`: unlimited shares (INVESTING)
+Based on the "unlimited shares" mod by **M1lan.** – thank you!
+- **How the game sells shares:** on a company's page the **Buy** tab offers only what the exchange has on offer
+  (`ArrayInvesting` row 8). The game refills it by 2.5–3.5 % of all shares when it drops below 2.5 %
+  (`investingUpdate`), so reaching the game's limit of 49 % (above it a company can only be bought in talks) takes
+  many purchases over many days.
+- **What the mod does:** when you open a company or its Buy tab, and after a purchase, the offer of that company is
+  raised to as many shares as your money buys (price × 1.025 commission, taken from the game's own quote). The
+  slider and the texts are then set up again with the game's own `investingSyncSlider` and `InvestingStock_Text`.
+- **Unchanged:** the purchase itself is the game's (`investingBuy`): the slider, the price, the 49 % limit and the
+  "not enough funds" check. When you leave the company or the screen, its offer goes back to what the game offered,
+  minus the shares you have bought, so the save keeps the game's own numbers.
+- Changes from the original: it acts only on the company you have open (not on every company in every frame),
+  takes the commission from the game instead of a fixed factor, does not touch the sell side (row 9 is how many
+  shares the company buys back, not a buy offer), and checks at start that the game still reads the offer the same
+  way.
+- Tested in game 1.4: a company with 4 005 506 shares on offer showed 66 859 684 on the slider, the game's 49 %
+  limit; buying all of them cost exactly the quoted price, and after leaving the page the offer was 0.
 
 ### `fixed-fps.js`: fixed FPS at full speed
 - **The problem:** in Construct's "fixed" frame rate mode every tick moves the game time by exactly 1 / FPS, no
@@ -418,7 +439,8 @@ node dtmod.mjs restore "D:\SteamLibrary\steamapps\common\Devices Tycoon"
 
 ## Thanks
 
-- **M1lan.** for the original endless game mod, which `no-ending.js` is based on.
+- **M1lan.** for the original endless game and unlimited shares mods, which `no-ending.js` and
+  `unlimited-shares.js` are based on.
 
 ## License
 

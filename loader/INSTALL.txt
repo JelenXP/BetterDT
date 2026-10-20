@@ -41,6 +41,8 @@ WHAT YOU GET
 - UPDATE SOFTWARE: "Select all" picks every app for the update (next version, same settings),
   "Clear all" takes them out again.
 - MY OS UPGRADE: "Select all" picks all technologies at once.
+- INVESTING: buy as many shares as your money allows, up to the game's 49 % limit, in one purchase.
+  Based on a mod by M1lan.
 - MY STORES: "Upgrade all stores" upgrades the stores of every country at once, "All to max" keeps upgrading
   them while the money lasts (it asks first, with the money it will spend).
 - Fixed FPS above 60 in the game settings no longer slows the game down.

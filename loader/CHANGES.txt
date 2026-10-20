@@ -1,5 +1,6 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.3.6 Unlimited shares: buy up to the game's 49 % limit in one purchase (based on a mod by M1lan.)
 0.3.6 My stores: "Upgrade all stores" upgrades every country at once, "All to max" while the money lasts
 0.3.5 The update message has a link to the Discord
 0.3.5 Settings > BetterDT: a Discord button (questions, ideas and bug reports)

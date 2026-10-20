@@ -558,6 +558,24 @@ BetterDT.register('betterdt-settings', (rt) => {
       '我的门店：一次升级所有国家的门店，或在资金足够时升到最高',
       '내 매장: 모든 국가의 매장을 한 번에, 또는 돈이 허락하는 한 최대로 업그레이드',
       'マイストア：全ての国の店舗を一度に、または資金が続く限り最大までアップグレード'],
+    'unlimited-shares': ['Unlimited shares', 'Неограниченные акции', 'Unbegrenzte Aktien', 'Actions illimitées', 'Azioni illimitate',
+      'Acciones ilimitadas', 'असीमित शेयर', 'Sınırsız hisse', 'Ações ilimitadas', 'Необмежені акції', 'Saham tanpa batas', 'Nielimitowane akcje',
+      '无限股票', '무제한 주식', '株の購入上限なし'],
+    'unlimited-shares.d': ['INVESTING: buy as many shares as your money allows, up to the game\'s 49 % limit, in one purchase',
+      'ИНВЕСТИЦИИ: покупайте столько акций, сколько позволяют деньги, до лимита игры 49 % за одну покупку',
+      'INVESTITIONEN: so viele Aktien kaufen, wie das Geld erlaubt, bis zur Spielgrenze von 49 % in einem Kauf',
+      'INVESTISSEMENTS : achetez autant d’actions que votre argent le permet, jusqu’à la limite de 49 % du jeu, en un seul achat',
+      'INVESTIMENTI: compra tutte le azioni che i soldi consentono, fino al limite del 49 % del gioco, in un solo acquisto',
+      'INVERSIONES: compra tantas acciones como permita tu dinero, hasta el límite del 49 % del juego, en una sola compra',
+      'निवेश: जितने पैसे हों उतने शेयर खरीदें, गेम की 49 % सीमा तक, एक ही खरीद में',
+      'YATIRIM: paranın yettiği kadar hisseyi, oyunun %49 sınırına kadar tek seferde al',
+      'INVESTIMENTOS: compre quantas ações o dinheiro permitir, até o limite de 49 % do jogo, numa só compra',
+      'ІНВЕСТИЦІЇ: купуйте стільки акцій, скільки дозволяють гроші, до ліміту гри 49 % за одну покупку',
+      'INVESTASI: beli saham sebanyak yang uangmu mampu, sampai batas 49 % dari game, dalam satu pembelian',
+      'INWESTYCJE: kupuj tyle akcji, na ile starcza pieniędzy, do limitu gry 49 %, w jednym zakupie',
+      '投资：在一次购买中买入资金允许的全部股票，直到游戏的 49% 上限',
+      '투자: 돈이 허락하는 만큼 주식을 한 번에 구매 (게임의 49% 한도까지)',
+      '投資：資金の許す限りの株を、ゲームの上限 49% まで一度に購入'],
     'fixed-fps': ['Fixed FPS at full speed', 'Фиксированный FPS без замедления', 'Fester FPS-Wert ohne Verlangsamung',
       'FPS fixe sans ralentissement', 'FPS fisso senza rallentamenti', 'FPS fijo sin ralentización', 'फिक्स्ड FPS बिना धीमेपन के',
       'Yavaşlamadan sabit FPS', 'FPS fixo sem lentidão', 'Фіксований FPS без уповільнення', 'FPS tetap tanpa melambat',
@@ -607,7 +625,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'research-all.js': [{ key: 'research-all.gameButton', type: 'bool', def: false }],
   };
   // mods based on someone else's work: shown under the mod in the settings
-  const CREDITS = { 'no-ending.js': 'M1lan.' };
+  const CREDITS = { 'no-ending.js': 'M1lan.', 'unlimited-shares.js': 'M1lan.' };
   // what only takes effect after a restart: state at game start
   const boot = { gpu: S.bool('gpu', true) };
   for (const m of B.mods) boot['mod.' + m.file] = m.enabled;
