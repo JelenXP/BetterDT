@@ -505,8 +505,8 @@ static bool InstallRelease(const Manifest &m, const std::vector<ZipEntry> &zip) 
 }
 
 // Checks the latest release (github.com/…/releases/latest redirects to …/releases/tag/v<version>);
-// when it is newer, downloads the zip and, with install = true, installs it right away.
-static void RunUpdate(bool install) {
+// when it is newer, downloads the zip and installs it (it takes effect after a restart).
+static void RunUpdate() {
   std::string body, loc, err;
   if (!HttpGet(ReleaseUrl("latest"), body, 1024 * 1024, err, &loc)) {
     Log("update: cannot check the latest release (%s)", err.c_str());
@@ -553,7 +553,6 @@ static void RunUpdate(bool install) {
     g_upd.notes = ChangesSince(m, BETTERDT_VERSION);
   }
   SetUpd("available");
-  if (!install) return;
   // the running game keeps the mods it started with: replace the files only after the script with the
   // mods has been built, so old and new files are never mixed (the new version starts after a restart)
   SetUpd("downloading");
@@ -562,12 +561,12 @@ static void RunUpdate(bool install) {
 }
 
 static DWORD WINAPI UpdateThread(LPVOID p) {
-  RunUpdate(p != nullptr);
+  RunUpdate();
   std::lock_guard<std::mutex> lk(g_mx);
   g_upd.busy = false;
   return 0;
 }
-static void StartUpdate(bool install) {
+static void StartUpdate() {
   {
     std::lock_guard<std::mutex> lk(g_mx);
     if (g_upd.busy || g_upd.state == "installed") return;   // running, or waiting for a restart
@@ -575,7 +574,7 @@ static void StartUpdate(bool install) {
     g_upd.state = "checking";
     g_upd.error.clear();
   }
-  HANDLE t = CreateThread(nullptr, 0, UpdateThread, install ? (LPVOID)1 : nullptr, 0, nullptr);
+  HANDLE t = CreateThread(nullptr, 0, UpdateThread, nullptr, 0, nullptr);
   if (t) CloseHandle(t);
   else { std::lock_guard<std::mutex> lk(g_mx); g_upd.busy = false; g_upd.state = "error"; g_upd.error = "thread"; }
 }
@@ -882,8 +881,8 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
     Log("setting %s=%s", k.c_str(), v.c_str());
     return StateJson();
   }
-  if (cmd == "check") { StartUpdate(false); return StateJson(); }
-  if (cmd == "install") { StartUpdate(true); return StateJson(); }
+  // "Check now" installs a newer version right away, like the check at start; "install" is the same (older menus)
+  if (cmd == "check" || cmd == "install") { StartUpdate(); return StateJson(); }
   if (cmd == "update-ack") { { std::lock_guard<std::mutex> lk(g_mx); g_upd.acked = true; } return StateJson(); }
   if (cmd == "restart") return RestartGame() ? "{\"ok\":true}" : "{\"ok\":false}";
   if (cmd == "beat") {   // what the game is doing, for crash reports
@@ -1147,7 +1146,7 @@ static HRESULT STDAPICALLTYPE HookCreateEnv(bool checkRunning, int runtimeType, 
   WaitForPreviousInstance();
   LoadIni();
   LoadCrash();
-  if (IniOn("autoupdate", true)) StartUpdate(true);
+  if (IniOn("autoupdate", true)) StartUpdate();
   else Log("automatic updates disabled");
   const bool gpu = IniOn("gpu", true);
   if (gpu) LogAdapters(); else Log("high-performance GPU disabled");

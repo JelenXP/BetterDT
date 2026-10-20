@@ -76,7 +76,7 @@ or ask on [Discord](https://discord.gg/JdQEMNNTrN).
 
 ## Settings (Settings → BetterDT)
 
-- **General:** BetterDT and game version, automatic updates (on by default), "Check now" / "Install" for updates,
+- **General:** BetterDT and game version, automatic updates (on by default), "Check now" (downloads and installs a newer version right away),
   high-performance GPU switch, buttons that open the mods folder, the log, the GitHub releases and the Discord.
 - **Mods:** an on/off switch for every mod (with a note when it does not fit the game version) and the mod options:
   - hire-tools: hire everyone found automatically,

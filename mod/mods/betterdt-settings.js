@@ -235,7 +235,6 @@ BetterDT.register('betterdt-settings', (rt) => {
     check: ['Check now', 'Проверить', 'Jetzt prüfen', 'Vérifier', 'Controlla ora', 'Comprobar', 'अभी जाँचें', 'Şimdi kontrol et', 'Verificar', 'Перевірити', 'Periksa', 'Sprawdź', '立即检查', '지금 확인', '今すぐ確認'],
     updates: ['Updates', 'Обновления', 'Updates', 'Mises à jour', 'Aggiornamenti', 'Actualizaciones', 'अपडेट', 'Güncellemeler', 'Atualizações', 'Оновлення',
       'Pembaruan', 'Aktualizacje', '更新', '업데이트', 'アップデート'],
-    install: ['Install', 'Установить', 'Installieren', 'Installer', 'Installa', 'Instalar', 'इंस्टॉल', 'Kur', 'Instalar', 'Встановити', 'Pasang', 'Zainstaluj', '安装', '설치', 'インストール'],
     checking: ['Checking…', 'Проверка…', 'Wird geprüft…', 'Vérification…', 'Controllo…', 'Comprobando…', 'जाँच हो रही है…', 'Kontrol ediliyor…', 'Verificando…', 'Перевірка…', 'Memeriksa…', 'Sprawdzanie…', '正在检查…', '확인 중…', '確認中…'],
     uptodate: ['You have the latest version', 'Установлена последняя версия', 'Neueste Version installiert', 'Vous avez la dernière version', 'Hai l’ultima versione',
       'Tienes la última versión', 'नवीनतम संस्करण है', 'En son sürüm kurulu', 'Você tem a versão mais recente', 'Встановлено останню версію', 'Versi terbaru sudah terpasang',
@@ -816,7 +815,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     name.textContent = t('updates');
     const ctl = updRow.querySelector('.gs-row-ctl');
     ctl.innerHTML = '';
-    if (u.state === 'available' && !u.busy) btn(ctl, t('install'), () => { B.api('install').then(startPoll); });
+    // "Check now" downloads and installs a newer version right away (then the restart dialog shows)
     const b = btn(ctl, t('check'), () => { B.api('check').then(startPoll); });
     b.classList.toggle('gs-btn-off', !!u.busy || u.state === 'installed');
   }
