@@ -1,5 +1,5 @@
-# Builds dist\BetterDT.zip, the only release asset. Players extract it into the game folder by hand and
-# the auto-updater downloads the same zip. The entries are stored uncompressed so the updater can read
+# Builds dist\BetterDT.zip and its copy dist\BetterDT-update.zip, the release assets. Players extract the first
+# into the game folder by hand, the auto-updater downloads the copy (so GitHub counts them apart). The entries are stored uncompressed so the updater can read
 # them without an inflate library (the zip is small anyway).
 # The version is read from betterdt.cpp (BETTERDT_VERSION); the release notes from CHANGES.txt, which must
 # have lines for this version.
@@ -91,4 +91,6 @@ New-Item -ItemType Directory -Force $out | Out-Null
 Remove-Item (Join-Path $out 'release') -Recurse -Force -ErrorAction SilentlyContinue
 $zip = Join-Path $out 'BetterDT.zip'
 [IO.File]::WriteAllBytes($zip, $ms.ToArray())
+# the updater downloads this copy (BetterDT.zip stays for manual downloads): both go into the release
+[IO.File]::WriteAllBytes((Join-Path $out 'BetterDT-update.zip'), $ms.ToArray())
 Write-Output "BetterDT $version -> $zip ($((Get-Item $zip).Length) bytes, $($entries.Count) files)"

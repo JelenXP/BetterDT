@@ -355,8 +355,9 @@ BetterDTKit.mod('my-mod', {
   handler, which would otherwise overwrite the response). The settings page uses it for `state`, `set`,
   `check`, `install` and `open`. Only requests from the game page are accepted.
 - **Updates:** `github.com/JelenXP/BetterDT/releases/latest` redirects to `…/tag/v<version>`, which tells the
-  loader the latest version without downloading anything. When it is newer, the loader downloads the release's
-  only asset, `BetterDT.zip` (the same zip players install by hand), checks the CRC-32 of every file and the
+  loader the latest version without downloading anything. When it is newer, the loader downloads
+  `BetterDT-update.zip` (a copy of `BetterDT.zip`, the zip players install by hand, so GitHub counts updates and
+  manual downloads apart; `BetterDT.zip` when a release has no copy), checks the CRC-32 of every file and the
   version in `mods/betterdt-version.txt`, and only then replaces the files. The loaded DLL is renamed to
   `BetterDT_x64.old` and deleted on the next start; the new version is used after a restart.
   `mods\mods.json` keeps any mods you added yourself. The zip is uncompressed so the loader can read it
@@ -384,8 +385,8 @@ BetterDTKit.mod('my-mod', {
 
 **Build:** `loader\build.bat` (Visual Studio 2022 with C++; the WebView2 header is downloaded from NuGet),
 then add the release notes to `loader\CHANGES.txt` and run `loader\package.ps1`, which creates
-`loader\dist\BetterDT.zip`.
-Publish: `gh release create v<version> loader/dist/BetterDT.zip`.
+`loader\dist\BetterDT.zip` and its copy `BetterDT-update.zip`.
+Publish: `gh release create v<version> loader/dist/BetterDT.zip loader/dist/BetterDT-update.zip`.
 
 ## How the game is built
 

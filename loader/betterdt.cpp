@@ -16,7 +16,7 @@
 // Settings: mods\betterdt.ini (key=value lines, written by the BetterDT section in the game settings):
 //   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 disables a mod,
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
-// Updates: BetterDT.zip from the latest GitHub release (every file checked by its CRC-32).
+// Updates: BetterDT-update.zip (a copy of BetterDT.zip) from the latest GitHub release (every file checked by its CRC-32).
 // Crashes: a crashed game page is reloaded automatically (see OnProcessFailed).
 // Log: mods\betterdt.log (overwritten on every start).
 
@@ -333,6 +333,8 @@ struct Manifest {
 };
 struct ZipEntry { std::string name, data; };
 static const char kZipAsset[] = "BetterDT.zip";
+// the same zip under a second name, so GitHub counts updates apart from manual downloads (0.3.7+)
+static const char kUpdateAsset[] = "BetterDT-update.zip";
 static const char kManifestEntry[] = "mods/betterdt-version.txt";
 
 static uint32_t Crc32(const std::string &d) {
@@ -534,8 +536,9 @@ static void RunUpdate() {
   SetUpd("downloading");
   std::string zipData;
   std::vector<ZipEntry> zip;
-  if (!HttpGet(ReleaseUrl("download/v" + latest + "/" + kZipAsset), zipData, kMaxAsset, err)) {
-    Log("update: cannot download %s (%s)", kZipAsset, err.c_str());
+  if (!HttpGet(ReleaseUrl("download/v" + latest + "/" + kUpdateAsset), zipData, kMaxAsset, err) &&
+      !HttpGet(ReleaseUrl("download/v" + latest + "/" + kZipAsset), zipData, kMaxAsset, err)) {
+    Log("update: cannot download %s (%s)", kUpdateAsset, err.c_str());
     SetUpd("error", "download: " + err);
     return;
   }
