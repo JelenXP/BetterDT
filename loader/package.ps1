@@ -33,6 +33,17 @@ foreach ($f in $mods) { $entries["mods/$f"] = [IO.File]::ReadAllBytes((Join-Path
 $entries['mods/mods.json'] = [IO.File]::ReadAllBytes((Join-Path $modsDir 'mods.json'))
 $entries['mods/betterdt-version.txt'] = $utf8.GetBytes(($manifest -join "`n") + "`n")
 
+# DevTools and remote debugging are for the local test copy only and must never ship: refuse to package
+# anything that mentions them (the dev channel mod, a debugging port, WebView2 browser arguments)
+$banned = 'devtools|remote-debugging|ADDITIONAL_BROWSER_ARGUMENTS'
+foreach ($name in $entries.Keys) {
+  $data = $entries[$name]
+  foreach ($enc in @([Text.Encoding]::GetEncoding(28591), [Text.Encoding]::Unicode)) {
+    $m = [regex]::Match($enc.GetString($data), $banned, 'IgnoreCase')
+    if ($m.Success) { throw "$name mentions '$($m.Value)': DevTools must not get into a release" }
+  }
+}
+
 $crcTable = [uint32[]]::new(256)
 for ($i = 0; $i -lt 256; $i++) {
   [uint32]$c = $i
