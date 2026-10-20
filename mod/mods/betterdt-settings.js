@@ -73,18 +73,35 @@
     return found;
   }
 
-  // a saved game is loaded: day > 0 for two seconds in a row (its tables are filled by then)
+  // A saved game is loaded after its required tables have been filled.  Since game 1.5, DayTotal becomes
+  // positive before several of those tables are populated, so time alone is not a reliable signal.
   const gameWaiters = [];
   let gameSince = 0, gameTimer = 0;
-  function whenGameLoaded(cb) {
-    gameWaiters.push(cb);
+  function tablesReady(spec) {
+    for (const [name, [w, h]] of Object.entries((spec.needs || {}).arrays || {})) {
+      let a = null;
+      try { a = rt.objects[name] && rt.objects[name].getFirstInstance(); } catch { }
+      if (!a || a.width < (w || 0) || a.height < (h || 0)) return false;
+    }
+    return true;
+  }
+  function whenGameLoaded(spec, cb) {
+    gameWaiters.push({ spec, cb });
     if (gameTimer) return;
     gameTimer = setInterval(() => {
       if (!(Number(rt.globalVars.DayTotal) > 0)) { gameSince = 0; return; }
       if (!gameSince) { gameSince = Date.now(); return; }
       if (Date.now() - gameSince < 2000) return;
-      clearInterval(gameTimer);
-      for (const f of gameWaiters.splice(0)) { try { f(); } catch (e) { console.error('[BetterDTKit]', e); } }
+      // Keep waiting only for tables that have not arrived yet.  The timeout lets checkData still report a
+      // genuinely incompatible game instead of leaving a mod in the waiting state forever.
+      const force = Date.now() - gameSince >= 60000;
+      for (let i = gameWaiters.length - 1; i >= 0; i--) {
+        const w = gameWaiters[i];
+        if (!force && !tablesReady(w.spec)) continue;
+        gameWaiters.splice(i, 1);
+        try { w.cb(); } catch (e) { console.error('[BetterDTKit]', e); }
+      }
+      if (!gameWaiters.length) { clearInterval(gameTimer); gameTimer = 0; }
     }, 500);
   }
 
@@ -192,7 +209,7 @@
           log('[BetterDTKit] started', name);
         } catch (e) { console.error('[BetterDT] mod', name, 'failed:', e); stop('failed', 'start: ' + ((e && e.message) || e)); }
         const n = spec.needs || {};
-        if (Object.keys(n.arrays || {}).length || n.dataCheck) whenGameLoaded(() => {
+        if (Object.keys(n.arrays || {}).length || n.dataCheck) whenGameLoaded(spec, () => {
           const q = checkData(spec);
           if (q.length) stop('incompatible', q.join(', '));
         });
@@ -623,6 +640,13 @@ BetterDT.register('betterdt-settings', (rt) => {
     'no-ending.js': [{ key: 'no-ending.skip', type: 'bool', def: false }],
     'research-all.js': [{ key: 'research-all.gameButton', type: 'bool', def: false }],
   };
+  // Game 1.5 has its own employee-vacation automation. Disable the overlapping BetterDT mod once for
+  // every existing installation; people can still explicitly turn it back on in the settings.
+  const VACATION_15_MIGRATION = 'vacation-tools.disabled-after-1.5';
+  if (S.get(VACATION_15_MIGRATION) === undefined) {
+    S.set('mod.vacation-tools.js', false);
+    S.set(VACATION_15_MIGRATION, true);
+  }
   // mods based on someone else's work: shown under the mod in the settings
   const CREDITS = { 'no-ending.js': 'M1lan.', 'unlimited-shares.js': 'M1lan.' };
   // what only takes effect after a restart: state at game start

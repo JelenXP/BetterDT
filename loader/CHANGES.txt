@@ -1,5 +1,7 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.3.7 Game 1.5: wait for game data before checking mod compatibility
+0.3.7 Game 1.5: Vacation for the tired is off by default; only All to max is shown for stores
 0.3.7 Updates: "Check now" installs a newer version right away (no separate "Install" step)
 0.3.6 Unlimited shares: buy up to the game's 49 % limit in one purchase (based on a mod by M1lan.)
 0.3.6 My stores: "Upgrade all stores" upgrades every country at once, "All to max" while the money lasts

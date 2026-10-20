@@ -45,7 +45,7 @@ extern "C" const int VT_ENV10_CREATE_CONTROLLER_OPT;
 extern "C" const int VT_ENV10_CREATE_COMPOSITION_OPT;
 
 #ifndef BETTERDT_VERSION
-#define BETTERDT_VERSION "0.3.6"
+#define BETTERDT_VERSION "0.3.7"
 #endif
 #define WIDE2(s) L##s
 #define WIDE(s) WIDE2(s)
@@ -212,7 +212,9 @@ static std::vector<std::string> ModList() {
   return list;
 }
 static bool ModEnabled(const std::string &name) {
-  return name == kCoreMod || IniOn("mod." + name, true);
+  // Game 1.5 includes its own vacation automation. Keep the overlapping BetterDT mod opt-in for new installs.
+  const bool defaultOn = name != "vacation-tools.js";
+  return name == kCoreMod || IniOn("mod." + name, defaultOn);
 }
 
 // ── update state ────────────────────────────────────────────────────────────────────────────────

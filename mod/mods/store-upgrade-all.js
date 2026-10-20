@@ -34,6 +34,9 @@ BetterDTKit.mod('store-upgrade-all', {
   if (globalThis.__dtStoreUpgradeAll) globalThis.__dtStoreUpgradeAll.dispose();
 
   const LAYOUT = 'SHOPS UPGRADE';
+  // Game 1.5 has a native one-round "upgrade all" button. Keep our implementation below for now, but do
+  // not show or accept input for its competing button until it is useful again.
+  const SHOW_UPGRADE_ONCE_BUTTON = false;
   const gv = rt.globalVars;
   const UID = { title: 21284, money: 21430, payAll: 22270, areas: [22262, 22263, 22264, 22265, 22266, 22267] };
   const LANG_NO_FUNDS = 10974;
@@ -302,12 +305,13 @@ BetterDTKit.mod('store-upgrade-all', {
     const w1 = Math.max(120, (ui.once.text.textWidth || 0) + 56), w2 = Math.max(120, (ui.max.text.textWidth || 0) + 56);
     const right = (money ? money.x - (money.textWidth || 300) : 1500) - 40;
     const left = title ? title.x + (title.textWidth || 700) + 30 : 760;
-    const fits = right - w2 - 14 - w1 >= left;
+    const fits = SHOW_UPGRADE_ONCE_BUTTON ? right - w2 - 14 - w1 >= left : right - w2 >= left;
     const vis = fits ? a : 0;
     paintButton(ui.max, maxLabel, running || (c.n > 0 && c.min <= budget), vis, right - w2 / 2, w2);
-    paintButton(ui.once, onceLabel, !running && c.n > 0 && c.usd <= budget, vis, right - w2 - 14 - w1 / 2, w1);
+    if (SHOW_UPGRADE_ONCE_BUTTON) paintButton(ui.once, onceLabel, !running && c.n > 0 && c.usd <= budget, vis, right - w2 - 14 - w1 / 2, w1);
+    else { ui.once.on = false; ui.once.btn.opacity = ui.once.glow.opacity = ui.once.text.opacity = 0; }
     // the hand cursor over a button, as the game sets it over its own (only on a change: the game sets it too)
-    const hand = vis > 0.05 && String(gv.EditorNotification) === 'OFF' && (hovered(ui.once) || hovered(ui.max));
+    const hand = vis > 0.05 && String(gv.EditorNotification) === 'OFF' && hovered(ui.max);
     if (hand !== ui.hand) {
       ui.hand = hand;
       const canvas = document.querySelector('canvas');
@@ -415,7 +419,7 @@ BetterDTKit.mod('store-upgrade-all', {
     pointer = [e.clientX, e.clientY];
     if (!ui || layoutName() !== LAYOUT) return;
     if (String(gv.EditorNotification) !== 'OFF') return;      // the click closes the game notification
-    const b = [ui.once, ui.max].find(b => b.text.opacity > 0.05 && hovered(b));
+    const b = [ui.max].find(b => b.text.opacity > 0.05 && hovered(b));
     if (!b) return;
     e.stopImmediatePropagation(); e.preventDefault();
     swallow = true;

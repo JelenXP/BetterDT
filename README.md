@@ -36,9 +36,9 @@ game file and does not touch your saves.
   takes them out again).
 - **Unlimited shares (INVESTING):** the exchange offers as many shares of a company as you can afford, so one
   purchase can go up to the game's own 49 % limit instead of a few percent at a time. Based on a mod by **M1lan.**
-- **Stores (MY STORES):** **Upgrade all stores** pays "PAY ALL" in every country with stores at once (the price is
-  on the button), and **All to max** keeps upgrading every store for as long as the money lasts (it asks first and
-  says how much it will spend).
+- **Stores (MY STORES):** **All to max** keeps upgrading every store for as long as the money lasts (it asks first
+  and says how much it will spend). The one-round **Upgrade all stores** code is retained but hidden while the
+  game provides its own equivalent button.
 - **Fixed FPS above 60 at full speed:** with a high fixed FPS in the game settings the game used to run slower
   (at 240 FPS about 78 % of normal speed, at 500 FPS about 37 %). Now it runs at normal speed with any setting.
 - **MY OS UPGRADE** no longer stutters.
@@ -81,7 +81,7 @@ or ask on [Discord](https://discord.gg/JdQEMNNTrN).
 - **Mods:** an on/off switch for every mod (with a note when it does not fit the game version) and the mod options:
   - hire-tools: hire everyone found automatically,
   - train-all: mute the click sounds while training,
-  - vacation-tools: the mood threshold for sending people on vacation (default 30),
+  - vacation-tools: off by default since game 1.5 (which has its own vacation automation); when enabled, the mood threshold defaults to 30,
   - autosave: save every N game days (default 90, 5 to 180),
   - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away),
   - no-ending: skip the final screen and continue right away (off by default),
