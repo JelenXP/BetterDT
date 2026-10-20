@@ -68,3 +68,4 @@ PROBLEMS?
 - A game update or "Verify integrity of game files" in Steam does not remove BetterDT.
 - If something goes wrong, the file mods\betterdt.log says what happened.
   Report problems at https://github.com/JelenXP/BetterDT/issues
+  or ask on Discord: https://discord.gg/JdQEMNNTrN

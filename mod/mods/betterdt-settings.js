@@ -270,6 +270,13 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Folder mod', 'Folder modów', '模组文件夹', '모드 폴더', 'MOD フォルダー'],
     open: ['Open', 'Открыть', 'Öffnen', 'Ouvrir', 'Apri', 'Abrir', 'खोलें', 'Aç', 'Abrir', 'Відкрити', 'Buka', 'Otwórz', '打开', '열기', '開く'],
     log: ['Log', 'Журнал', 'Protokoll', 'Journal', 'Registro', 'Registro', 'लॉग', 'Günlük', 'Registro', 'Журнал', 'Log', 'Dziennik', '日志', '로그', 'ログ'],
+    community: ['Community', 'Сообщество', 'Community', 'Communauté', 'Community', 'Comunidad', 'समुदाय', 'Topluluk', 'Comunidade',
+      'Спільнота', 'Komunitas', 'Społeczność', '社区', '커뮤니티', 'コミュニティ'],
+    communityHint: ['Questions, ideas and bug reports', 'Вопросы, идеи и сообщения об ошибках', 'Fragen, Ideen und Fehlerberichte',
+      'Questions, idées et signalements de bugs', 'Domande, idee e segnalazioni di bug', 'Preguntas, ideas y reportes de errores',
+      'सवाल, सुझाव और बग रिपोर्ट', 'Sorular, fikirler ve hata bildirimleri', 'Perguntas, ideias e relatos de bugs',
+      'Питання, ідеї та повідомлення про помилки', 'Pertanyaan, ide, dan laporan bug', 'Pytania, pomysły i zgłoszenia błędów',
+      '问题、想法和错误报告', '질문, 아이디어, 버그 신고', '質問、アイデア、不具合の報告'],
     releases: ['Releases', 'Версии', 'Versionen', 'Versions', 'Versioni', 'Versiones', 'संस्करण', 'Sürümler', 'Versões', 'Версії', 'Rilis', 'Wydania', '版本发布', '릴리스', 'リリース'],
     modsHint: ['Turning a mod on or off takes effect after a restart', 'Включение и выключение модов сработает после перезапуска',
       'Ein- und Ausschalten wirkt nach einem Neustart', 'Activer ou désactiver un mod prend effet après un redémarrage',
@@ -729,6 +736,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     el('div', 'gs-row-hint bdt-val', vctl).textContent = 'v' + B.version;
     btn(vctl, t('releases'), () => B.api('open', { what: 'github' }));
     el('div', 'gs-row-hint bdt-val', row(c1, t('gameVer'))).textContent = KIT ? KIT.gameVersion || '?' : '?';
+    btn(row(c1, t('community'), t('communityHint')), 'Discord', () => B.api('open', { what: 'discord' }));
 
     sw(row(c1, t('autoUpdate'), t('autoUpdateHint')), S.bool('autoupdate', true), (on) => save('autoupdate', on));
     updRow = row(c1, t('updates')).parentNode;

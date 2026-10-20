@@ -906,6 +906,7 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
     std::string what = QueryParam(query, "what");
     if (what == "folder") ShellExecuteW(nullptr, L"open", g_modsDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else if (what == "log") ShellExecuteW(nullptr, L"open", (g_modsDir + L"betterdt.log").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    else if (what == "discord") ShellExecuteW(nullptr, L"open", L"https://discord.gg/JdQEMNNTrN", nullptr, nullptr, SW_SHOWNORMAL);
     else if (what == "github") ShellExecuteW(nullptr, L"open", Widen(std::string("https://github.com/") + kRepo + "/releases").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else { status = 400; return "{\"error\":\"bad target\"}"; }
     return "{\"ok\":true}";

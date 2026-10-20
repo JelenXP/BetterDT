@@ -3,6 +3,8 @@
 Handy extra buttons for **Devices Tycoon** that save you a lot of clicking. BetterDT does not change any
 game file and does not touch your saves.
 
+**Discord:** [discord.gg/JdQEMNNTrN](https://discord.gg/JdQEMNNTrN) – questions, ideas and bug reports.
+
 ## What you get
 
 - **Hiring (FIND EMPLOYEES):** a second button next to every agency keeps searching until your office is
@@ -62,12 +64,13 @@ a prefilled bug report and copies it, so you can also paste it into the Steam di
 
 **Problems?** If there is no BetterDT section in the settings, the DLL is not next to `Devices Tycoon.exe`.
 Game updates and "Verify integrity of game files" do not remove BetterDT. The file `mods\betterdt.log`
-says what happened; please attach it when you [report a problem](https://github.com/JelenXP/BetterDT/issues).
+says what happened; please attach it when you [report a problem](https://github.com/JelenXP/BetterDT/issues)
+or ask on [Discord](https://discord.gg/JdQEMNNTrN).
 
 ## Settings (Settings → BetterDT)
 
 - **General:** BetterDT and game version, automatic updates (on by default), "Check now" / "Install" for updates,
-  high-performance GPU switch, buttons that open the mods folder, the log and the GitHub releases.
+  high-performance GPU switch, buttons that open the mods folder, the log, the GitHub releases and the Discord.
 - **Mods:** an on/off switch for every mod (with a note when it does not fit the game version) and the mod options:
   - hire-tools: hire everyone found automatically,
   - train-all: mute the click sounds while training,
