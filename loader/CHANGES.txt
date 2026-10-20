@@ -1,6 +1,6 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
-0.3.5 Settings → BetterDT: a Discord button (questions, ideas and bug reports)
+0.3.5 Settings > BetterDT: a Discord button (questions, ideas and bug reports)
 0.3.5 A high fixed FPS in the game settings no longer slows the game down
 0.3.4 Update software: "Select all" picks every app for the update (next version, same settings), "Clear all" undoes it
 0.3.4 OS upgrade: "Select all" picks all technologies at once
