@@ -277,6 +277,13 @@ BetterDT.register('betterdt-settings', (rt) => {
       'सवाल, सुझाव और बग रिपोर्ट', 'Sorular, fikirler ve hata bildirimleri', 'Perguntas, ideias e relatos de bugs',
       'Питання, ідеї та повідомлення про помилки', 'Pertanyaan, ide, dan laporan bug', 'Pytania, pomysły i zgłoszenia błędów',
       '问题、想法和错误报告', '질문, 아이디어, 버그 신고', '質問、アイデア、不具合の報告'],
+    updDiscord: ['Ideas, questions or a bug? Join us on', 'Идеи, вопросы или ошибка? Присоединяйтесь к нам в',
+      'Ideen, Fragen oder ein Fehler? Komm zu uns auf', 'Des idées, des questions ou un bug ? Rejoignez-nous sur',
+      'Idee, domande o un bug? Unisciti a noi su', '¿Ideas, preguntas o un error? Únete a nosotros en',
+      'सुझाव, सवाल या कोई बग? हमसे जुड़ें', 'Fikir, soru ya da hata mı var? Bize katılın:',
+      'Ideias, dúvidas ou um bug? Junte-se a nós no', 'Ідеї, питання чи помилка? Приєднуйтесь до нас у',
+      'Ada ide, pertanyaan, atau bug? Gabung dengan kami di', 'Pomysły, pytania albo błąd? Dołącz do nas na',
+      '有想法、问题或发现错误？欢迎加入我们的', '아이디어, 질문, 버그가 있나요? 함께해요:', 'アイデア・質問・不具合は'],
     releases: ['Releases', 'Версии', 'Versionen', 'Versions', 'Versioni', 'Versiones', 'संस्करण', 'Sürümler', 'Versões', 'Версії', 'Rilis', 'Wydania', '版本发布', '릴리스', 'リリース'],
     modsHint: ['Turning a mod on or off takes effect after a restart', 'Включение и выключение модов сработает после перезапуска',
       'Ein- und Ausschalten wirkt nach einem Neustart', 'Activer ou désactiver un mod prend effet après un redémarrage',
@@ -849,6 +856,9 @@ BetterDT.register('betterdt-settings', (rt) => {
 #bdt-dlg .bdt-text { font-size: 26px; line-height: 1.45; text-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
 #bdt-dlg .bdt-notes { margin: 14px auto 0; display: inline-block; text-align: left; font-size: 22px; line-height: 1.4; opacity: .8; }
 #bdt-dlg .bdt-hint { margin-top: 14px; font-size: 20px; line-height: 1.35; opacity: .65; }
+#bdt-dlg .bdt-community { margin-top: 18px; font-size: 20px; line-height: 1.35; opacity: .75; }
+#bdt-dlg .bdt-link { color: #8ea1ff; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+#bdt-dlg .bdt-link:hover { color: #b3c0ff; }
 #bdt-dlg .bdt-buttons { display: flex; justify-content: center; gap: 40px; margin-top: 24px; }
 #bdt-dlg .bdt-btn { box-sizing: border-box; min-width: 240px; padding: 0 28px; height: 50px; line-height: 50px; border-radius: 8px;
   font-size: 25px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .35); cursor: pointer; user-select: none;
@@ -900,6 +910,12 @@ BetterDT.register('betterdt-settings', (rt) => {
     dialog(t('updTitle', { v: u.latest }), t('updText'), (c) => {
       const notes = String(u.notes || '').split('\n').filter(Boolean);
       if (notes.length) { const n = el('div', 'bdt-notes', c); for (const line of notes) el('div', '', n).textContent = '• ' + line; }
+      // a quiet pointer to the Discord, only here (an update is read by everybody, once)
+      const d = el('div', 'bdt-community', c);
+      d.append(t('updDiscord') + ' ');
+      const a = el('span', 'bdt-link', d);
+      a.textContent = 'Discord';
+      a.addEventListener('click', () => { globalThis.tapMain?.(); B.api('open', { what: 'discord' }); });
     }, [
       { label: t('later'), cb: () => B.api('update-ack') },
       { label: t('restart'), go: true, keep: true, cb: () => B.api('update-ack').then(() => B.api('restart')) },

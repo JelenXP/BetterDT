@@ -1,5 +1,7 @@
 # BetterDT – mods for Devices Tycoon
 
+[![Discord](https://img.shields.io/badge/Discord-join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/JdQEMNNTrN)
+
 Handy extra buttons for **Devices Tycoon** that save you a lot of clicking. BetterDT does not change any
 game file and does not touch your saves.
 
