@@ -34,6 +34,9 @@ game file and does not touch your saves.
   out again).
 - **OS upgrade (MY OS UPGRADE):** **Select all** picks all of the about 35 technologies at once (**Clear all**
   takes them out again).
+- **Stores (MY STORES):** **Upgrade all stores** pays "PAY ALL" in every country with stores at once (the price is
+  on the button), and **All to max** keeps upgrading every store for as long as the money lasts (it asks first and
+  says how much it will spend).
 - **Fixed FPS above 60 at full speed:** with a high fixed FPS in the game settings the game used to run slower
   (at 240 FPS about 78 % of normal speed, at 500 FPS about 37 %). Now it runs at normal speed with any setting.
 - **MY OS UPGRADE** no longer stutters.
@@ -178,6 +181,28 @@ its own layer.
   clicks every technology that is not selected yet through the game's own click handler, so the game adds up the
   price and the rating itself, exactly as with single clicks. When everything is selected the button turns into
   **Clear all**. Single cards can still be clicked as before.
+
+### `store-upgrade-all.js`: upgrade all stores (MY STORES)
+- The game upgrades the stores of one country at a time: pick the country on the left, then **PAY ALL** (all six
+  areas) or the price button of one area. Two buttons in the top bar, between the title and the money, in the look
+  of the game's PAY ALL button:
+  - **Upgrade all stores $x** clicks PAY ALL once in every country with stores. The price on the button is the sum
+    of them; when the money is not enough for all of it the button is grey and a click shows the game's "You don't
+    have enough funds".
+  - **All to max** clicks PAY ALL in every country, round after round, while the money lasts; when no full round is
+    affordable any more, the cheapest single areas are bought with the rest. A click first asks: a dry run of the
+    same rounds (with the game's price formula and random gains) shows about how much money it will spend and the
+    store levels after it. The button shows the progress, a click on it stops, and at the end the game's message
+    says how many upgrades were bought for how much.
+- Every upgrade is a click on the game's own PAY ALL or area button (the same as with the mouse), so the price
+  check, paying, the random gains, the store level and the demand are the game's code. The mod only picks the
+  country (`MiniPage`, as a click on the country does), clicks, and opens the country you had open again at the end.
+  Before every click it computes the price with the game's formula (`ArrayShops` base price × (5 + √ average
+  quality) / 100 × stores, −10 % with the perk); when the game takes a different amount, the mod stops and turns
+  itself off. Sounds are muted during the batch and one plays at the end.
+- Tested in game 1.4 with 3 countries: the button price was exactly what the game took ($1 978 479), and "to the
+  max" from $12.3 billion bought 25 497 upgrades in 8 s, spent within 0.001 % of the estimate and left less than
+  the cheapest next upgrade.
 
 ### `fixed-fps.js`: fixed FPS at full speed
 - **The problem:** in Construct's "fixed" frame rate mode every tick moves the game time by exactly 1 / FPS, no
