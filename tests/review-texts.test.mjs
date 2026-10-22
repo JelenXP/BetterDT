@@ -17,6 +17,6 @@ test('placeholders kept in all languages', () => {
   assert.ok(T.breakthroughLine.every(s => s.includes('{part}') && s.includes('{date}')));
   assert.ok(full(T.breakthroughTitle));
 });
-test('summaries are short', () => {
-  for (const [, s] of [...T.value.flat(), ...T.innovation]) for (const x of s) assert.ok([...x].length <= 24, x);
+test('summaries in the game style', () => {
+  for (const [, s] of [...T.value.flat(), ...T.innovation]) assert.match(s[0], /^The user /);
 });

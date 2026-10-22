@@ -425,7 +425,8 @@ const out = {
   }])),
   research, editors, ratingSids, salesScript,
   closing: [[2629, 2658], [2659, 2688], [2689, 2718]],
-  releaseCol: 122, ratingCol: 100,
+  // design array columns (z) of a released device: rating, release day (the review screen writes them)
+  releaseCol: 7, ratingCol: 5,
 };
 const checks = [];
 if (ratingSids.length !== 32) checks.push(`${ratingSids.length} rating writes, expected 32`);
