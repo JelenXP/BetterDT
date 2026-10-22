@@ -378,9 +378,10 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - Turned off, the game's own random reviews are back; ratings already stored stay.
 
 ### `research-breakthroughs.js`: research breakthroughs
-- A research lab project runs 30 days and fills the lab's point pool. When it ends, the pool decides how many
-  breakthroughs it gives: the first comes with a chance of about 47 % at 750 points, a second and third only after
-  the first, and more points give more (`lib-breakthrough-core.js`).
+- A research lab project runs 30 days and fills the lab's point pool. When it ends, every point the lab made during
+  it decides how many breakthroughs it gives: the points you collected on the way count too, the points lost over
+  the pool's cap do not. The first comes with a chance of about 47 % at 750 points and 60 % at 1 700, a second and
+  third only after the first, and more points give more (`lib-breakthrough-core.js`).
 - A breakthrough raises one research category one level ahead of the parts on the market: the next part of that
   category, normally available up to a year later. A category you are more than a few levels behind in cannot get
   one. Categories of the device types you released in the last two years are drawn three times as often. The

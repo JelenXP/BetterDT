@@ -1,9 +1,10 @@
 // Research breakthroughs – a finished lab project can research parts before the market has them.
 //
-// When a lab project ends, its points decide how many breakthroughs it gives (0–3, more points give more). Each one
-// raises a research category by one level ahead of the parts on the market: the next part of that category, normally
-// available up to a year later, can be built into devices now. A category the player is far behind in cannot get one.
-// Categories of the device types the player released in the last two years are drawn three times as often.
+// When a lab project ends, the points it made (collected ones too) decide how many breakthroughs it gives (0–3, more
+// points give more). Each one raises a research category by one level ahead of the parts on the market: the next part
+// of that category, normally available up to a year later, can be built into devices now. A category the player is
+// far behind in cannot get one. Categories of the device types the player released in the last two years are drawn
+// three times as often.
 // The parts come as the game's own news in the office (the game waits while it is open, Auto continue closes it).
 // The device designer lists a category's parts up to the number of parts on the market; for a category researched
 // ahead that number is raised to the research level, so the future parts are offered.
@@ -137,12 +138,26 @@ BetterDTKit.mod('research-breakthroughs', {
     if (out.length && !opts.quiet) announce(out);
     return out;
   }
-  let invest = null;
+  // The yield of a project is every point the lab made during it: the pool is capped by the lab's size and collecting
+  // empties it, so the daily growth of the pool is summed up (collected points count, points over the cap do not).
+  // A project the mod saw only part of (a game loaded in the middle of it) counts its days seen for the whole project.
+  const PROJECT_DAYS = 30;
+  let invest = null, lab = { made: 0, seen: 0, first: 0, last: -1 };
   kit.wrapCalls('ResearchInvestEngine', {
     before() { const a = arr('ArrayMyResearch_Invest'); invest = { pool: num(a.getAt(0, 0)), days: num(a.getAt(0, 1)) }; },
     after() {
       const was = invest; invest = null;
-      if (was && was.days === 1 && num(arr('ArrayMyResearch_Invest').getAt(0, 1)) === 0 && was.pool > 0) finish(was.pool);
+      if (!was || was.days <= 0) return;
+      const a = arr('ArrayMyResearch_Invest'), days = num(a.getAt(0, 1));
+      // a new project: more days left than the day before
+      if (lab.last < 0 || was.days > lab.last) lab = { made: 0, seen: 0, first: was.days, last: -1 };
+      lab.made += Math.max(0, num(a.getAt(0, 0)) - was.pool);
+      lab.seen++;
+      lab.last = was.days;
+      if (was.days !== 1 || days !== 0) return;
+      const Y = lab.first >= PROJECT_DAYS ? lab.made : lab.made * PROJECT_DAYS / lab.seen;
+      lab = { made: 0, seen: 0, first: 0, last: -1 };
+      if (Y > 0) finish(Math.round(Y));
     },
   });
 
@@ -205,7 +220,8 @@ BetterDTKit.mod('research-breakthroughs', {
   kit.onStop(salesOff);
 
   const api = {
-    salesOff: false, testBonus: null, lastProject: null, finish, announce, candidates, extra, bonus, salesOn, salesOffNow: salesOff,
+    salesOff: false, testBonus: null, lastProject: null, get lab() { return lab; }, finish, announce, candidates, extra, bonus,
+    salesOn, salesOffNow: salesOff,
     dispose() { clearInterval(retry); salesOff(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
