@@ -91,6 +91,8 @@ BetterDTKit.mod('country-picker', {
   css.id = 'bdt-country-picker-css';
   css.textContent = `
 #cp-root.bdt-cp .cp-bars { display: none; }
+/* the cards come in one by one (--i); until a card is sorted its entrance waits, still hidden */
+#cp-root .cp-card:not([data-bdt]) { animation-play-state: paused; }
 #bdt-cp-sort { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
 .bdt-cp-chip { padding: 5px 10px 4px; border-radius: 999px; cursor: pointer; font-size: 17px; line-height: 1;
   letter-spacing: .03em; color: rgba(255,255,255,0.7); background: rgba(16,19,28,0.6);
@@ -137,7 +139,8 @@ BetterDTKit.mod('country-picker', {
   // ── on the picker ─────────────────────────────────────────────────────────────────────────────
   let sortIdx = Math.round(S.num('country-picker.sort', 0));
   let painted = '';   // what the cards show now: language, effects on/off, sort
-  function paint(root, force) {
+  const STAGGER_MAX = 16;   // as the game's picker: the 16th card and later come in together
+  function paint(root, force, replay) {
     const list = sorts();
     if (!(sortIdx >= 0 && sortIdx < list.length)) sortIdx = 0;
     const cur = list[sortIdx];
@@ -158,7 +161,7 @@ BetterDTKit.mod('country-picker', {
         sortIdx = Number(c.dataset.i);
         Promise.resolve(S.set('country-picker.sort', sortIdx)).catch(e => console.error('[country-picker] save', e));
         globalThis.tapMain?.();
-        paint(root, true);
+        paint(root, true, true);
         const l = root.querySelector('#cp-list');
         if (l) l.scrollTop = 0;
       }));
@@ -169,7 +172,15 @@ BetterDTKit.mod('country-picker', {
     const byId = new Map(rows.map(r => [r.id, r]));
     const order = new Map();
     if (cur.score) rows.slice().sort((a, b) => cur.score(b) - cur.score(a) || a.name.localeCompare(b.name)).forEach((r, i) => order.set(r.id, i));
-    for (const card of root.querySelectorAll('#cp-list .cp-card')) {
+    const cards = root.querySelectorAll('#cp-list .cp-card');
+    // a new sort comes in again, in its own order
+    if (replay) { for (const card of cards) card.style.animation = 'none'; void root.offsetWidth; }
+    let n = 0;
+    for (const card of cards) {
+      const pos = order.has(Number(card.dataset.id)) ? order.get(Number(card.dataset.id)) : n;
+      n++;
+      card.style.setProperty('--i', String(Math.min(pos, STAGGER_MAX)));
+      if (replay) card.style.animation = '';
       const r = byId.get(Number(card.dataset.id));
       if (!r) continue;
       if (fresh || !card.dataset.bdt) {
@@ -204,11 +215,13 @@ BetterDTKit.mod('country-picker', {
     if (root) {
       root.classList.remove('bdt-cp');
       root.querySelector('#bdt-cp-sort')?.remove();
+      let n = 0;
       for (const c of root.querySelectorAll('#cp-list .cp-card')) {
         c.querySelector('.bdt-cp-stats')?.remove();
         c.querySelector('.bdt-cp-rank')?.remove();
         delete c.dataset.bdt;
         c.style.order = '';
+        c.style.setProperty('--i', String(Math.min(n++, STAGGER_MAX)));
       }
       const empty = root.querySelector('#cp-empty');
       if (empty) empty.style.order = '';

@@ -298,6 +298,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   best overall, lowest tax, most money, most research, lowest salaries, most sales, A–Z. The first three of the sort
   get a star; the sort is remembered. "Best overall" weighs the tax most (35 %, paid the whole game), then start
   money 20 %, research, salaries and sales 15 % each, each scaled between the lowest and the highest country.
+- The cards come in one by one as in the game (`--i`, 45 ms apart, the 16th and later together), in the sorted
+  order: until a card is sorted its entrance waits hidden (`animation-play-state: paused`), and a new sort plays it
+  again.
 
 ### `auto-continue.js`: auto continue (NEWS)
 - The game shows news, warnings and tips in one HTML dialog (`showOfficeNews`) with no button, one OK, or two
