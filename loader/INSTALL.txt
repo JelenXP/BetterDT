@@ -37,6 +37,9 @@ WHAT YOU GET
   Based on a mod by M1lan.
 - NEW GAME: "Custom start" under the start years starts the company in any month and year (up to the latest
   year you reached), with research and rivals set between the game's start years.
+- NEW GAME: the country cards show tax, research and the country effects, and the countries can be sorted by
+  what you need (lowest tax, most money, ...); the best three get a star.
+- Country effects: a country with a low cost of production pays lower salaries, more international trade sells more.
 - NEWS: an "Auto continue" checkbox next to OK closes news with a single OK by itself after 3 seconds
   (1 to 10 in Settings -> BetterDT -> Mods). Dialogs with a choice are never closed.
 - Real company names (game 1.4+): Sony, Intel, Samsung, ... instead of Somy, Infel, Samsong, ...

@@ -28,6 +28,11 @@ game file and does not touch your saves.
 - **Custom start (NEW GAME):** under the game's start years (2008, 2010, 2014, 2020, 2026) a "Custom start" row
   with a month and a year. The company starts on that date, with research and rivals set between the game's start
   years (May 2017 is 55 % of the way from 2014 to 2020). The latest date is the latest year you reached in any game.
+- **Country picker (NEW GAME):** the country cards show tax, start research and the country effects with labels
+  instead of the bars without labels, and chips above the list sort the 135 countries (best overall, lowest tax, most
+  money, most research, lowest salaries, most sales, A–Z); the first three get a star.
+- **Country effects:** the country's cost of production and international trade, only shown in the game, do
+  something: a cheap country pays lower salaries (×0.8…×1.2), more trade sells more devices (×0.90…×1.15).
 - **Auto continue (NEWS):** a checkbox to the right of the OK button of news. When it is checked, news with a single
   OK closes by itself 3 seconds after its text is typed (1 to 10 seconds in the settings). Dialogs with a choice are
   never closed; unchecking the box or a click in the dialog keeps the open one until you press OK.
@@ -266,6 +271,33 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   its days with the game's internal copy, so for a start late in a year it shows up to 11 months more.
 - Tested in game 1.6: start in May 2017 = date 1. 5. 2017 (game day 3406), research between the 2014 and 2020
   columns as computed (e.g. 11 → 18 gives 15), rivals between the two layers; a normal 2014 start unchanged.
+
+### `country-effects.js`: country effects
+- What a country (`ArrayCountries`: name, budget, tax, cost of production, international trade, research level)
+  does in game 1.6: the budget is the start money, the research level the start research points, the tax rate is
+  used every month (`applyMonthlyTaxes`, on the profit, scaled by the revenue). Cost of production and trade are
+  only shown: the salary module has a scale of the salaries by cost of production (`getSalaryConfig().COUNTRY_SCALE`,
+  ×0.6…×1.4) that is turned off, and trade only spreads the sales over the countries on the stats page. Checked
+  in the code (every read of the array and of `CompanyCountryID`) and in the game (reads logged while playing).
+- Cost of production: the mod turns the game's salary scale on with a milder range, ×0.8 at 1 % … ×1.2 at 100 %
+  (`setSalaryConfig`). The monthly payment (`applySalaryExpences` → `SalaryExpences`) uses it; the salaries shown on
+  the employees stay the game's own.
+- International trade: the potential of a device is `(AUDIENCE_SEED + fans × AUDIENCE_FAN_W …) × …` and the daily
+  sales are a share of it, so both multiplied by ×0.90 at 0 % … ×1.15 at 100 % (`setDeviceSalesConfig`) make the sales
+  (and the game's recommended batch size) that much higher, for the country in `CompanyCountryID`.
+- The cost of the devices is left alone: the game also judges the price against it (demand) and uses it for
+  restocking, so a lower cost would make every device look overpriced.
+- Turned off, the game's own values are back. Tested in game 1.6: Czech Republic (cost of production 78 %, trade
+  84 %) pays 7 176 319 instead of 6 458 687 a month (×1.111), sales ×1.11; turned off 6 458 687 again.
+
+### `country-picker.js`: country picker (NEW GAME)
+- The game's picker (`initCountryPicker`) shows flag, name, start money and four bars without labels. Every card
+  gets tax, research and, with `country-effects.js` running, salaries and sales against the game's own (green is
+  better); without it cost of production and trade say "no effect".
+- Chips under the search sort the cards with CSS `order` (the game's cards, search and selection stay as they are):
+  best overall, lowest tax, most money, most research, lowest salaries, most sales, A–Z. The first three of the sort
+  get a star; the sort is remembered. "Best overall" weighs the tax most (35 %, paid the whole game), then start
+  money 20 %, research, salaries and sales 15 % each, each scaled between the lowest and the highest country.
 
 ### `auto-continue.js`: auto continue (NEWS)
 - The game shows news, warnings and tips in one HTML dialog (`showOfficeNews`) with no button, one OK, or two
