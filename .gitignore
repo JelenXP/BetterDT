@@ -3,3 +3,4 @@ loader/dist/
 loader/sdk/
 node_modules/
 *.orig
+docs/
