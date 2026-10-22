@@ -1,11 +1,11 @@
 // Store upgrades for all stores – MY STORES screen (SHOPS UPGRADE).
 //
 // The game upgrades the stores of one country at a time: pick the country on the left, then "PAY ALL" (all six
-// areas) or the price button of one area. Two buttons in the top bar do it for every country with stores:
-//   UPGRADE ALL STORES $x – "PAY ALL" once in every country (the price on the button is the sum of them),
-//   ALL TO MAX            – "PAY ALL" in every country, round after round, while the money lasts; when no full
-//                           round is affordable any more, the cheapest single areas are bought with the rest.
-//                           A click first asks, with the money it will spend (a dry run of the same rounds).
+// areas) or the price button of one area. Since game 1.5 its "UPGRADE ALL" button in the top bar does one round
+// ("PAY ALL" once in every country, only when all of it is affordable). Next to it, in the same look:
+//   ALL TO MAX – "PAY ALL" in every country, round after round, while the money lasts; when no full round is
+//                affordable any more, the cheapest single areas are bought with the rest.
+//                A click first asks, with the money it will spend (a dry run of the same rounds).
 //
 // Every upgrade is a click on the game's own "PAY ALL" or area button (the same as with the mouse), so the price
 // check, paying, the random gains, the store level and the demand are the game's code. The mod only picks the
@@ -14,13 +14,12 @@
 // muted during the batch and one plays at the end. The game handles a click synchronously, so a frame takes many.
 BetterDTKit.mod('store-upgrade-all', {
   needs: {
-    objects: ['ArrayMyShops', 'ArrayShops', 'ArrayMyPerks', 'ArrayCountries', 'ArrayLanguage', 'Text', '9patch5', 'Gradient_51', 'Sprite396'],
+    objects: ['ArrayMyShops', 'ArrayShops', 'ArrayMyPerks', 'ArrayCountries', 'ArrayLanguage', 'Text', '9patch5', 'MyHTML_UpgradeShops'],
     vars: ['Budget', 'MiniPage', 'Sounds', 'EditorNotification', 'EditorNotificationText', 'LanguageChoose'],
     arrays: { ArrayMyShops: [1, 30], ArrayShops: [1, 1], ArrayMyPerks: [12, 1] },
   },
   texts: { 10974: "You don't have enough funds" },
   uids: {
-    21284: { layout: 'SHOPS UPGRADE', t: 'Text', l: 'GLOBAL UI (Top)', w: 1189, h: 80, x: 40, y: 22 },       // title
     21430: { layout: 'SHOPS UPGRADE', t: 'Text', l: 'GLOBAL UI (Top)', w: 652, h: 98, x: 1830, y: 22 },      // money
     22270: { layout: 'SHOPS UPGRADE', t: '9patch5', l: 'GLOBAL UI (Touched)', w: 340, h: 64, x: 1670, y: 990 },   // PAY ALL
     22262: { layout: 'SHOPS UPGRADE', t: '9patch3', l: 'GLOBAL UI (Back)', w: 420, h: 248, x: 1240, y: 270 },  // staff
@@ -34,20 +33,13 @@ BetterDTKit.mod('store-upgrade-all', {
   if (globalThis.__dtStoreUpgradeAll) globalThis.__dtStoreUpgradeAll.dispose();
 
   const LAYOUT = 'SHOPS UPGRADE';
-  // Game 1.5 has a native one-round "upgrade all" button. Keep our implementation below for now, but do
-  // not show or accept input for its competing button until it is useful again.
-  const SHOW_UPGRADE_ONCE_BUTTON = false;
   const gv = rt.globalVars;
-  const UID = { title: 21284, money: 21430, payAll: 22270, areas: [22262, 22263, 22264, 22265, 22266, 22267] };
+  const UID = { money: 21430, payAll: 22270, areas: [22262, 22263, 22264, 22265, 22266, 22267] };
   const LANG_NO_FUNDS = 10974;
   const MAX_UPGRADES = 300000;   // a safety stop for huge (sandbox) budgets: about two minutes of clicking
 
   // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
-    once: ['UPGRADE ALL STORES', 'УЛУЧШИТЬ ВСЕ МАГАЗИНЫ', 'ALLE LÄDEN VERBESSERN', 'AMÉLIORER TOUS LES MAGASINS',
-      'MIGLIORA TUTTI I NEGOZI', 'MEJORAR TODAS LAS TIENDAS', 'सभी स्टोर अपग्रेड करें', 'TÜM MAĞAZALARI GELİŞTİR',
-      'MELHORAR TODAS AS LOJAS', 'ПОКРАЩИТИ ВСІ МАГАЗИНИ', 'TINGKATKAN SEMUA TOKO', 'ULEPSZ WSZYSTKIE SKLEPY',
-      '升级所有门店', '모든 매장 업그레이드', '全店舗をアップグレード'],
     max: ['ALL TO MAX', 'ВСЁ НА МАКСИМУМ', 'ALLES AUFS MAXIMUM', 'TOUT AU MAXIMUM', 'TUTTO AL MASSIMO', 'TODO AL MÁXIMO',
       'सब अधिकतम तक', 'HEPSİ MAKSİMUMA', 'TUDO NO MÁXIMO', 'УСЕ НА МАКСИМУМ', 'SEMUA KE MAKSIMAL', 'WSZYSTKO NA MAKSA',
       '全部升到最高', '모두 최대로', 'すべて最大まで'],
@@ -196,9 +188,6 @@ BetterDTKit.mod('store-upgrade-all', {
     const h = () => { rt.removeEventListener('tick', h); res(); };
     rt.addEventListener('tick', h);
   });
-  function stopTweens(inst) {
-    try { for (const t of inst.behaviors.Tween.allTweens()) t.stop(); } catch { }
-  }
 
   // click like the mouse (the game reacts to Mouse "On object clicked"; it handles the click synchronously)
   let synthetic = false, pointer = null;   // pointer = the player's last mouse position (css px)
@@ -237,58 +226,73 @@ BetterDTKit.mod('store-upgrade-all', {
     return false;
   }
 
-  // ── buttons: the game's PAY ALL look (9patch5 + Gradient_51), in the top bar ───────────────────────
+  // ── our button: the look of the game's "UPGRADE ALL" (MyHTML_UpgradeShops), right next to it ─────────
+  const HTML_OBJ = 'MyHTML_UpgradeShops';
+  const GAME_X = 960, BOX_X = 880;   // the game's button moves a little to the left, ours goes to its right
   let ui = null, running = false, stopReq = false, progress = 0;
 
-  function makeButton() {
-    const btn = rt.objects['9patch5'].createInstance('GLOBAL UI (Touched)', 1000, 50);
-    btn.width = 200; btn.height = 56; btn.opacity = 0;
-    const glow = rt.objects.Gradient_51.createInstance('GLOBAL UI (Touched)', 1000, 50);
-    glow.width = 216; glow.height = 72; glow.opacity = 0; glow.blendMode = 'source-atop';
-    glow.moveAdjacentToInstance(btn, true);
-    const text = rt.objects.Text.createInstance('GLOBAL UI (Top)', 1000, 30);
-    text.fontFace = 'SofiaSansExtraCondensed-Bold'; text.sizePt = 22; text.fontColor = [1, 1, 1];
-    text.horizontalAlign = 'center'; text.verticalAlign = 'top'; text.width = 600; text.height = 59; text.opacity = 0;
-    try { text.changeIconSet(rt.objects.Sprite396); } catch { }
-    return { btn, glow, text, label: '', on: false, pressAt: 0 };
+  function injectCss() {
+    if (document.getElementById('bdt-sam-style')) return;
+    const st = document.createElement('style');
+    st.id = 'bdt-sam-style';
+    // the game's #usa-* rules, for our own ids
+    st.textContent = `
+#bdt-sam-root { position: absolute; left: calc(100% + 1.5vh); top: 0; height: 100%; width: 64%; container-type: size;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease; }
+#bdt-sam-root.bdt-off { opacity: 0; transform: translateY(14%) scale(0.88); }
+#bdt-sam-root.bdt-off #bdt-sam-btn { pointer-events: none; }
+#bdt-sam-btn { pointer-events: auto; box-sizing: border-box; width: 96%; height: 84%;
+  display: flex; align-items: center; justify-content: center; gap: 4cqw; padding: 0 4cqw;
+  border: none; border-radius: 99px; background: linear-gradient(175deg, #ffe27a, #f2b419);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,70,0,0.30), 0 4px 14px rgba(0,0,0,0.35);
+  color: #241a04; font-family: "SofiaSansExtraCondensed-Bold", "Oswald", sans-serif; cursor: pointer; user-select: none;
+  transition: transform 0.14s ease, filter 0.14s ease; }
+#bdt-sam-btn:hover { filter: brightness(1.07); }
+#bdt-sam-btn:active { transform: scale(0.96); }
+#bdt-sam-btn.bdt-empty { filter: grayscale(0.85) brightness(0.8); cursor: default; }
+#bdt-sam-label { font-size: 40cqh; line-height: 1; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; min-width: 0; }
+#bdt-sam-pct { flex: none; font-size: 36cqh; line-height: 1; padding: 12cqh 4.5cqw; border-radius: 99px;
+  background: rgba(36,26,4,0.86); color: #ffe27a; white-space: nowrap; }
+#bdt-sam-pct:empty { display: none; }
+`;
+    document.head.appendChild(st);
   }
+
   function teardown() {
     if (!ui) return;
-    for (const b of [ui.once, ui.max]) for (const i of [b.btn, b.glow, b.text]) try { i.destroy(); } catch { }
+    try { ui.root.remove(); } catch { }
     ui = null;
   }
   function setup() {
     teardown();
-    if (!kit.inst(UID.title) || !kit.inst(UID.money) || !kit.inst(UID.payAll)) return;
+    if (!kit.inst(UID.payAll)) return;
     for (const u of UID.areas) kit.inst(u);   // look them up now, before the game's press animation resizes them
-    ui = { once: makeButton(), max: makeButton(), cache: null, at: 0, hand: false };
-  }
-
-  function hitBox(inst, x, y) {
-    const b = inst.getBoundingBox();
-    return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
-  }
-  function hovered(b) {
-    if (!pointer) return false;
-    const [x, y] = b.btn.layer.cssPxToLayer(pointer[0], pointer[1]);
-    return hitBox(b.btn, x, y);
-  }
-
-  function paintButton(b, label, on, a, cx, w) {
-    if (label !== b.label) { b.label = label; b.text.text = label; }
-    b.on = on;
-    stopTweens(b.btn); stopTweens(b.glow); stopTweens(b.text);
-    const now = performance.now(), pt = b.pressAt ? (now - b.pressAt) / 1000 : 1;
-    const k = pt < 0.075 ? 1 - 0.05 * (pt / 0.075) : pt < 0.25 ? 0.95 + 0.05 * ((pt - 0.075) / 0.175) : 1;
-    const H = 56, hot = on && (hovered(b) || b === ui.max && running);
-    b.btn.x = cx; b.glow.x = cx; b.text.x = cx;
-    b.btn.y = 50; b.glow.y = 50; b.text.y = 30;
-    b.btn.width = w * k; b.btn.height = H * k;
-    b.glow.width = (w + 16) * k; b.glow.height = (H + 16) * k;
-    // like the game's buttons: a light shape, the green gradient over it on hover
-    b.btn.opacity = a * (hot ? 1 : on ? 0.25 : 0.12);
-    b.glow.opacity = a * (hot ? 1 : 0);
-    b.text.opacity = a * (on ? 1 : 0.45);
+    let box = null, el = null;
+    try { box = rt.objects[HTML_OBJ].getFirstInstance(); el = box.getElement(); } catch { }
+    if (!el) return;
+    box.x = BOX_X;
+    injectCss();
+    const root = document.createElement('div');
+    root.id = 'bdt-sam-root';
+    root.className = 'bdt-off';
+    root.innerHTML = '<button id="bdt-sam-btn" type="button"><span id="bdt-sam-label"></span><span id="bdt-sam-pct"></span></button>';
+    el.appendChild(root);
+    const btn = root.querySelector('#bdt-sam-btn');
+    btn.addEventListener('click', kit.guard((e) => {
+      e.stopPropagation();
+      if (String(gv.EditorNotification) !== 'OFF') return;
+      if (running) { stopReq = true; return; }   // a click on the running batch stops it
+      call('Tap_Main');
+      if (btn.classList.contains('bdt-empty')) {
+        // greyed out: say why, like the game does
+        if (ui && ui.cache && ui.cache.n) notify(kit.text(LANG_NO_FUNDS), true);
+        return;
+      }
+      askMax().catch(err => log(err));
+    }));
+    ui = { root, btn, label: root.querySelector('#bdt-sam-label'), pct: root.querySelector('#bdt-sam-pct'), cache: null, at: 0 };
   }
 
   function tick() {
@@ -296,27 +300,20 @@ BetterDTKit.mod('store-upgrade-all', {
     const now = performance.now();
     if (!running && (!ui.cache || now - ui.at > 300)) { ui.cache = oncePrice(); ui.at = now; }
     const c = ui.cache, budget = Number(gv.Budget) || 0;
-    const icon = '[iconoffsety=5][icon=Budget] ';
-    const onceLabel = tr('once') + (c.n ? '  ' + icon + short(c.usd) : '');
-    const maxLabel = running ? Math.min(99, Math.floor(100 * progress)) + ' %' : tr('max');
-    const title = kit.inst(UID.title), money = kit.inst(UID.money);
-    const a = title && title.isVisible ? title.opacity : 0;
-    // between the title and the money; widths follow the text (languages differ)
-    const w1 = Math.max(120, (ui.once.text.textWidth || 0) + 56), w2 = Math.max(120, (ui.max.text.textWidth || 0) + 56);
-    const right = (money ? money.x - (money.textWidth || 300) : 1500) - 40;
-    const left = title ? title.x + (title.textWidth || 700) + 30 : 760;
-    const fits = SHOW_UPGRADE_ONCE_BUTTON ? right - w2 - 14 - w1 >= left : right - w2 >= left;
-    const vis = fits ? a : 0;
-    paintButton(ui.max, maxLabel, running || (c.n > 0 && c.min <= budget), vis, right - w2 / 2, w2);
-    if (SHOW_UPGRADE_ONCE_BUTTON) paintButton(ui.once, onceLabel, !running && c.n > 0 && c.usd <= budget, vis, right - w2 - 14 - w1 / 2, w1);
-    else { ui.once.on = false; ui.once.btn.opacity = ui.once.glow.opacity = ui.once.text.opacity = 0; }
-    // the hand cursor over a button, as the game sets it over its own (only on a change: the game sets it too)
-    const hand = vis > 0.05 && String(gv.EditorNotification) === 'OFF' && hovered(ui.max);
-    if (hand !== ui.hand) {
-      ui.hand = hand;
-      const canvas = document.querySelector('canvas');
-      if (canvas) canvas.style.cursor = hand ? 'pointer' : '';
+    const label = tr('max'), pct = running ? Math.min(99, Math.floor(100 * progress)) + ' %' : '';
+    if (ui.label.textContent !== label) ui.label.textContent = label;
+    if (ui.pct.textContent !== pct) ui.pct.textContent = pct;
+    ui.btn.classList.toggle('bdt-empty', !running && !(c.n > 0 && c.min <= budget));
+    // shown and hidden with the game's button; hidden when the money in the top bar would be covered
+    const g = document.getElementById('usa-root');
+    let on = !!g && g.classList.contains('usa-shown') && !g.classList.contains('usa-hiding');
+    const money = kit.inst(UID.money);
+    if (on && money) {
+      const left = money.layer.layerToCssPx(money.x - (money.textWidth || 300), money.y)[0];
+      const r = ui.root.getBoundingClientRect(), canvas = document.querySelector('canvas').getBoundingClientRect();
+      if (r.right - canvas.left > left - 8) on = false;
     }
+    ui.root.classList.toggle('bdt-off', !on);
   }
 
   // ── batches ────────────────────────────────────────────────────────────────────────────────────
@@ -341,22 +338,6 @@ BetterDTKit.mod('store-upgrade-all', {
     if (mismatch) { kit.fail('price mismatch: ' + mismatch); return { n, spent }; }
     if (n) call('CashSound');
     return { n, spent };
-  }
-
-  function upgradeOnce() {
-    const c = oncePrice();
-    if (!c.n) return;
-    if (c.usd > Number(gv.Budget)) return notify(kit.text(LANG_NO_FUNDS), true);
-    batch(async () => {
-      const d = data(), pay = kit.inst(UID.payAll);
-      let n = 0;
-      for (const i of d.list) {
-        if (layoutName() !== LAYOUT) break;
-        if (!buy(pay, i, sum(livePrices(d, i)), 'PAY ALL')) break;
-        n += 6;
-      }
-      return n;
-    }).catch(e => log(e));
   }
 
   async function askMax() {
@@ -411,41 +392,13 @@ BetterDTKit.mod('store-upgrade-all', {
     }).catch(e => log(e));
   }
 
-  // ── input: our buttons; the click does not reach the game ─────────────────────────────────────────
-  let swallow = false;
+  // the player's mouse, to put the game's hover looks back after the clicks of a batch
   const onMove = (e) => { if (!synthetic) pointer = [e.clientX, e.clientY]; };
-  const onDown = kit.guard((e) => {
-    if (synthetic) return;
-    pointer = [e.clientX, e.clientY];
-    if (!ui || layoutName() !== LAYOUT) return;
-    if (String(gv.EditorNotification) !== 'OFF') return;      // the click closes the game notification
-    const b = [ui.max].find(b => b.text.opacity > 0.05 && hovered(b));
-    if (!b) return;
-    e.stopImmediatePropagation(); e.preventDefault();
-    swallow = true;
-    if (running) { if (b === ui.max) stopReq = true; return; }   // a click on the running batch stops it
-    if (!b.on) {
-      // greyed out: say why, like the game does
-      if (ui.cache && ui.cache.n) { call('Tap_Main'); notify(kit.text(LANG_NO_FUNDS), true); }
-      return;
-    }
-    b.pressAt = performance.now();
-    call('Tap_Main');
-    if (b === ui.once) upgradeOnce();
-    else askMax().catch(err => log(err));
-  });
-  const onOther = kit.guard((e) => {
-    if (synthetic || !swallow) return;
-    e.stopImmediatePropagation(); e.preventDefault();
-    if (e.type === 'click' || e.type === 'pointercancel') swallow = false;
-  });
-  const OTHER = ['pointerup', 'mousedown', 'mouseup', 'click', 'pointercancel'];
   window.addEventListener('pointermove', onMove, true);
-  window.addEventListener('pointerdown', onDown, true);
-  for (const t of OTHER) window.addEventListener(t, onOther, true);
 
-  const onLayoutStart = kit.guard(() => { ui = null; if (layoutName() === LAYOUT) setup(); });
-  const onLayoutEnd = () => { ui = null; stopReq = true; };
+  const onLayoutStart = kit.guard(() => { teardown(); if (layoutName() === LAYOUT) setup(); });
+  // our button fades out with the game's one; the page removes both elements
+  const onLayoutEnd = () => { if (ui) ui.root.classList.add('bdt-off'); ui = null; stopReq = true; };
   const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);
@@ -454,19 +407,20 @@ BetterDTKit.mod('store-upgrade-all', {
 
   const dispose = () => {
     window.removeEventListener('pointermove', onMove, true);
-    window.removeEventListener('pointerdown', onDown, true);
-    for (const t of OTHER) window.removeEventListener(t, onOther, true);
     rt.removeEventListener('afteranylayoutstart', onLayoutStart);
     rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
     rt.removeEventListener('tick', onTick);
     stopReq = true;
-    if (layoutName() === LAYOUT) teardown();
+    if (layoutName() === LAYOUT) {
+      teardown();
+      try { rt.objects[HTML_OBJ].getFirstInstance().x = GAME_X; } catch { }
+    }
     ui = null;
   };
   globalThis.__dtStoreUpgradeAll = {
     dispose,
     get state() { return { running, ui: !!ui, prices: oncePrice() }; },
-    debug: { dryRun, oncePrice, upgradeOnce, upgradeMax, askMax },
+    debug: { dryRun, oncePrice, upgradeMax, askMax },
   };
   return dispose;
 });

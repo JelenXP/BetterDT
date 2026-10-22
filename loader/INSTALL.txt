@@ -26,26 +26,22 @@ WHAT YOU GET
 ------------
 - FIND EMPLOYEES: next to every agency there is a second button with a number. It keeps searching
   until your office is full. The AUTO-HIRE checkbox (top right) hires everyone who is found.
-- UPGRADE EMPLOYEES: a TRAIN ALL button trains the whole profession to the maximum level
-  (as long as you have money and research points).
-- MY EMPLOYEES: a VACATION FOR THE TIRED button sends everyone with low mood on vacation
-  (one person of each profession always keeps working).
-- RESEARCH LAB: "Research tab" researches everything left on the open tab, "Research all" everything,
-  for research points and money (the button is grey when you cannot afford it).
+- UPGRADE EMPLOYEES: under the game's button (now "UPGRADE DESIGNERS" etc.) a "DESIGNERS TO MAX" button
+  trains the whole profession to the maximum level (as long as you have money and research points).
+- RESEARCH LAB: next to the game's button (now "Research tab") "Research all" researches everything
+  on all tabs, for research points and money (the button is grey when you cannot afford it).
 - Game speed: the speed button in the corner also offers x2 and x3.
-- Adjustable autosave: choose how often the game saves by itself (5 to 180 game days, default 90).
+- Adjustable autosave: the game's Autosave setting becomes a slider from 5 to 360 game days (default 90).
 - Low-end mode for older computers: limit to 30 FPS and turn off blur (Settings -> BetterDT -> Mods, off by default).
 - Endless game: keep playing after the end of the game in 2101 ("Continue game" on the final screen).
   Based on a mod by M1lan.
 - Real company names (game 1.4+): Sony, Intel, Samsung, ... instead of Somy, Infel, Samsong, ...
-- UPDATE SOFTWARE: "Select all" picks every app for the update (next version, same settings),
-  "Clear all" takes them out again.
-- MY OS UPGRADE: "Select all" picks all technologies at once.
 - INVESTING: buy as many shares as your money allows, up to the game's 49 % limit, in one purchase.
   Based on a mod by M1lan.
-- MY STORES: "Upgrade all stores" upgrades the stores of every country at once, "All to max" keeps upgrading
-  them while the money lasts (it asks first, with the money it will spend).
-- Fixed FPS above 60 in the game settings no longer slows the game down.
+- MY STORES: next to the game's "Upgrade all", "All to max" keeps upgrading every store while the money
+  lasts (it asks first, with the money it will spend).
+- A high fixed FPS no longer slows the game down, and it can go above the game's 165 limit
+  (Settings > BetterDT > Mods).
 - MY OS UPGRADE: the screen no longer stutters.
 - Laptops with two graphics cards: the game runs on the faster one.
 

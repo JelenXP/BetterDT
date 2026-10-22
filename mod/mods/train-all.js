@@ -1,8 +1,9 @@
 // Train all – UPGRADE EMPLOYEES screen (TRAIN YOUR EMPLOYEES).
 //
-// A green "TRAIN ALL (N)" button appears in the left panel under the legend. N = how many employees of the
-// selected profession are not at the maximum level yet. A click trains every employee of the profession on all
-// pages until they reach MAX LEVEL or the money or research points run out.
+// Under the game's "UPGRADE ALL" button (renamed to "UPGRADE DESIGNERS" etc.: one step for every employee of the
+// profession) a second one in the same look, "DESIGNERS TO MAX (N)". N = how many employees of the selected
+// profession are not at the maximum level yet. A click trains every employee of the profession on all pages until
+// they reach MAX LEVEL or the money or research points run out.
 //
 // Training goes through the game's own buttons (the same click as with the mouse), so the price, gains, salary,
 // perks and the "not enough money" message are all computed by the game. The mod only switches pages and clicks.
@@ -10,12 +11,12 @@
 // If a click does not train anyone three times in a row, the batch stops (the game changed its buttons).
 BetterDTKit.mod('train-all', {
   needs: {
-    objects: ['Text', '9patch3', 'Gradient_24', 'Sprite396', 'ArrayEmployees_Temp', 'ArrayEmployees_Characters', 'ArrayLanguage'],
+    objects: ['Text', '9patch3', 'MyHTML_UpgradeEmployees', 'ArrayEmployees_Temp', 'ArrayEmployees_Characters', 'ArrayLanguage'],
     vars: ['Budget', 'ResearchCoins', 'Sounds', 'SubPage', 'SubPageMax', 'EditorNotification', 'EditorNotificationText'],
     arrays: { ArrayEmployees_Characters: [1, 3] },
   },
   texts: { 13956: 'Research points' },
-  uids: { 20073: { layout: 'UPGRADE EMPLOYEES', t: 'Text', l: 'GLOBAL UI (Top)', w: 497, h: 268, x: 270, y: 350 } },   // legend
+  uids: { 19938: { layout: 'UPGRADE EMPLOYEES', t: 'Text', l: 'GLOBAL UI (Top)', w: 517, h: 92, x: 270, y: 135 } },   // profession
 }, (rt, kit) => {
   if (globalThis.__dtTrainAll) globalThis.__dtTrainAll.dispose();
 
@@ -24,9 +25,16 @@ BetterDTKit.mod('train-all', {
 
   // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
-    btn: ['TRAIN ALL', 'ОБУЧИТЬ ВСЕХ', 'ALLE SCHULEN', 'FORMER TOUT LE MONDE', 'FORMA TUTTI', 'ENTRENAR A TODOS',
-      'सभी को प्रशिक्षित करें', 'HEPSİNİ EĞİT', 'TREINAR TODOS', 'НАВЧИТИ ВСІХ', 'LATIH SEMUA', 'SZKOL WSZYSTKICH',
-      '全部培训', '모두 교육', '全員を育成'],
+    // the game's button, with the profession it upgrades ({p} = "DESIGNERS" as the game shows it)
+    upgrade: ['UPGRADE {p}', 'УЛУЧШИТЬ: {p}', '{p} VERBESSERN', 'AMÉLIORER : {p}', 'MIGLIORA {p}', 'MEJORAR {p}',
+      '{p} अपग्रेड करें', '{p} GELİŞTİR', 'MELHORAR {p}', 'ПОКРАЩИТИ: {p}', 'TINGKATKAN {p}', 'ULEPSZ: {p}',
+      '升级{p}', '{p} 업그레이드', '{p}をアップグレード'],
+    max: ['{p} TO MAX', '{p}: ДО МАКСИМУМА', '{p} AUFS MAXIMUM', '{p} AU MAXIMUM', '{p} AL MASSIMO', '{p} AL MÁXIMO',
+      '{p} अधिकतम तक', '{p} MAKSİMUMA', '{p} AO MÁXIMO', '{p}: ДО МАКСИМУМУ', '{p} KE MAKSIMAL', '{p} NA MAKSA',
+      '{p}升到最高', '{p} 최대로', '{p}を最大まで'],
+    until: ['until they run out', 'пока не закончатся', 'bis sie ausgehen', "jusqu'à épuisement", 'fino a esaurimento',
+      'hasta agotarlos', 'खत्म होने तक', 'bitene kadar', 'até acabarem', 'поки не скінчаться', 'sampai habis',
+      'do wyczerpania', '直到用完', '소진될 때까지', '尽きるまで'],
     hint: ['Trains everyone in this profession up to the max level, as long as money and research points last',
       'Обучает всех сотрудников этой профессии до максимального уровня, пока хватает денег и очков исследований',
       'Schult alle Mitarbeiter dieses Berufs bis zur Höchststufe, solange Geld und Forschungspunkte reichen',
@@ -64,7 +72,7 @@ BetterDTKit.mod('train-all', {
       'この職種の全員がすでに最大レベルです'],
   };
   const lang = () => { const l = Math.round(+gv.LanguageChoose); return l >= 0 && l < 15 ? l : 0; };
-  const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace('{n}', n);
+  const tr = (key, n) => String(TXT[key][lang()] || TXT[key][0]).replace(/\{[np]\}/, n);
   const arr = (name) => rt.objects[name].getFirstInstance();
   const gameText = (idx) => kit.text(idx);
   const money = (v) => '$' + Math.round(v).toLocaleString('en-US').replace(/,/g, ' ');
@@ -131,58 +139,123 @@ BetterDTKit.mod('train-all', {
     } finally { synthetic = false; }
   }
 
-  // ── stav obrazovky ─────────────────────────────────────────────────────────────────────────────
+  // ── screen: the game's HTML button (one training step for everyone) and ours under it ───────────────
+  const HTML_OBJ = 'MyHTML_UpgradeEmployees';
+  const BOX = { y: 565, h: 160 };   // both buttons fit between the legend and Back (the game's alone: 600, 200)
   let ui = null;
   let running = false;
   let cache = { n: -1, at: 0 };
 
+  function injectCss() {
+    if (document.getElementById('bdt-tam-style')) return;
+    const st = document.createElement('style');
+    st.id = 'bdt-tam-style';
+    // the game's #uea-* rules, for our own ids
+    st.textContent = `
+#bdt-tam-root { position: absolute; left: 0; top: 110%; width: 100%; height: 100%; container-type: size;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease; }
+#bdt-tam-root.bdt-off { opacity: 0; transform: translateY(10%) scale(0.9); }
+#bdt-tam-root.bdt-off #bdt-tam-btn { pointer-events: none; }
+#bdt-tam-btn { pointer-events: auto; box-sizing: border-box; width: 96%; height: 88%;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 6cqh; padding: 0 5cqw;
+  border: none; border-radius: 14cqh; background: linear-gradient(175deg, #9effb5, #2ec766);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,70,30,0.30), 0 4px 14px rgba(0,0,0,0.35);
+  color: #062a14; font-family: "SofiaSansExtraCondensed-Bold", "Oswald", sans-serif; cursor: pointer; user-select: none;
+  transition: transform 0.14s ease, filter 0.14s ease; }
+#bdt-tam-btn:hover { filter: brightness(1.07); }
+#bdt-tam-btn:active { transform: scale(0.96); }
+#bdt-tam-btn.bdt-empty { filter: grayscale(0.85) brightness(0.8); cursor: default; }
+#bdt-tam-btn.bdt-run { filter: brightness(0.92); cursor: progress; }
+#bdt-tam-head { display: flex; align-items: center; justify-content: center; gap: 3cqw; min-width: 0; }
+#bdt-tam-label { font-size: 24cqh; line-height: 1; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; min-width: 0; }
+#bdt-tam-count { flex: none; font-size: 14cqh; line-height: 1; padding: 3cqh 2.6cqw; border-radius: 99px;
+  background: rgba(6,42,20,0.18); }
+#bdt-tam-sub { display: flex; align-items: center; justify-content: center; gap: 2.4cqw; align-self: center;
+  max-width: 100%; box-sizing: border-box; font-size: 17cqh; line-height: 1; padding: 5cqh 4.5cqw; border-radius: 99px;
+  background: rgba(6,42,20,0.86); color: #9effb5; white-space: nowrap; overflow: hidden; }
+#bdt-tam-sub img { width: 17cqh; height: 17cqh; object-fit: contain; }
+#bdt-tam-sub .bdt-dot { opacity: 0.55; }
+`;
+    document.head.appendChild(st);
+  }
+
+  function gameBox() {
+    try { return rt.objects[HTML_OBJ].getFirstInstance(); } catch { return null; }
+  }
+  // the profession as the game shows it on the left ("DESIGNERS"), without the icon tags
+  function profession() {
+    const t = byUid(19938);
+    return t ? String(t.text).replace(/\[[^\]]*\]/g, '').trim() : '';
+  }
+
   function teardown() {
     if (!ui) return;
-    for (const i of [ui.btn, ui.glow, ui.text, ui.hint]) try { i.destroy(); } catch { }
+    try { ui.obs.disconnect(); } catch { }
+    try { ui.root.remove(); } catch { }
     ui = null;
   }
 
   function setup() {
     teardown();
-    const legend = byUid(20073);
-    if (!legend) return;
-    const X = 270, Y = 650, W = 400, H = 64;
-    const btn = rt.objects['9patch3'].createInstance('GLOBAL UI (Touched)', X, Y);
-    btn.width = W; btn.height = H; btn.opacity = 0;
-    const glow = rt.objects.Gradient_24.createInstance('GLOBAL UI (Touched)', X, Y);
-    glow.width = W + 14; glow.height = H + 10; glow.opacity = 0; glow.moveAdjacentToInstance(btn, true);
-    const text = rt.objects.Text.createInstance('GLOBAL UI (Top)', X, Y - 22);
-    text.fontFace = 'SofiaSansExtraCondensed-Bold'; text.sizePt = 24; text.fontColor = [1, 1, 1];
-    text.horizontalAlign = 'center'; text.verticalAlign = 'top'; text.width = W; text.height = 60; text.opacity = 0;
-    text.changeIconSet(rt.objects.Sprite396);
-    const hint = rt.objects.Text.createInstance('GLOBAL UI (Top)', X, Y + 50);
-    hint.fontFace = 'SofiaSansExtraCondensed-Light'; hint.sizePt = 22; hint.fontColor = [1, 1, 1];
-    hint.horizontalAlign = 'center'; hint.verticalAlign = 'top'; hint.width = 440; hint.height = 120; hint.opacity = 0;
-    ui = { btn, glow, text, hint, W, H, lang: -1, label: '', pressAt: 0 };
+    const box = gameBox(), el = box && box.getElement && box.getElement();
+    if (!el) return;
+    injectCss();
+    box.y = BOX.y; box.height = BOX.h;
+    const root = document.createElement('div');
+    root.id = 'bdt-tam-root';
+    root.className = 'bdt-off';
+    root.innerHTML = '<button id="bdt-tam-btn" type="button"><div id="bdt-tam-head"><span id="bdt-tam-label"></span>' +
+      '<span id="bdt-tam-count"></span></div><div id="bdt-tam-sub"><img src="UpgradeOffices/ResearchIcon.png" draggable="false" alt="">' +
+      '<span class="bdt-dot">•</span><img src="UpgradeOffices/BudgetIcon.png" draggable="false" alt=""><span id="bdt-tam-until"></span></div></button>';
+    el.appendChild(root);
+    const btn = root.querySelector('#bdt-tam-btn');
+    btn.addEventListener('click', kit.guard((e) => {
+      e.stopPropagation();
+      if (running) return;
+      run().catch(err => { console.warn('[train-all]', err); running = false; });
+    }));
+    // the game rewrites its label whenever its numbers change: put the profession back before it is painted
+    const obs = new MutationObserver(() => relabel());
+    ui = { root, btn, obs, label: root.querySelector('#bdt-tam-label'), count: root.querySelector('#bdt-tam-count'),
+      until: root.querySelector('#bdt-tam-until'), lang: -1, prof: '', watched: null };
     cache = { n: -1, at: 0 };
+  }
+
+  function relabel() {
+    if (!ui) return;
+    const l = document.getElementById('uea-label');
+    if (!l) return;
+    if (ui.watched !== l) {
+      ui.obs.disconnect();
+      ui.obs.observe(l, { childList: true, characterData: true, subtree: true });
+      ui.watched = l;
+    }
+    const p = profession(), want = p ? tr('upgrade', p) : '';
+    if (want && l.textContent !== want) l.textContent = want;
   }
 
   function tick() {
     if (!ui) return;
-    if (ui.lang !== lang()) { ui.lang = lang(); ui.hint.text = tr('hint'); ui.label = ''; }
+    const p = profession();
+    if (ui.lang !== lang() || ui.prof !== p) {
+      ui.lang = lang(); ui.prof = p;
+      ui.label.textContent = tr('max', p);
+      ui.until.textContent = tr('until');
+      ui.btn.title = tr('hint');
+    }
+    relabel();
     const now = performance.now();
-    if (!running && (cache.n < 0 || now - cache.at > 250)) cache = { n: pending(), at: now };
-    const n = cache.n;
-    const label = '[iconoffsety=5][icon=Research] ' + tr('btn') + (running ? '  …' : n > 0 ? '  (' + n + ')' : '');
-    if (label !== ui.label) { ui.label = label; ui.text.text = label; }
-    // opacity follows the legend (screen fade in/out)
-    const legend = byUid(20073);
-    const a = legend && legend.isVisible ? legend.opacity : 0;
-    const on = n > 0 && !running;
-    stopTweens(ui.btn); stopTweens(ui.glow); stopTweens(ui.text); stopTweens(ui.hint);
-    const pt = ui.pressAt ? (now - ui.pressAt) / 1000 : 1;
-    const k = pt < 0.075 ? 1 - 0.05 * (pt / 0.075) : pt < 0.25 ? 0.95 + 0.05 * ((pt - 0.075) / 0.175) : 1;
-    ui.btn.width = ui.W * k; ui.btn.height = ui.H * k;
-    ui.glow.width = (ui.W + 14) * k; ui.glow.height = (ui.H + 10) * k;
-    ui.btn.opacity = a;                          // shape base: the gradient (source-atop) is drawn only over it
-    ui.glow.opacity = a * (on ? 1 : 0.4);
-    ui.text.opacity = a * (on ? 1 : 0.6);
-    ui.hint.opacity = a * 0.7;
+    if (cache.n < 0 || now - cache.at > 250) cache = { n: pending(), at: now };
+    const count = running ? '…' : String(cache.n);
+    if (ui.count.textContent !== count) ui.count.textContent = count;
+    ui.btn.classList.toggle('bdt-empty', !running && cache.n <= 0);
+    ui.btn.classList.toggle('bdt-run', running);
+    // shown and hidden together with the game's button
+    const g = document.getElementById('uea-root');
+    const on = !!g && g.classList.contains('uea-shown') && !g.classList.contains('uea-hiding');
+    ui.root.classList.toggle('bdt-off', !on);
   }
 
   // ── batch ──────────────────────────────────────────────────────────────────────────────────────
@@ -242,37 +315,14 @@ BetterDTKit.mod('train-all', {
     } else notify(summary, false);
   }
 
-  // ── input: our button; the click does not reach the game ─────────────────────────────────────────
-  function hitBox(inst, x, y, pad = 0) {
-    const b = inst.getBoundingBox();
-    return x >= b.left - pad && x <= b.right + pad && y >= b.top - pad && y <= b.bottom + pad;
-  }
-  let swallow = false;
-  const onDown = kit.guard((e) => {
-    if (synthetic || !ui || layoutName() !== LAYOUT) return;
-    {
-      if (String(gv.EditorNotification) !== 'OFF') return;      // the click closes the game notification
-      if (ui.text.opacity < 0.05) return;
-      const [x, y] = ui.btn.layer.cssPxToLayer(e.clientX, e.clientY);
-      if (!hitBox(ui.btn, x, y)) return;
-      e.stopImmediatePropagation(); e.preventDefault();
-      swallow = true;
-      if (running) return;
-      ui.pressAt = performance.now();
-      run().catch(err => { console.warn('[train-all]', err); running = false; });
-    }
-  });
-  const onOther = kit.guard((e) => {
-    if (synthetic || !swallow) return;
-    e.stopImmediatePropagation(); e.preventDefault();
-    if (e.type === 'click' || e.type === 'pointercancel') swallow = false;
-  });
-  const OTHER = ['pointerup', 'mousedown', 'mouseup', 'click', 'pointercancel'];
-  window.addEventListener('pointerdown', onDown, true);
-  for (const t of OTHER) window.addEventListener(t, onOther, true);
-
-  const onLayoutStart = kit.guard(() => { ui = null; if (layoutName() === LAYOUT) setup(); });
-  const onLayoutEnd = () => { ui = null; };
+  const onLayoutStart = kit.guard(() => { teardown(); if (layoutName() === LAYOUT) setup(); });
+  // our button fades out with the game's one; the page removes both elements
+  const onLayoutEnd = () => {
+    if (!ui) return;
+    ui.root.classList.add('bdt-off');
+    try { ui.obs.disconnect(); } catch { }
+    ui = null;
+  };
   const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);
@@ -280,12 +330,15 @@ BetterDTKit.mod('train-all', {
   if (layoutName() === LAYOUT) setup();
 
   const dispose = () => {
-    window.removeEventListener('pointerdown', onDown, true);
-    for (const t of OTHER) window.removeEventListener(t, onOther, true);
     rt.removeEventListener('afteranylayoutstart', onLayoutStart);
     rt.removeEventListener('beforeanylayoutend', onLayoutEnd);
     rt.removeEventListener('tick', onTick);
-    if (layoutName() === LAYOUT) teardown();
+    if (layoutName() === LAYOUT) {
+      teardown();
+      const box = gameBox();
+      if (box) { box.y = 600; box.height = 200; }
+      try { if (typeof globalThis.refreshUpgradeEmployeesButton === 'function') globalThis.refreshUpgradeEmployeesButton(); } catch { }
+    }
     ui = null;
   };
   globalThis.__dtTrainAll = {

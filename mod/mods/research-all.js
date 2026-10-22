@@ -1,26 +1,22 @@
 // Research all – RESEARCH screen (research lab).
 //
-// Two buttons in the top bar of the research page, in the look of the game's own "Research all" button
-// (which the game shows only in sandbox mode, where research is free):
-//   RESEARCH TAB  – researches everything still open on the tab shown on the left (e.g. all of GPU),
-//   RESEARCH ALL  – researches everything still open on all tabs.
-// A button is greyed out and cannot be clicked when nothing is left or when the research points or the
-// money are not enough for all of it. Hovering shows the price, and a click first asks with the price.
+// Since game 1.4 the game has its own paid "Research all" button in the top bar of the research page: it researches
+// the tab shown on the left (only the cards of the category picked in the top bar, if one is), recommended functions
+// first, with all research points but at most half of the money, so often only a part. The mod renames it to
+// "Research tab" and adds "Research all" next to it, in the same look: everything still open on all tabs.
+// Our button is greyed out and cannot be clicked when nothing is left or when the research points or the money are
+// not enough for all of it. Hovering shows the price, and a click first asks with the price.
+// In sandbox mode (research is free) the game's button researches everything and the mod stays out of the way.
 //
 // The game does the research itself: every level is a click on the research card (the same as with the
 // mouse), so the price check, the tax deduction, paying, the new level and refreshing the page are all the
 // game's code. The list of what "everything" means is the game's own (debugResearchAllTargets, the list of the
 // sandbox button), and other tabs are opened the way the game opens them. The mod only clicks, a few hundred
 // levels per frame, with the sounds muted, and plays one sound at the end. If the game rejects a click, it stops.
-//
-// Since game 1.4 the game has its own paid "Research all" outside sandbox mode too: it researches the open
-// category, recommended functions first, with all research points but at most half of the money, so often only a
-// part. The mod's two buttons take its place (the game's button is hidden); the option "Use the game's own
-// Research all button" (Settings → BetterDT → Mods) brings the game's button back instead of the mod's.
 BetterDTKit.mod('research-all', {
   needs: {
     functions: ['debugResearchAllTargets'],
-    objects: ['ArrayResearchPage_Temp', 'ArrayMyResearch', 'ArrayResearch', 'ArrayLanguage', '9patch3'],
+    objects: ['ArrayMyResearch', 'ArrayResearch', 'ArrayLanguage', '9patch3'],
     vars: ['MiniPage', 'ResearchCoins', 'Budget', 'Sounds', 'SandboxMode', 'WheelScrollRate'],
     arrays: { ArrayResearch: [100, 3] },
   },
@@ -30,7 +26,6 @@ BetterDTKit.mod('research-all', {
 
   const LAYOUT = 'RESEARCH';
   const gv = rt.globalVars;
-  const S = BetterDT.settings;
 
   // ── texts (language order as in the game: ArrayLanguage row = LanguageChoose) ──────────────────
   const TXT = {
@@ -44,11 +39,6 @@ BetterDTKit.mod('research-all', {
       'Preço: {rp} pontos de pesquisa e {usd}', 'Ціна: {rp} очок досліджень і {usd}',
       'Harga: {rp} poin riset dan {usd}', 'Cena: {rp} punktów badań i {usd}',
       '价格：{rp} 研究点数和 {usd}', '가격: 연구 포인트 {rp}와 {usd}', '価格：研究ポイント {rp} と {usd}'],
-    askTab: ['Research everything on this tab?', 'Исследовать всё на этой вкладке?', 'Alles auf diesem Tab erforschen?',
-      'Rechercher tout cet onglet ?', 'Ricercare tutto in questa scheda?', '¿Investigar todo en esta pestaña?',
-      'इस टैब पर सब कुछ शोध करें?', 'Bu sekmedeki her şey araştırılsın mı?', 'Pesquisar tudo nesta aba?',
-      'Дослідити все на цій вкладці?', 'Riset semua di tab ini?', 'Zbadać wszystko na tej karcie?',
-      '研究此页的全部内容？', '이 탭의 모든 항목을 연구할까요?', 'このタブをすべて研究しますか？'],
     askAll: ['Research everything?', 'Исследовать всё?', 'Alles erforschen?', 'Tout rechercher ?', 'Ricercare tutto?',
       '¿Investigar todo?', 'सब कुछ शोध करें?', 'Her şey araştırılsın mı?', 'Pesquisar tudo?', 'Дослідити все?',
       'Riset semuanya?', 'Zbadać wszystko?', '研究全部内容？', '모두 연구할까요?', 'すべて研究しますか？'],
@@ -82,16 +72,6 @@ BetterDTKit.mod('research-all', {
       usd += n * (Number(ar.getAt(id, 2)) || 0);
     }
     return { levels, rp, usd };
-  }
-  // the tab shown: ArrayResearchPage_Temp (x = card: 0 id, 1 title, 3 max level, 4 status, 0 = can be researched)
-  const empty = (v) => v == null || v === 0 || v === '0' || v === '';
-  function tabTargets() {
-    const t = arr('ArrayResearchPage_Temp'), m = new Map();
-    for (let x = 0; x < (t.width | 0); x++) {
-      if (!empty(t.getAt(x, 4)) || empty(t.getAt(x, 1))) continue;
-      m.set(Number(t.getAt(x, 0)), Number(t.getAt(x, 3)) || 0);
-    }
-    return m;
   }
   // all tabs: the game's own list for its sandbox button (it logs, so its console line is left out)
   function allTargets() {
@@ -154,33 +134,32 @@ BetterDTKit.mod('research-all', {
     s.id = 'bdt-research-all-css';
     s.textContent = rules + `
 .bdt-ra { display: flex; }
-.bdt-ra + .bdt-ra { margin-left: 0; }
 .bdt-ra.rc-all-empty { cursor: default; }
 .bdt-ra.bdt-busy { pointer-events: none; }
-#research-root.bdt-ra-on #research-hide-wrap { margin-left: 0; }
-#research-root.bdt-ra-on #research-all { display: none !important; }`;
+#research-root.bdt-ra-on .bdt-ra { margin-left: calc(var(--rs, 1) * 10px); }
+#research-root.bdt-ra-on #research-hide-wrap { margin-left: 0; }`;
     document.head.appendChild(s);
   }
 
   let ui = null, running = false, timer = 0;
-  function button(kind) {
+  function button() {
     const b = document.createElement('div');
     b.className = 'bdt-ra';
     b.innerHTML = '<span class="bdt-ra-label"></span>';
     b.addEventListener('click', kit.guard(() => {
       if (running || b.classList.contains('rc-all-empty')) return;
       globalThis.tapMain?.();
-      confirm(kind, b.querySelector('.bdt-ra-label').textContent);
+      confirm(b.querySelector('.bdt-ra-label').textContent);
     }));
     return b;
   }
   // ask first, with the price (BetterDT dialog in the look of the game's news window)
-  function confirm(kind, label) {
-    const p = price(kind === 'tab' ? tabTargets() : allTargets());
+  function confirm(label) {
+    const p = price(allTargets());
     if (!p.levels) return refresh();
-    const title = tr(kind === 'tab' ? 'askTab' : 'askAll');
+    const title = tr('askAll');
     const text = tr('cost', { rp: num(p.rp), usd: '$' + num(p.usd) });
-    const go = () => { setTimeout(() => start(kind)); };
+    const go = () => { setTimeout(start); };
     const api = globalThis.BetterDTUI;   // from betterdt-settings.js
     if (!api || typeof api.dialog !== 'function') {
       if (window.confirm(title + '\n' + text)) go();
@@ -199,19 +178,34 @@ BetterDTKit.mod('research-all', {
   function setup() {
     const r = root(), bar = r && r.querySelector('#research-topbar');
     if (!bar) return false;
-    if (ui && ui.bar === bar && ui.tab.isConnected) return true;
+    if (ui && ui.bar === bar && ui.all.isConnected) return true;
     css();
-    ui = { bar, tab: button('tab'), all: button('all') };
+    if (ui) ui.obs.disconnect();
+    // the game rewrites its label on every render: "Research tab" goes back before it is painted
+    ui = { bar, all: button(), obs: new MutationObserver(() => relabel()), watched: null };
     bar.insertBefore(ui.all, bar.querySelector('#research-hide-wrap'));
-    bar.insertBefore(ui.tab, ui.all);
     r.classList.add('bdt-ra-on');
+    relabel();
     return true;
+  }
+  function relabel() {
+    const l = document.getElementById('research-all-label');
+    if (!ui || !l) return;
+    if (ui.watched !== l) {
+      ui.obs.disconnect();
+      ui.obs.observe(l, { childList: true, characterData: true, subtree: true });
+      ui.watched = l;
+    }
+    if (l.textContent !== tr('tab')) l.textContent = tr('tab');
   }
   function teardown() {
     if (!ui) return;
-    ui.tab.remove();
+    ui.obs.disconnect();
     ui.all.remove();
     root()?.classList.remove('bdt-ra-on');
+    // the game's own label back
+    const l = document.getElementById('research-all-label');
+    if (l) l.textContent = gameText(LANG_RESEARCH_ALL) || 'Research all';
     ui = null;
   }
   function paint(b, label, p) {
@@ -228,23 +222,20 @@ BetterDTKit.mod('research-all', {
     if (layoutName() !== LAYOUT || Number(gv.SandboxMode) === 1) return teardown();
     // the game's tables are not loaded (yet): no prices, no texts
     if ((arr('ArrayResearch').width | 0) < 100 || (arr('ArrayLanguage').height | 0) <= 1) return teardown();
-    // game 1.4+ shows its own paid button outside sandbox mode too: the player picks which one (ours hide it)
-    // (the paid button came with debugResearchAllPlan; before it the option does nothing)
-    if (S.bool('research-all.gameButton', false) && typeof globalThis.debugResearchAllPlan === 'function') return teardown();
     if (!setup()) return;
     try {
-      paint(ui.tab, tr('tab'), price(tabTargets()));
+      relabel();
       paint(ui.all, gameText(LANG_RESEARCH_ALL) || 'Research all', price(allTargets()));
     } catch (e) { log('refresh failed', e); teardown(); }
   }
 
   // ── research ───────────────────────────────────────────────────────────────────────────────────
-  async function start(kind) {
-    const targets = kind === 'tab' ? tabTargets() : allTargets();
+  async function start() {
+    const targets = allTargets();
     const p = price(targets);
     if (!p.levels || gv.ResearchCoins < p.rp || gv.Budget < p.usd) return refresh();
     running = true;
-    const btn = ui[kind], label = btn.querySelector('.bdt-ra-label'), text = label.textContent;
+    const btn = ui.all, label = btn.querySelector('.bdt-ra-label'), text = label.textContent;
     btn.classList.add('bdt-busy');
     const my = arr('ArrayMyResearch');
     const before = { rp: Number(gv.ResearchCoins), usd: Number(gv.Budget) };
@@ -255,7 +246,7 @@ BetterDTKit.mod('research-all', {
     gv.Sounds = 'OFF';
     try {
       clearFilter();
-      const list = kind === 'tab' ? [startPage] : [startPage, ...pages().filter(x => x !== startPage)];
+      const list = [startPage, ...pages().filter(x => x !== startPage)];
       let frame = performance.now();
       pageLoop:
       for (const page of list) {
@@ -291,7 +282,7 @@ BetterDTKit.mod('research-all', {
       running = false;
     }
     const paid = { rp: before.rp - Number(gv.ResearchCoins), usd: before.usd - Number(gv.Budget) };
-    log(kind, 'researched', done, 'of', p.levels, 'levels, paid', paid.rp, 'RP and $' + paid.usd,
+    log('researched', done, 'of', p.levels, 'levels, paid', paid.rp, 'RP and $' + paid.usd,
       '(expected', p.rp, 'RP and $' + p.usd + ')', stop ? '– stopped: ' + stop : '');
     // everything researched but a different price: the game's price columns have changed, stop offering it
     if (done === p.levels && (Math.abs(paid.rp - p.rp) > 1 + p.rp * 0.01 || Math.abs(paid.usd - p.usd) > 1 + p.usd * 0.01)) {

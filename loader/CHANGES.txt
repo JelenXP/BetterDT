@@ -1,7 +1,13 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
-0.3.7 Game 1.5: wait for game data before checking mod compatibility
-0.3.7 Game 1.5: Vacation for the tired is off by default; only All to max is shown for stores
+0.3.7 Game 1.5/1.6: wait for game data before checking mod compatibility
+0.3.7 Game 1.6: Vacation for the tired, Update all apps and Select all OS upgrades are removed (the game has them now)
+0.3.7 My stores: "All to max" sits next to the game's "Upgrade all", in the same look
+0.3.7 Upgrade employees: the game's button says which profession it upgrades, "<profession> to max" is under it
+0.3.7 Research lab: the game's button is back as "Research tab", "Research all" (all tabs) is next to it
+0.3.7 Autosave: any interval from 5 to 360 game days, right in the game's own settings
+0.3.7 Fixed FPS: more than the game's 165 FPS limit (Settings > BetterDT > Mods)
+0.3.7 Settings > BetterDT is also in the settings opened from the pause menu
 0.3.7 Updates: "Check now" installs a newer version right away (no separate "Install" step)
 0.3.6 Unlimited shares: buy up to the game's 49 % limit in one purchase (based on a mod by M1lan.)
 0.3.6 My stores: "Upgrade all stores" upgrades every country at once, "All to max" while the money lasts

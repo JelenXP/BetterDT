@@ -1,11 +1,13 @@
-// Adjustable autosave – the game saves by itself at a fixed interval of game days; with this mod the player
-// chooses how often (Settings → BetterDT → Mods, default 90 days, 5 to 180).
+// Adjustable autosave – the game saves by itself every 30, 60, 90, 180 or 365 game days (or never); with this mod
+// the player chooses any interval from 5 to 360 days, in steps of 5 (default 90). The game's own "Autosave" row in
+// its settings (Gameplay) becomes a slider for this interval, saved right away; the same slider is in
+// Settings → BetterDT → Mods.
 //
 // The game calls globalThis.tickAutoSave() once per game day (c3main.js). We replace it with the same logic
 // and our interval. The save itself stays the game's: debugAutoSave() runs the game's own autosave
 // (SaveGame with its backup and read-back check), which skips saving outside gameplay, while paused,
 // while a save is in progress, on the bankruptcy and end-game screens. Then we try again the next day.
-// With the mod turned off the game keeps its own interval.
+// With the mod turned off the game keeps its own interval and its own row in the settings.
 //
 // Game updates: the mod starts only when the game's autosave functions are there and getAutoSaveState() still
 // reports what the mod reads. If the game stops calling tickAutoSave() (three game days without a call), the mod
@@ -21,7 +23,8 @@ BetterDTKit.mod('autosave', {
   },
 }, (rt, kit) => {
   const S = BetterDT.settings, gv = rt.globalVars;
-  const every = () => Math.min(180, Math.max(5, S.num('autosave.days', 90)));
+  const MIN = 5, MAX = 360, STEP = 5;
+  const every = () => Math.min(MAX, Math.max(MIN, S.num('autosave.days', 90)));
   const today = () => Number(gv.DayTotal) || 0;
   let last = -1;          // game day of the last autosave, or of the start / loading of the game
   let tickDay = today();  // game day of the last call from the game
@@ -50,8 +53,37 @@ BetterDTKit.mod('autosave', {
   }
   install();
 
+  // the game's settings row: its buttons (Off, 30 … 365) become a slider in the game's own look
+  function settingsRow() {
+    for (const seg of document.querySelectorAll('.gs-seg:not(.bdt-autosave-off)')) {
+      const labels = [...seg.querySelectorAll('.gs-seg-btn')].map(b => b.textContent.trim());
+      if (labels.slice(1).join(',') !== '30,60,90,180,365') continue;
+      seg.classList.add('bdt-autosave-off');
+      seg.style.display = 'none';
+      const box = document.createElement('div');
+      box.className = 'gs-slider bdt-autosave';
+      const input = document.createElement('input');
+      input.type = 'range'; input.className = 'gs-range';
+      input.min = String(MIN); input.max = String(MAX); input.step = String(STEP); input.value = String(every());
+      const val = document.createElement('div');
+      val.className = 'gs-slider-val';
+      const show = () => {
+        val.textContent = input.value;
+        input.style.setProperty('--fill', ((input.value - MIN) / (MAX - MIN) * 100).toFixed(2) + '%');
+      };
+      input.addEventListener('input', kit.guard(() => {
+        show();
+        Promise.resolve(S.set('autosave.days', Number(input.value))).catch(e => console.error('[autosave] save', e));
+      }));
+      box.append(input, val);
+      seg.after(box);
+      show();
+    }
+  }
+
   const timer = setInterval(kit.guard(() => {
     install();
+    settingsRow();
     const day = today();
     // a started or loaded game moves the day without a call: count from there
     if (tickDay < 0 || day < tickDay || day - tickDay > 30) tickDay = day;
@@ -60,6 +92,8 @@ BetterDTKit.mod('autosave', {
 
   return () => {
     clearInterval(timer);
+    for (const b of document.querySelectorAll('.bdt-autosave')) b.remove();
+    for (const seg of document.querySelectorAll('.bdt-autosave-off')) { seg.style.display = ''; seg.classList.remove('bdt-autosave-off'); }
     if (globalThis.tickAutoSave === tick) globalThis.tickAutoSave = origTick;
     if (globalThis.resetAutoSave === resetWrap) globalThis.resetAutoSave = origReset;
   };

@@ -197,7 +197,15 @@ static bool ValidModName(const std::string &s) {
          s.find_first_of("\\/:*?\"<>| ") == std::string::npos && s.find("..") == std::string::npos;
 }
 
-// List from mods.json: every quoted string that ends with .js (enough for ["a.js","b.js"]).
+// Official mods that a newer game version made redundant. An update by an older BetterDT keeps them in mods.json
+// (as if they were the player's own), so they are left out here and their files are deleted at start.
+static const char *const kRetiredMods[] = { "vacation-tools.js", "update-all.js", "os-upgrade-all.js" };
+static bool Retired(const std::string &name) {
+  for (const char *r : kRetiredMods) if (name == r) return true;
+  return false;
+}
+
+// List from mods.json: every quoted string that ends with .js (enough for ["a.js","b.js"]), without retired mods.
 static std::vector<std::string> ModList() {
   std::vector<std::string> list;
   std::string json;
@@ -206,15 +214,13 @@ static std::vector<std::string> ModList() {
     size_t j = json.find('"', i + 1);
     if (j == std::string::npos) break;
     std::string s = json.substr(i + 1, j - i - 1);
-    if (ValidModName(s)) list.push_back(s);
+    if (ValidModName(s) && !Retired(s)) list.push_back(s);
     i = j + 1;
   }
   return list;
 }
 static bool ModEnabled(const std::string &name) {
-  // Game 1.5 includes its own vacation automation. Keep the overlapping BetterDT mod opt-in for new installs.
-  const bool defaultOn = name != "vacation-tools.js";
-  return name == kCoreMod || IniOn("mod." + name, defaultOn);
+  return name == kCoreMod || IniOn("mod." + name, true);
 }
 
 // ── update state ────────────────────────────────────────────────────────────────────────────────
@@ -1251,6 +1257,7 @@ BOOL WINAPI DllMain(HINSTANCE h, DWORD reason, LPVOID) {
   g_modsDir = g_gameDir + L"mods\\";
   DeleteFileW((g_modsDir + L"betterdt.log").c_str());
   DeleteFileW((g_gameDir + L"BetterDT_x64.old").c_str());     // leftover from an update
+  for (const char *r : kRetiredMods) DeleteFileW((g_modsDir + Widen(r)).c_str());
   // the previous loader (DTModLoader) would run next to us → disable it by renaming
   std::wstring old = g_gameDir + kOldDll;
   if (_wcsicmp(g_selfPath.c_str(), old.c_str()) != 0 && GetFileAttributesW(old.c_str()) != INVALID_FILE_ATTRIBUTES) {

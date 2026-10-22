@@ -11,36 +11,29 @@ game file and does not touch your saves.
 
 - **Hiring (FIND EMPLOYEES):** a second button next to every agency keeps searching until your office is
   full. With **AUTO-HIRE** (checkbox in the top right) everyone found is hired right away.
-- **Training (UPGRADE EMPLOYEES):** **TRAIN ALL** trains the whole profession to the maximum level, as long
-  as you have money and research points.
-- **Vacations (MY EMPLOYEES):** **VACATION FOR THE TIRED** sends everyone with low mood on vacation.
-  One person of each profession always keeps working.
-- **Research (RESEARCH LAB):** **Research tab** researches everything left on the tab you have open (e.g. all
-  of GPU), **Research all** everything on all tabs, for research points and money. A button is greyed out
-  when you cannot afford all of it; hovering it shows the price, and a click first asks with the price.
-  Since game 1.4 they replace the game's own "Research all" (which spends at most half of your money and often
-  researches only a part); a switch in the settings brings the game's button back.
+- **Training (UPGRADE EMPLOYEES):** the game's button says which profession it upgrades (**UPGRADE DESIGNERS**:
+  one step for everyone), and **DESIGNERS TO MAX** under it trains the whole profession to the maximum level, as
+  long as you have money and research points.
+- **Research (RESEARCH LAB):** next to the game's own button (renamed **Research tab**: the tab you have open,
+  recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
+  research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
+  click first asks with the price.
 - **Game speed ×2 and ×3:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3.
-- **Adjustable autosave:** choose how often the game saves by itself (5 to 180 game days, default 90), so a
-  crash costs you less progress.
+- **Adjustable autosave:** the game's Autosave setting (30 to 365 days) becomes a slider from 5 to 360 game days
+  (default 90), so a crash costs you less progress.
 - **Low-end mode** for older computers: limit the game to 30 FPS and turn off the blur behind panels (both off
   by default).
 - **Endless game:** keep playing after the end of the game in 2101. The final screen gets a **Continue game**
   button, and the calendar goes on right away, no reload needed. Based on a mod by **M1lan.**
 - **Real company names:** the other companies are called Sony, Intel, Samsung, … instead of Somy, Infel,
   Samsong, … (game 1.4+), without downloading and loading the names file in the game's editor.
-- **Updating software (UPDATE SOFTWARE):** **Select all** picks every released app for the update with its next
-  version and the same settings, instead of opening and saving each app one by one (**Clear all** takes them
-  out again).
-- **OS upgrade (MY OS UPGRADE):** **Select all** picks all of the about 35 technologies at once (**Clear all**
-  takes them out again).
 - **Unlimited shares (INVESTING):** the exchange offers as many shares of a company as you can afford, so one
   purchase can go up to the game's own 49 % limit instead of a few percent at a time. Based on a mod by **M1lan.**
-- **Stores (MY STORES):** **All to max** keeps upgrading every store for as long as the money lasts (it asks first
-  and says how much it will spend). The one-round **Upgrade all stores** code is retained but hidden while the
-  game provides its own equivalent button.
-- **Fixed FPS above 60 at full speed:** with a high fixed FPS in the game settings the game used to run slower
-  (at 240 FPS about 78 % of normal speed, at 500 FPS about 37 %). Now it runs at normal speed with any setting.
+- **Stores (MY STORES):** next to the game's **Upgrade all** (one round), **All to max** keeps upgrading every
+  store for as long as the money lasts (it asks first and says how much it will spend).
+- **Fixed FPS at full speed, above 165:** with a high fixed FPS the game used to run slower (at 240 FPS about 78 %
+  of normal speed, at 500 FPS about 37 %), so game 1.6 caps it at 165. With the slowdown fixed, BetterDT lets you go
+  higher (Settings → BetterDT → Mods; in practice up to about 200 FPS, the browser's limit).
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -81,11 +74,13 @@ or ask on [Discord](https://discord.gg/JdQEMNNTrN).
 - **Mods:** an on/off switch for every mod (with a note when it does not fit the game version) and the mod options:
   - hire-tools: hire everyone found automatically,
   - train-all: mute the click sounds while training,
-  - vacation-tools: off by default since game 1.5 (which has its own vacation automation); when enabled, the mood threshold defaults to 30,
-  - autosave: save every N game days (default 90, 5 to 180),
+  - autosave: save every N game days (default 90, 5 to 360; also in the game's own settings),
+  - fixed-fps: the FPS used when the game's limit is set to 165 (165 to 360, default 165 = the game's own),
   - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away),
-  - no-ending: skip the final screen and continue right away (off by default),
-  - research-all: use the game's own Research all button instead (game 1.4+, off by default; takes effect right away).
+  - no-ending: skip the final screen and continue right away (off by default).
+
+The BetterDT section is in the settings from the main menu and, since game 1.6, also in the settings opened from the
+pause menu during a game.
 
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
 effect after restarting the game; the page says so.
@@ -117,25 +112,19 @@ its own layer.
   found ("Hired: 2"). Whoever does not fit stays in HIRE EMPLOYEES and the game shows "no free space".
 
 ### `train-all.js`: train everyone (UPGRADE EMPLOYEES)
-- A green **TRAIN ALL (N)** button in the left panel under the legend, where N is the number of people of the
-  selected profession who are not at MAX LEVEL yet. A click goes through all pages of the profession and trains
-  until everyone is at the maximum or the money or research points run out.
-- Training clicks the game's own buttons, so the price (sum of the three levels × $1,500 and ⌈sum × 0.015⌉
-  points), gains, salary and perks are computed by the game. The mod only switches pages (`SubPage`) and clicks.
+- Game 1.6 has its own **UPGRADE ALL** button in the left panel: one training step for every employee of the
+  selected profession, all or nothing. The mod renames it to **UPGRADE DESIGNERS** (the profession as the game
+  shows it, so it changes when you switch professions) and puts a second button in the same look under it:
+  **DESIGNERS TO MAX (N)**, where N is the number of people of the profession who are not at MAX LEVEL yet. A click
+  goes through all pages of the profession and trains until everyone is at the maximum or the money or research
+  points run out. To fit both, the game's button is made a little lower.
+- Training clicks the game's own buttons on the cards, so the price (sum of the three levels × $1,500 and
+  ⌈sum × 0.015⌉ points), gains, salary and perks are computed by the game. The mod only switches pages (`SubPage`)
+  and clicks.
 - Sounds are muted during the batch (optional), one chime plays at the end. A summary ("Training finished: 29
   upgrades", money and points spent) appears in the game notification. When the money runs out it is appended
   under the game's message.
-- Tested: 14 designers (29 upgrades) in under a second. With $1M the batch stopped at the game's
-  "You don't have enough funds" message.
-
-### `vacation-tools.js`: vacation for the tired (MY EMPLOYEES)
-- A third button under the game's SEND ON VACATION and PAY THE BONUS: **VACATION FOR THE TIRED – N NEED A REST**.
-  It sends every employee of every profession with mood below 30 (the game marks them "Vacation needed" or
-  "Risk of dismissal") on vacation, the most tired first. The threshold can be changed in the settings.
-- The rules are taken from the game button's event: mood +30 to 40 (max 100), 30 days − 7 per perk,
-  status `Vacation`. At least one person of each profession must keep working. Whoever did not fit because
-  of that keeps working and the notification says so.
-- Tested: 67 of 70 tired employees left, 3 stayed (professions where everyone was tired).
+- Tested in game 1.6: 17 programmers, 37 upgrades; with 2 research points the game's "not enough" message.
 
 ### `game-speed.js`: game speed ×2 and ×3
 - The game's speed button (`#sbx-speed`) cycles through a fixed list `[1, 1.25, 1.5]`. The mod catches its click
@@ -168,43 +157,24 @@ its own layer.
   are found, the mod turns itself off. Turning it off brings the game's names back after a restart, unless the
   editor saved them in the meantime (its reset buttons undo that).
 
-### `update-all.js`: update all apps (UPDATE SOFTWARE)
-- On the update screen every released app has to be clicked, its editor confirmed with **Save** (it already has
-  the next version, e.g. 1.0.3 → 1.0.4, and the app's name, platforms, monetization and icon), and then the next
-  app. **Select all** next to the game's **Update** button does that for every app that is not selected yet: it
-  clicks the card and the editor's **Save** itself, so the version, the price and the level are the game's own.
-- The game's **Update** button then updates them all at once (and checks the money); **×** on a card still takes
-  one app out again. When every app is selected the button turns into **Clear all**, which clicks **×** on all
-  of them (the versions go back, so selecting again gives the same next version). If the editor does not open or
-  save as expected, the mod stops and turns itself off.
-
-### `os-upgrade-all.js`: select all OS upgrades (MY OS UPGRADE)
-- An OS upgrade lists about 35 technologies, each of which has to be clicked. **Select all** above the list
-  clicks every technology that is not selected yet through the game's own click handler, so the game adds up the
-  price and the rating itself, exactly as with single clicks. When everything is selected the button turns into
-  **Clear all**. Single cards can still be clicked as before.
-
-### `store-upgrade-all.js`: upgrade all stores (MY STORES)
+### `store-upgrade-all.js`: all stores to max (MY STORES)
 - The game upgrades the stores of one country at a time: pick the country on the left, then **PAY ALL** (all six
-  areas) or the price button of one area. Two buttons in the top bar, between the title and the money, in the look
-  of the game's PAY ALL button:
-  - **Upgrade all stores $x** clicks PAY ALL once in every country with stores. The price on the button is the sum
-    of them; when the money is not enough for all of it the button is grey and a click shows the game's "You don't
-    have enough funds".
-  - **All to max** clicks PAY ALL in every country, round after round, while the money lasts; when no full round is
-    affordable any more, the cheapest single areas are bought with the rest. A click first asks: a dry run of the
-    same rounds (with the game's price formula and random gains) shows about how much money it will spend and the
-    store levels after it. The button shows the progress, a click on it stops, and at the end the game's message
-    says how many upgrades were bought for how much.
+  areas) or the price button of one area. Since game 1.5 its **UPGRADE ALL** button in the top bar does one round
+  (PAY ALL once in every country, only when all of it is affordable).
+- Right next to it, in the same look (the game's button moves a little to the left to make room), **All to max**
+  clicks PAY ALL in every country, round after round, while the money lasts; when no full round is affordable any
+  more, the cheapest single areas are bought with the rest. A click first asks: a dry run of the same rounds (with
+  the game's price formula and random gains) shows about how much money it will spend and the store levels after
+  it. The button shows the progress, a click on it stops, and at the end the game's message says how many upgrades
+  were bought for how much. It hides itself if it would cover the money in the top bar.
 - Every upgrade is a click on the game's own PAY ALL or area button (the same as with the mouse), so the price
   check, paying, the random gains, the store level and the demand are the game's code. The mod only picks the
   country (`MiniPage`, as a click on the country does), clicks, and opens the country you had open again at the end.
   Before every click it computes the price with the game's formula (`ArrayShops` base price × (5 + √ average
   quality) / 100 × stores, −10 % with the perk); when the game takes a different amount, the mod stops and turns
   itself off. Sounds are muted during the batch and one plays at the end.
-- Tested in game 1.4 with 3 countries: the button price was exactly what the game took ($1 978 479), and "to the
-  max" from $12.3 billion bought 25 497 upgrades in 8 s, spent within 0.001 % of the estimate and left less than
-  the cheapest next upgrade.
+- Tested in game 1.6: from $15.4 billion "to the max" bought 26 161 upgrades and left less than the cheapest next
+  upgrade.
 
 ### `unlimited-shares.js`: unlimited shares (INVESTING)
 Based on the "unlimited shares" mod by **M1lan.** – thank you!
@@ -225,7 +195,7 @@ Based on the "unlimited shares" mod by **M1lan.** – thank you!
 - Tested in game 1.4: a company with 4 005 506 shares on offer showed 66 859 684 on the slider, the game's 49 %
   limit; buying all of them cost exactly the quoted price, and after leaving the page the offer was 0.
 
-### `fixed-fps.js`: fixed FPS at full speed
+### `fixed-fps.js`: fixed FPS at full speed, above 165
 - **The problem:** in Construct's "fixed" frame rate mode every tick moves the game time by exactly 1 / FPS, no
   matter how much time really passed. The ticks are timed with `setTimeout`, and the browser does not run them much
   faster than about 190 per second. So above that the game time falls behind: measured in game 1.4, fixed 60 and
@@ -234,6 +204,11 @@ Based on the "unlimited shares" mod by **M1lan.** – thank you!
   (same limits). The ticks are still paced at the chosen FPS, and when the computer keeps up nothing changes.
   Technically `C3.Runtime.prototype._MeasureDt` is wrapped, and during that call only `GetFramerateMode()` answers
   "vsync". If the runtime's code changes, the mod does not start.
+- **Above 165:** game 1.6 works around the slowdown by capping the fixed FPS at 165 (its list of limits ends there,
+  and every second it sets anything higher back). With the slowdown fixed, the mod allows more: when the game's limit
+  is 165, the runtime runs at the FPS from Settings → BetterDT → Mods (165 to 360). The runtime's `fixedFramerate`
+  reads at most 165 for the game, so its cap leaves the value alone. Tested in game 1.6: asked for 360, it ran at
+  199 ticks per second (the browser's limit) with the game time at exactly 1.00× real time.
 
 ### `no-ending.js`: endless game
 Based on the "prevent retirement" mod by **M1lan.** – thank you!
@@ -249,23 +224,25 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   `"GAMEPLAY"` after 3 seconds.
 
 ### `autosave.js`: adjustable autosave
-- The game autosaves on its own at a fixed interval of game days. It calls `globalThis.tickAutoSave()` once per game day; the mod
-  replaces it with the same logic and the interval from the settings (default 90, 5 to 180 days).
+- The game autosaves every 30, 60, 90, 180 or 365 game days, or never (Settings → General → Autosave). It calls
+  `globalThis.tickAutoSave()` once per game day; the mod replaces it with the same logic and its own interval:
+  any number of days from 5 to 360 in steps of 5 (default 90).
+- The game's Autosave row becomes a slider in the game's own look, saved right away (the same option is in
+  Settings → BetterDT → Mods). With the mod turned off, the game's own row and interval are back.
 - The save itself is the game's own: `debugAutoSave()` runs the game's autosave (SaveGame with its backup and
   read-back check), which skips saving outside gameplay, while paused, while a save is in progress, and on the
   bankruptcy and end-game screens. The mod then tries again the next day.
-- Like the game, it counts from the day a game is started or loaded. With the mod off the game keeps its own interval.
+- Like the game, it counts from the day a game is started or loaded.
 - Tested on a copy with file writes blocked: with the interval set to 30, it saved every 30 days over 700 game days.
 
-### `research-all.js`: Research tab / Research all
-- Two buttons in the top bar of the research page, styled with a copy of the CSS of the game's own **Research all**
-  button. In sandbox mode, where the game's button is free, the mod stays off.
-- **Game 1.4+:** the game shows its own button outside sandbox mode too. It researches only the open category,
-  recommended functions first, with all research points but at most half of the money (`debugResearchAllPlan()`),
-  so often only a part. The mod hides it (`#research-root.bdt-ra-on #research-all { display: none }`) and shows its
-  two buttons in its place. With the option "Use the game's own Research all button" the mod steps aside instead.
-- **Research tab** = every card on the open tab that can be researched (`ArrayResearchPage_Temp`), up to its max level.
-  **Research all** = the game's own list for its sandbox button (`debugResearchAllTargets()`).
+### `research-all.js`: Research all
+- **The game's button (game 1.4+):** **Research all** in the top bar of the research page researches only the tab
+  you have open on the left (and, when a category is picked in the top bar, only its cards), recommended functions
+  first, with all research points but at most half of the money (`planResearchAll`), so often only a part. It asks
+  first with the levels, functions and cost. The mod renames it to **Research tab** so the two are told apart.
+- **Ours:** **Research all** right next to it, styled with a copy of the CSS of the game's button: everything still
+  open on all tabs, the game's own list for its sandbox button (`debugResearchAllTargets()`). In sandbox mode, where
+  the game's button is free and researches everything, the mod stays off.
 - Price = remaining levels × price per level (`ArrayResearch` columns 1 and 2, the same the cards show). The button
   gets the game's grey `rc-all-empty` look and ignores clicks when nothing is left or the points or money are not
   enough for all of it. A click first opens a confirmation with the price and the number of levels
@@ -274,11 +251,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   the level itself (the card click reaches the game's `research-buy-signal` event synchronously). Other tabs are
   opened like a click on them does (`MiniPage`, `Research_ButtonsOpacity`, `ResearchPage`), and the tab you had open
   comes back at the end. Sounds are muted during the batch (one plays at the end); if the game rejects a click,
-  the mod stops.
-- Tested: a whole tab cost exactly the shown price, the tax base dropped by the same money, and "all" (about
-  4000 levels) took about 10 s with the game still drawing (a progress percentage shows on the button).
+  the mod stops. Functions that only become available after others are researched are left for the next click.
 
-All buttons are built from the game's own objects (same buttons, gradients, icons and font).
+All buttons use the game's own look (its HTML buttons' CSS, or its canvas buttons, gradients, icons and font).
 
 ### Game updates
 Mods use the game's own functions, objects and tables, which a game update can rename or change. So every mod
@@ -294,7 +269,7 @@ is registered through `BetterDTKit` (in `betterdt-settings.js`) with a list of w
   position is used instead, and the settings note it.
 - **While running:** errors in a mod's timers and listeners are counted; after 20 the mod is stopped and cleaned
   up (`dispose`). Mods also check their own results: `research-all` stops when the price paid differs from the
-  computed one, `vacation-tools` checks the employee table columns before every write, `autosave` gives the game
+  computed one, `autosave` gives the game
   its own autosave back when the game stops calling `tickAutoSave()`, `hire-tools` charges the price shown on the
   agency card, and `game-speed` steps aside when the game itself styles ×2 / ×3.
 
@@ -360,7 +335,9 @@ BetterDTKit.mod('my-mod', {
   manual downloads apart; `BetterDT.zip` when a release has no copy), checks the CRC-32 of every file and the
   version in `mods/betterdt-version.txt`, and only then replaces the files. The loaded DLL is renamed to
   `BetterDT_x64.old` and deleted on the next start; the new version is used after a restart.
-  `mods\mods.json` keeps any mods you added yourself. The zip is uncompressed so the loader can read it
+  `mods\mods.json` keeps any mods you added yourself. Official mods that a game update made redundant
+  (`vacation-tools.js`, `update-all.js`, `os-upgrade-all.js` since game 1.5/1.6) are skipped and their files deleted
+  when the game starts. The zip is uncompressed so the loader can read it
   without an inflate library. `mods/betterdt-version.txt`:
 
   ```
@@ -368,7 +345,7 @@ BetterDTKit.mod('my-mod', {
   version 0.3.2
   change 0.3.2 <release notes line>     (the whole history from loader/CHANGES.txt, newest first)
   note <release notes line>             (for BetterDT up to 0.3.1, which only reads these)
-  mods betterdt-settings.js os-perf.js hire-tools.js train-all.js vacation-tools.js
+  mods betterdt-settings.js os-perf.js hire-tools.js train-all.js autosave.js
   ```
   The new-version dialog lists the notes of every version newer than the installed one (at most 12 lines).
 - **Restart:** "Restart now" starts the exe again with `BETTERDT_WAIT_PID` set (the environment Steam gave the
