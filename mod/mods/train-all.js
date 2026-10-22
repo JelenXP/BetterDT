@@ -1,9 +1,10 @@
 // Train all – UPGRADE EMPLOYEES screen (TRAIN YOUR EMPLOYEES).
 //
 // Under the game's "UPGRADE ALL" button (renamed to "UPGRADE DESIGNERS" etc.: one step for every employee of the
-// profession) a second one in the same look, "ALL TO MAX", with about how many research points and how much money
-// it takes to train everyone of all professions to the maximum (the gains are random, so it is an estimate). A click goes through every profession (the tabs on the left)
-// and trains every employee on all pages until they reach MAX LEVEL or the money or research points run out.
+// profession) a second one in the same look, "ALL TO MAX (N)": N = employees of all professions not at the max
+// level yet, and under it about how many research points and how much money it takes to train them all to the
+// maximum (the gains are random, so it is an estimate). A click goes through every profession (the tabs on the
+// left) and trains every employee on all pages until they reach MAX LEVEL or the money or research points run out.
 //
 // Training goes through the game's own buttons (the same click as with the mouse), so the price, gains, salary,
 // perks and the "not enough money" message are all computed by the game. The mod only switches professions and
@@ -220,6 +221,8 @@ BetterDTKit.mod('train-all', {
 #bdt-tam-head { display: flex; align-items: center; justify-content: center; gap: 3cqw; min-width: 0; }
 #bdt-tam-label { font-size: 24cqh; line-height: 1; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; min-width: 0; }
+#bdt-tam-count { flex: none; font-size: 14cqh; line-height: 1; padding: 3cqh 2.6cqw; border-radius: 99px;
+  background: rgba(6,42,20,0.18); }
 #bdt-tam-sub img { width: 17cqh; height: 17cqh; object-fit: contain; }
 #bdt-tam-sub .bdt-dot { opacity: 0.55; }
 #bdt-tam-btn.bdt-poor #bdt-tam-sub { color: #ff8a7a; }
@@ -256,7 +259,7 @@ BetterDTKit.mod('train-all', {
     const root = document.createElement('div');
     root.id = 'bdt-tam-root';
     root.innerHTML = '<button id="bdt-tam-btn" type="button"><div id="bdt-tam-head"><span id="bdt-tam-label"></span>' +
-      '</div><div id="bdt-tam-sub"><span>≈</span><img src="UpgradeOffices/ResearchIcon.png" draggable="false" alt="">' +
+      '<span id="bdt-tam-count"></span></div><div id="bdt-tam-sub"><span>≈</span><img src="UpgradeOffices/ResearchIcon.png" draggable="false" alt="">' +
       '<span id="bdt-tam-rp"></span><span class="bdt-dot">•</span><img src="UpgradeOffices/BudgetIcon.png" draggable="false" alt="">' +
       '<span id="bdt-tam-usd"></span><span id="bdt-tam-none"></span></div></button>';
     el.appendChild(root);
@@ -269,7 +272,7 @@ BetterDTKit.mod('train-all', {
     // the game rewrites its label whenever its numbers change: put the profession back before it is painted
     const obs = new MutationObserver(() => relabel());
     const q = (sel) => root.querySelector(sel);
-    ui = { root, btn, obs, label: q('#bdt-tam-label'), sub: q('#bdt-tam-sub'), rp: q('#bdt-tam-rp'), usd: q('#bdt-tam-usd'),
+    ui = { root, btn, obs, label: q('#bdt-tam-label'), count: q('#bdt-tam-count'), sub: q('#bdt-tam-sub'), rp: q('#bdt-tam-rp'), usd: q('#bdt-tam-usd'),
       none: q('#bdt-tam-none'), lang: -1, watched: null };
     cache = { n: -1, at: 0 };
     tick();                                        // the texts are there before the first frame
@@ -300,7 +303,9 @@ BetterDTKit.mod('train-all', {
     relabel();
     const now = performance.now();
     if (cache.n < 0 || now - cache.at > 250) cache = { ...estimate(), at: now };
-    const rp = int(cache.rp), usd = '$' + int(cache.usd);
+    // like the game's count: the employees who are not at the max level yet (here of all professions)
+    const n = String(Math.max(0, cache.n)), rp = int(cache.rp), usd = '$' + int(cache.usd);
+    if (ui.count.textContent !== n) ui.count.textContent = n;
     if (ui.rp.textContent !== rp) ui.rp.textContent = rp;
     if (ui.usd.textContent !== usd) ui.usd.textContent = usd;
     ui.sub.classList.toggle('bdt-done', cache.n <= 0);

@@ -115,7 +115,8 @@ its own layer.
 - Game 1.6 has its own **UPGRADE ALL** button in the left panel: one training step for every employee of the
   selected profession, all or nothing. The mod renames it to **UPGRADE DESIGNERS** (the profession as the game
   shows it, so it changes when you switch professions) and puts a second button in the same look under it:
-  **ALL TO MAX**. A click goes through every profession (the tabs on the left, the shown one first) and all its
+  **ALL TO MAX (N)**, where N is the number of employees of all professions who are not at MAX LEVEL yet. A
+  click goes through every profession (the tabs on the left, the shown one first) and all its
   pages and trains until everyone is at the maximum or the money or research points run out; then the profession
   you had open is shown again. To fit both, the game's button is made a little lower. Both buttons appear and
   disappear together, with the game's animation.
