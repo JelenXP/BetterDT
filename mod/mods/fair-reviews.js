@@ -14,7 +14,8 @@
 //   - two more categories: Value for money (quality of the parts against the price) and Innovation.
 // The price class is the device's price against the flagship price of its type in that year (simulateDeviceCost).
 // The rating the game stores and shows as the total is the mean of the 4 shown scores; while it does that, all 4
-// hold the final rating, which weighs every category (the shown ones and the price more).
+// hold the final rating, which weighs every category (the shown ones and the price more). The average badges of the
+// review screen show the final rating too.
 // The upper row of reviews is headed "Best ratings", the lower one "Worst ratings". Under the reviews a strip shows
 // every category with its score once all 4 reviews are in; the 2 best are framed green, the 2 worst red.
 BetterDTKit.mod('fair-reviews', {
@@ -231,8 +232,19 @@ BetterDTKit.mod('fair-reviews', {
     el.style.opacity = cs.opacity;
     el.style.filter = cs.filter === 'none' ? '' : cs.filter;
   }
+  // the game's average badges (the big one and the one in the corner) show the mean of the 4 cards, but the stored
+  // rating is the final one, so they show that; they come in long after the cards, so this is done before they show
+  function badges(root) {
+    const f = Math.round(last.final);
+    for (const b of root.querySelectorAll('#reviews-summary, #reviews-summary-corner')) {
+      const n = b.querySelector('.summary-num');
+      if (n && n.textContent !== String(f)) n.textContent = String(f);
+      b.querySelectorAll('.summary-star').forEach((s, i) => { s.classList.toggle('full', i < f); s.classList.toggle('empty', i >= f); });
+    }
+  }
   function sync() {
     const root = wrap.parentElement, cards = cardsOf(root);
+    badges(root);
     if (cards.length < 4) { heads.forEach(h => { h.style.opacity = 0; }); return; }
     const rr = root.getBoundingClientRect(), c = cards.map(x => x.getBoundingClientRect());
     const title = document.getElementById('reviews-title'), tb = title ? title.getBoundingClientRect().bottom : c[0].top - rr.height * 0.12;
