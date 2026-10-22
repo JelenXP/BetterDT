@@ -1,7 +1,10 @@
 // Research breakthroughs – the math, without the game: how many breakthroughs a finished lab project gives, which
 // research categories can get one and how they are drawn. Used by research-breakthroughs.js and the node tests.
 (() => {
-  const K = [900, 3600, 12000], EXP = 0.6, MAX_MISSING = 4, MAX_MISSING_RP = 120, AHEAD_DAYS = 365;
+  const K = [900, 3600, 12000], EXP = 0.6, MAX_MISSING = 4, MAX_MISSING_RP = 120, AHEAD_DAYS = 460;
+  // a part must come to the market MIN_AHEAD to AHEAD_DAYS days after the breakthrough; its weight grows with the
+  // lead up to FULL_AHEAD days and stays the same after that
+  const MIN_AHEAD = 10, FULL_AHEAD = 190;
   const chance = (Y, k) => Y > 0 ? Y ** EXP / (Y ** EXP + k ** EXP) : 0;
   function attempts(Y, rng) { let n = 0; for (const k of K) { if (rng() < chance(Y, k)) n++; else break; } return n; }
   function datedCount(borns, today) { let n = 0; while (n < borns.length && borns[n] <= today) n++; return n; }
@@ -14,7 +17,7 @@
       if (missing > MAX_MISSING || (missing > 1 && missing * cost > MAX_MISSING_RP)) return null;
       row = A;
     }
-    if (row >= borns.length || !(borns[row] > today) || borns[row] > today + AHEAD_DAYS) return null;
+    if (row >= borns.length || !(borns[row] >= today + MIN_AHEAD) || borns[row] > today + AHEAD_DAYS) return null;
     return { row, level: row + 1 };
   }
   function pick(cands, n, rng) {
@@ -27,6 +30,8 @@
     }
     return out;
   }
+  const leadWeight = (lead) => Math.min(Math.max(lead, 0), FULL_AHEAD) / FULL_AHEAD;
   const relevance = (released, creatingOf) => released.size && creatingOf.some(c => released.has(c)) ? 3 : 1;
-  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, target, pick, relevance, AHEAD_DAYS });
+  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, target, pick, leadWeight, relevance,
+    AHEAD_DAYS, MIN_AHEAD, FULL_AHEAD });
 })();

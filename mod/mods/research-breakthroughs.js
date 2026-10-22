@@ -2,9 +2,9 @@
 //
 // When a lab project ends, the points it made (collected ones too) decide how many breakthroughs it gives (0–3, more
 // points give more). Each one raises a research category by one level ahead of the parts on the market: the next part
-// of that category, normally available up to a year later, can be built into devices now. A category the player is
-// far behind in cannot get one. Categories of the device types the player released in the last two years are drawn
-// three times as often.
+// of that category, normally available 10 to 460 days later, can be built into devices now. A category the player is
+// far behind in cannot get one. A part further ahead is drawn more often (up to 190 days), and categories of the
+// device types the player released in the last two years three times as often.
 // The parts come as the game's own news in the office (the game waits while it is open, Auto continue closes it).
 // The device designer lists a category's parts up to the number of parts on the market; for a category researched
 // ahead that number is raised to the research level, so the future parts are offered.
@@ -64,7 +64,8 @@ BetterDTKit.mod('research-breakthroughs', {
     for (const [id, r] of Object.entries(D.research)) {
       if (r.start > today() || !D.counters[r.array]) continue;
       const t = B.target(level(id), borns(r.array, r.bornCol), today(), r.cost);
-      if (t) out.push({ id, w: B.relevance(rel, r.creating), t });
+      const lead = t && borns(r.array, r.bornCol)[t.row] - today();
+      if (t) out.push({ id, w: B.relevance(rel, r.creating) * B.leadWeight(lead), t });
     }
     return out;
   }
@@ -169,7 +170,7 @@ BetterDTKit.mod('research-breakthroughs', {
     const b = borns(array, r.bornCol), A = B.datedCount(b, today());
     let L = 0;
     for (const id of ids) L = Math.max(L, level(id));
-    // only rows that a breakthrough can give: born within a year
+    // only rows that a breakthrough can give: born up to 460 days ahead
     let n = A;
     while (n < L && n < b.length && b[n] <= today() + B.AHEAD_DAYS) n++;
     return n - A;

@@ -383,8 +383,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   the pool's cap do not. The first comes with a chance of about 47 % at 750 points and 60 % at 1 700, a second and
   third only after the first, and more points give more (`lib-breakthrough-core.js`).
 - A breakthrough raises one research category one level ahead of the parts on the market: the next part of that
-  category, normally available up to a year later. A category you are more than a few levels behind in cannot get
-  one. Categories of the device types you released in the last two years are drawn three times as often. The
+  category, normally available 10 to 460 days later. A category you are more than a few levels behind in cannot get
+  one. A part further ahead is drawn more often: the weight grows with the lead up to 190 days and stays the same
+  after that. Categories of the device types you released in the last two years are drawn three times as often. The
   game's own news window (on the next day in the office) names the parts and the day they would normally come out;
   the game waits while it is open, as for its other news.
 - The device designer lists a category's parts up to the number already on the market (it counts them into
