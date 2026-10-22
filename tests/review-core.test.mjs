@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { load } from './load.mjs';
+const C = load('mod/mods/lib-review-core.js', 'BDTReviewCore');
+const half = () => 0.5, lo = () => 0, hi = () => 0.999999;
+test('price class', () => {
+  assert.equal(C.priceClass(0.40), 'budget'); assert.equal(C.priceClass(0.41), 'mid');
+  assert.equal(C.priceClass(0.75), 'mid'); assert.equal(C.priceClass(0.76), 'flagship');
+});
+test('generations table', () => {
+  assert.deepEqual(C.genRange('flagship', 0), [8, 10]); assert.deepEqual(C.genRange('mid', -2), [8, 10]);
+  assert.deepEqual(C.genRange('budget', 1), [6, 7]); assert.deepEqual(C.genRange('flagship', 2), [4, 5]);
+  assert.deepEqual(C.genRange('budget', 3), [5, 6]); assert.deepEqual(C.genRange('mid', 3), [4, 5]);
+  assert.deepEqual(C.genRange('flagship', 3), [1, 3]); assert.deepEqual(C.genRange('budget', 4), [4, 5]);
+  assert.deepEqual(C.genRange('mid', 4), [1, 3]); assert.deepEqual(C.genRange('budget', 9), [1, 3]);
+});
+test('uniform has one decimal', () => { assert.equal(C.uniform(8, 10, half), 9); assert.equal(C.uniform(1, 3, () => 0.37), 1.7); });
+test('price limits', () => {
+  assert.equal(C.innovationShift(0), 0); assert.equal(C.innovationShift(3), 15);
+  assert.equal(C.innovationShift(4), 16); assert.equal(C.innovationShift(10), 22); assert.equal(C.innovationShift(14), 22);
+  assert.deepEqual(C.priceLimits('mid', 0), [20, 30, 35, 40]);
+  assert.deepEqual(C.priceLimits('budget', 0), [15, 25, 30, 35]);
+  assert.deepEqual(C.priceLimits('flagship', 2), [40, 50, 55, 60]);
+});
+test('price bands', () => {
+  const L = [20, 30, 35, 40];
+  assert.equal(C.priceBand(19.9, L), 0); assert.equal(C.priceBand(20, L), 1); assert.equal(C.priceBand(34, L), 2);
+  assert.equal(C.priceBand(39, L), 3); assert.equal(C.priceBand(40, L), 4);
+  assert.deepEqual(C.priceRange(0), [9, 10]); assert.deepEqual(C.priceRange(4), [1, 2]);
+  assert.equal(C.overpriced(34.9, L), false); assert.equal(C.overpriced(35, L), true);
+});
+test('quality and value', () => {
+  assert.equal(C.quality([]), 0.5); assert.equal(C.quality([0, 6]), 0.5); assert.equal(C.quality([-1, 9]), 0.5);
+  assert.equal(C.valueScore(1, 0.4, half), 10);       // ratio 2.5
+  assert.equal(C.valueScore(0.65, 0.5, half), 8);     // ratio 1.3
+  assert.equal(C.valueScore(0.55, 0.5, half), 5.5);   // ratio 1.1
+  assert.equal(C.valueScore(0.1, 0.5, half), 1);      // ratio 0.2
+  assert.equal(C.valueScore(1, 0.4, hi), 10);         // kept in 1–10
+  assert.equal(C.valueScore(0.1, 0.5, lo), 1);
+});
+test('innovation', () => {
+  assert.equal(C.innovationBase(1), 8); assert.equal(C.innovationBase(2), 8.5); assert.equal(C.innovationBase(3), 9);
+  assert.equal(C.innovationBase(4), 9.15); assert.equal(C.innovationBase(6), 9.45); assert.equal(C.innovationBase(12), 10);
+  assert.equal(C.innovationScore(10, hi), 10); assert.equal(C.innovationScore(1, lo), 7.7);
+});
+test('shown categories', () => {
+  const s = { display: 9, cpu: 8.5, memory: 7, battery: 3, price: 5, value: 6 };
+  assert.deepEqual(C.pickShown(s, false), ['display', 'cpu', 'battery', 'price']);
+  const t = { display: 9, cpu: 8.5, memory: 7, battery: 3, price: 6.5, value: 4 };
+  assert.deepEqual(C.pickShown(t, false), ['display', 'cpu', 'battery', 'value']);
+  assert.deepEqual(C.pickShown(t, true), ['display', 'cpu', 'battery', 'price']);
+});
+test('final rating', () => {
+  const s = { display: 9, cpu: 9, battery: 3, price: 6, value: 6 };
+  // weights: display 1.25, cpu 1.25, battery 1.25, price 2.5, value 1 → (11.25+11.25+3.75+15+6)/7.25 = 6.517
+  assert.equal(C.finalRating(s, ['display', 'cpu', 'battery', 'price'], half), 7);
+  assert.equal(C.finalRating({ a: 0.2, price: 1 }, [], lo), 1);
+  assert.equal(C.finalRating({ a: 10, price: 10 }, [], hi), 10);
+});
+test('review band', () => { assert.equal(C.reviewBand(3.4), 0); assert.equal(C.reviewBand(3.5), 1); assert.equal(C.reviewBand(7.5), 2); });
+test('sales bonus', () => {
+  assert.equal(C.salesBonus(0), 0); assert.equal(C.salesBonus(1), 0.1); assert.equal(C.salesBonus(2), 0.2);
+  assert.equal(C.salesBonus(3), 0.25); assert.equal(+C.salesBonus(4).toFixed(4), 0.27);
+  assert.equal(+C.salesBonus(6).toFixed(4), 0.31); assert.equal(+C.salesBonus(15).toFixed(4), 0.39);
+  assert.equal(C.effectiveParts([100, 100], 90), 2); assert.equal(C.effectiveParts([100], 130), 0.5);
+  assert.equal(C.effectiveParts([100], 160), 0);
+});
