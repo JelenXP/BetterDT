@@ -39,40 +39,8 @@ BetterDTKit.mod('fair-reviews', {
   let last = null;
   const finals = new Map();   // fn + ':' + model -> final rating, for the stored rating
 
-  // a column of the device: model aspects read the design array at (x, model, col), the processors and graphics
-  // cards their own design array at (x, col)
-  const devAt = (gen, x, y, col) => { const a = arr(gen.src); return a ? (gen.model ? a.getAt(x, y, col) : a.getAt(x, col)) : 0; };
-  // the component array of a generational aspect: some depend on a switch of the device (SSD or HDD)
-  function compOf(gen, x, y) {
-    const c = gen.arrays.length > 1 ? gen.arrays.find(a => (String(devAt(gen, x, y, a.when.col)) === 'ON') === a.when.on) : gen.arrays[0];
-    return c && arr(c.array) ? { a: arr(c.array), bornCol: c.bornCol } : null;
-  }
-  // generations behind the newest part on the market at `day` (negative: a part from the future), and its born day
-  function generation(gen, x, y, day) {
-    const c = compOf(gen, x, y);
-    if (!c) return null;
-    const row = Math.round(num(devAt(gen, x, y, gen.col)));
-    if (row < 0 || row >= c.a.width) return null;
-    let n = 0;
-    for (let i = 0; i < c.a.width; i++) if (num(c.a.getAt(i, c.bornCol)) <= day) n++;
-    return { gens: n - 1 - row, born: num(c.a.getAt(row, c.bornCol)) };
-  }
-  // the innovative parts of a device: every distinct generational part born after `day`
-  function partsOf(designArray, x, y, day) {
-    const borns = [], seen = new Set();
-    for (const e of Object.values(D.engines)) {
-      if (e.device !== designArray) continue;
-      for (const s of e.aspects) {
-        if (!s.gen) continue;
-        const k = s.gen.src + ':' + s.gen.col;
-        if (seen.has(k)) continue;
-        seen.add(k);
-        const g = generation(s.gen, x, y, day);
-        if (g && g.born > day) borns.push(g.born);
-      }
-    }
-    return { count: borns.length, borns };
-  }
+  const generation = (gen, x, y, day) => C.generation(rt, gen, x, y, day);
+  const partsOf = (designArray, x, y, day) => C.partsOf(rt, D, designArray, x, y, day);
 
   function compute(fn) {
     const e = D.engines[fn], dev = arr(e.device), temp = arr('ArrayReviews_Temp'), db = arr('ArrayReviews_DB');
@@ -234,6 +202,5 @@ BetterDTKit.mod('fair-reviews', {
 
   const api = { get last() { return last; }, review, compute, partsOf, dispose() { clearInterval(timer); removeStrip(); delete globalThis.__bdtFairReviews; } };
   globalThis.__bdtFairReviews = api;
-  globalThis.BDTInnovation = { partsOf };
-  return () => { api.dispose(); delete globalThis.BDTInnovation; };
+  return () => api.dispose();
 });

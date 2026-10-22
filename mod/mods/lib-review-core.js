@@ -1,5 +1,5 @@
 // Fair reviews – the math, without the game: price class, generations, price, value for money, innovation,
-// the shown categories, the final rating and the innovation sales bonus. Used by fair-reviews.js and
+// the shown categories, the final rating, the innovation sales bonus and the innovative parts of a device. Used by fair-reviews.js and
 // research-breakthroughs.js, and by the node tests (tests/review-core.test.mjs).
 (() => {
   const round1 = (v) => Math.round(v * 10) / 10;
@@ -63,9 +63,46 @@
   const salesBonus = (n) => n <= 2 ? 0.1 * n : n <= 3 ? 0.2 + 0.05 * (n - 2) : 0.25 + 0.02 * (Math.min(n, 10) - 3);
   const effectiveParts = (borns, day) => borns.reduce((s, b) => s + clamp(1 - (day - b) / FADE_DAYS, 0, 1), 0);
 
+  // the parts of a device in the game (rt = the runtime, D = BDTReviewData): a column of the device – model aspects
+  // read the design array at (x, model, col), the processors and graphics cards their own design array at (x, col)
+  const inst = (rt, name) => rt.objects[name] && rt.objects[name].getFirstInstance();
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const devAt = (rt, gen, x, y, col) => { const a = inst(rt, gen.src); return a ? (gen.model ? a.getAt(x, y, col) : a.getAt(x, col)) : 0; };
+  // the component array of a generational aspect: some depend on a switch of the device (SSD or HDD)
+  function compOf(rt, gen, x, y) {
+    const c = gen.arrays.length > 1 ? gen.arrays.find(a => (String(devAt(rt, gen, x, y, a.when.col)) === 'ON') === a.when.on) : gen.arrays[0];
+    return c && inst(rt, c.array) ? { a: inst(rt, c.array), bornCol: c.bornCol } : null;
+  }
+  // generations behind the newest part on the market at `day` (negative: a part from the future), and its born day
+  function generation(rt, gen, x, y, day) {
+    const c = compOf(rt, gen, x, y);
+    if (!c) return null;
+    const row = Math.round(num(devAt(rt, gen, x, y, gen.col)));
+    if (row < 0 || row >= c.a.width) return null;
+    let n = 0;
+    for (let i = 0; i < c.a.width; i++) if (num(c.a.getAt(i, c.bornCol)) <= day) n++;
+    return { gens: n - 1 - row, born: num(c.a.getAt(row, c.bornCol)) };
+  }
+  // the innovative parts of a device: every distinct generational part born after `day`
+  function partsOf(rt, D, designArray, x, y, day) {
+    const borns = [], seen = new Set();
+    for (const e of Object.values(D.engines)) {
+      if (e.device !== designArray) continue;
+      for (const s of e.aspects) {
+        if (!s.gen) continue;
+        const k = s.gen.src + ':' + s.gen.col;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const g = generation(rt, s.gen, x, y, day);
+        if (g && g.born > day) borns.push(g.born);
+      }
+    }
+    return { count: borns.length, borns };
+  }
+
   globalThis.BDTReviewCore = Object.freeze({
     priceClass, genRange, uniform, innovationShift, priceLimits, priceBand, priceRange, overpriced, quality,
     valueScore, innovationBase, innovationScore, categoryScores, pickShown, finalRating, reviewBand, salesBonus,
-    effectiveParts, PRICE_WEIGHT, SHOWN_MUL,
+    effectiveParts, generation, partsOf, PRICE_WEIGHT, SHOWN_MUL,
   });
 })();

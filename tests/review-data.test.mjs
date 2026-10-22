@@ -51,8 +51,10 @@ test('research rows point to dated arrays', () => {
   assert.deepEqual(D.research[18].creating, ['SMARTPHONES', 'TABLETS']);
 });
 
-test('editor lists of the dated arrays', () => {
-  assert.deepEqual(D.editors.ArrayScreenResolution_Smartphone.temps, { ArrayScreenResolution_Temp: ['SmartphonePage3_ButtonsOpacity'] });
-  assert.equal(D.editors.ArrayCPUArchitecture_Smartphone.scale.temp, 'ArrayCPUArchitecture_Temp');
-  for (const [a, ed] of Object.entries(D.editors)) assert.ok(a in Object.fromEntries(Object.values(D.research).map(r => [r.array, 1])), a);
+test('editor list counts of the dated arrays', () => {
+  const dated = new Set(Object.values(D.research).map(r => r.array));
+  assert.ok(Object.keys(D.counters).length > 250);
+  assert.equal(D.counters.ArrayScreenResolution_Smartphone.length, 1);
+  assert.ok(D.counters.ArrayBluetooth.length >= 10);
+  for (const [a, sids] of Object.entries(D.counters)) assert.ok(dated.has(a) && sids.length && sids.every(Number.isFinite), a);
 });

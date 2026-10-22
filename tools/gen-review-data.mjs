@@ -1,8 +1,8 @@
-// usage: node tools/gen-review-data.mjs <unpacked game dir> [--list | --groups]
+// usage: node tools/gen-review-data.mjs <unpacked game dir> [--list | --groups | --counters]
 // Reads the game's event sheets (data.json) and expressions (scripts/c3main.js) and writes
 // mod/mods/lib-review-data.js: every aspect of the 16 review functions (DB range, kind, category, the component the
-// game compares for a generational aspect), the research categories with a dated component array, the editor lists
-// of those arrays, the 32 actions that store a review rating and the script action of the daily sales.
+// game compares for a generational aspect), the research categories with a dated component array, the editor list
+// counts of those arrays, the 32 actions that store a review rating and the script action of the daily sales.
 // The game data comes from `node dtmod.mjs unpack <assets.dat> <dir>`.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = process.argv[2];
-if (!dir) { console.error('usage: node tools/gen-review-data.mjs <unpacked game dir> [--list | --groups]'); process.exit(2); }
+if (!dir) { console.error('usage: node tools/gen-review-data.mjs <unpacked game dir> [--list | --groups | --counters]'); process.exit(2); }
 const LIST = process.argv.includes('--list');
 const json = (f) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
 const project = json('data.json').project;
@@ -376,31 +376,46 @@ for (const rows of Object.values(ROWS)) for (const [id, start, array, bornCol] o
 }
 
 // ── editors ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-// The editor pages of the device designer fill a <part>_Temp list from the dated component array (event functions
-// <Type>Page<n>_ButtonsOpacity); the processor and graphics editors of the JS port use the *_SCALES configs.
-const editors = {};
-const datedArrays = new Set(Object.values(research).map(r => r.array));
-(function walk(a, fn) {
-  if (!Array.isArray(a)) return;
-  if (a[0] === 4 && Array.isArray(a[1]) && typeof a[1][0] === 'string') fn = a[1][0];
-  if (isEvent(a)) {
-    if (/_ButtonsOpacity$/.test(fn || '')) for (const act of arr(a[7])) {
-      const temp = OBJ[act[0]];
-      if (!temp || !/_Temp$/.test(temp)) continue;
-      for (const x of exprs(act[6])) for (const n of x.nodes) if (Array.isArray(n) && n[0] === 1 && datedArrays.has(OBJ[n[1]])) {
-        const ed = editors[OBJ[n[1]]] ||= { temps: {}, scale: null };
-        (ed.temps[temp] ||= []).includes(fn) || ed.temps[temp].push(fn);
+// An editor list of the device designer counts the dated rows of its component array into ArrayFunctionsOpened
+// (set to 0, then + 1 for every row with born day ≤ DayTotal) and lists the rows below that count; rows at or above
+// the research level are shown locked. counters[array] = the SIDs of the "set to 0" actions of that array's counts.
+const counters = {}, counterFns = {};
+{
+  const AFO = varSid('ArrayFunctionsOpened');
+  const setsTo = (act, ace) => act[0] === -1 && act[1] === ace && Array.isArray(act[6]) && Array.isArray(act[6][0]) && act[6][0][0] === 11 && act[6][0][1] === AFO;
+  // the component array of the first "+ 1" in a subtree: an object in the conditions above it
+  function counted(e, stack) {
+    if (!isEvent(e)) { for (const c of arr(e[8])) { const r = counted(c, stack); if (r) return r; } return null; }
+    const st = stack.concat(arr(e[6]));
+    if (arr(e[7]).some(x => setsTo(x, 102))) {
+      for (const c of st.slice().reverse()) {
+        const objs = [c[0], ...exprs(c[9]).flatMap(x => x.nodes.filter(n => Array.isArray(n) && n[0] === 1).map(n => n[1]))];
+        const o = objs.find(i => i >= 0 && /^Array/.test(OBJ[i] || ''));
+        if (o !== undefined) return OBJ[o];
       }
+      return null;
     }
-    for (const c of arr(a[8])) walk(c, fn);
-    return;
+    for (const c of arr(e[8])) { const r = counted(c, st); if (r) return r; }
+    return null;
   }
-  for (const c of a) walk(c, fn);
-})(project[6], null);
-for (const m of C3MAIN.matchAll(/\{sel:"[^"]*",id:"([^"]*)",temp:"([^"]*)",src:"([^"]*)",research:(\d+),offset:(\d+),filterCol:(\d+)/g)) {
-  const ed = editors[m[3]] ||= { temps: {}, scale: null };
-  ed.scale = { id: m[1], temp: m[2], research: +m[4], offset: +m[5], filterCol: +m[6] };
+  (function walk(list, fn) {
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!Array.isArray(e)) continue;
+      const zero = isEvent(e) && arr(e[7]).find(x => setsTo(x, 34) && constOf(x[6][1]) === 0 || (setsTo(x, 34) && exprOf(x[6][1]) && exprOf(x[6][1]).src === '()=>0'));
+      if (zero) {
+        // the count is in the same event's sub events or in the next sibling
+        const array = counted({ 8: arr(e[8]) }, []) || (list[i + 1] && counted(list[i + 1], []));
+        if (array) { (counters[array] ||= []).push(zero[3]); counterFns[zero[3]] = fn; }
+      }
+      const name = e[0] === 4 && Array.isArray(e[1]) && typeof e[1][0] === 'string' ? e[1][0] : fn;
+      for (const c of e) if (Array.isArray(c)) walk(c, name);
+    }
+  })(project[6], null);
 }
+const datedArrays = new Set(Object.values(research).map(r => r.array));
+for (const k of Object.keys(counters)) if (!datedArrays.has(k)) delete counters[k];
 
 // ── rating writes and the daily sales script ────────────────────────────────────────────────────────────────────────
 // the actions that store a review's rating: their expression is the mean of ReviewRating_1..4
@@ -423,7 +438,7 @@ const out = {
     categories: e.categories,
     aspects: e.aspects.map(({ a, b, kind, cat, group, gen }) => gen ? { a, b, kind, cat, group, gen } : { a, b, kind, cat, group }),
   }])),
-  research, editors, ratingSids, salesScript,
+  research, counters, ratingSids, salesScript,
   closing: [[2629, 2658], [2659, 2688], [2689, 2718]],
   // design array columns (z) of a released device: rating, release day (the review screen writes them)
   releaseCol: 7, ratingCol: 5,
@@ -432,12 +447,12 @@ const checks = [];
 if (ratingSids.length !== 32) checks.push(`${ratingSids.length} rating writes, expected 32`);
 if (!salesScript) checks.push('no sales script');
 for (const [id, r] of Object.entries(research)) if (!(r.cost > 0) || r.nameText < 0) checks.push(`research ${id} ${r.array}: cost ${r.cost}, name ${r.nameText}`);
-if (!LIST && !process.argv.includes('--groups')) {
+if (!LIST && !process.argv.includes('--groups') && !process.argv.includes('--counters')) {
   writeFileSync(join(ROOT, 'mod/mods/lib-review-data.js'),
     `// Generated by tools/gen-review-data.mjs from game ${out.gameVersion}. Do not edit; change tools/review-overrides.json.\r\n` +
     `globalThis.BDTReviewData = ${JSON.stringify(out)};\r\n`);
   console.log('added bands:\n  ' + added.join('\n  '));
-  console.log(Object.keys(research).length, 'research rows,', Object.keys(editors).length, 'editor arrays,', ratingSids.length, 'rating writes, sales', salesScript);
+  console.log(Object.keys(research).length, 'research rows,', Object.keys(counters).length, 'editor lists,', ratingSids.length, 'rating writes, sales', salesScript);
 }
 if (checks.length) { console.error(checks.join('\n')); process.exitCode = 1; }
 
@@ -449,6 +464,9 @@ if (LIST) {
 }
 export { engines, ENG, dbMin, dbMax, OBJ, EXPR, C3MAIN, project, findFunc, findGroup, allFuncs, exprs, exprOf, isEvent, VAR, varSid, objId, json, ROOT };
 if (problems.length) { console.error(problems.join('\n')); console.error(problems.length, 'aspects without a category of their type'); }
+if (process.argv.includes('--counters')) {
+  for (const [a, sids] of Object.entries(counters)) console.log(a.padEnd(40), sids.map(x => counterFns[x]).join(' '));
+}
 if (process.argv.includes('--groups')) {
   for (const e of Object.values(engines)) for (const g of groups(e.aspects)) {
     if (g[0].kind === 'price') continue;

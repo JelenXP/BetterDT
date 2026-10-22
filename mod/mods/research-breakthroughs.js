@@ -1,0 +1,175 @@
+// Research breakthroughs – a finished lab project can research parts before the market has them.
+//
+// When a lab project ends, its points decide how many breakthroughs it gives (0–3, more points give more). Each one
+// raises a research category by one level ahead of the parts on the market: the next part of that category, normally
+// available up to a year later, can be built into devices now. A category the player is far behind in cannot get one.
+// Categories of the device types the player released in the last two years are drawn three times as often.
+// The device designer lists a category's parts up to the number of parts on the market; for a category researched
+// ahead that number is raised to the research level, so the future parts are offered.
+// A device with innovative parts (born after its release) sells more: its popularity counts 10 % more per part while
+// the sales are computed, fading out within 60 days after the part reached the market. Fair reviews also scores
+// innovation (fair-reviews.js).
+BetterDTKit.mod('research-breakthroughs', {
+  needs: {
+    calls: ['ResearchInvestEngine'],
+    objects: ['ArrayMyResearch', 'ArrayMyResearch_Invest', 'ArrayLanguage'],
+    vars: ['DayTotal', 'LanguageChoose', 'ArrayFunctionsOpened'],
+    actions: Object.values((globalThis.BDTReviewData || { counters: {} }).counters).flat(),
+    check: () => !globalThis.BDTReviewData ? 'lib-review-data.js' : !globalThis.BDTReviewCore ? 'lib-review-core.js'
+      : !globalThis.BDTReviewTexts ? 'lib-review-texts.js' : !globalThis.BDTBreakthroughCore ? 'lib-breakthrough-core.js'
+      : !globalThis.BetterDTUI ? 'BetterDTUI' : '',
+  },
+}, (rt, kit) => {
+  if (globalThis.__bdtBreakthroughs) globalThis.__bdtBreakthroughs.dispose();
+  const D = BDTReviewData, C = BDTReviewCore, B = BDTBreakthroughCore, T = BDTReviewTexts, gv = rt.globalVars;
+  const arr = (name) => rt.objects[name] && rt.objects[name].getFirstInstance();
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const lang = () => { const l = Math.round(num(gv.LanguageChoose)); return l >= 0 && l < 15 ? l : 0; };
+  const today = () => num(gv.DayTotal);
+  const level = (id) => Math.round(num(arr('ArrayMyResearch').getAt(+id)));
+  const idsOf = {};   // component array -> research ids
+  for (const [id, r] of Object.entries(D.research)) (idsOf[r.array] ||= []).push(id);
+
+  // born days of the rows of a component array, cached for the day
+  let bornDay = -1, bornCache = new Map();
+  function borns(array, col) {
+    if (bornDay !== today()) { bornDay = today(); bornCache = new Map(); }
+    let b = bornCache.get(array);
+    if (!b) {
+      const a = arr(array);
+      b = [];
+      if (a) for (let i = 0; i < a.width; i++) b.push(num(a.getAt(i, col)));
+      bornCache.set(array, b);
+    }
+    return b;
+  }
+
+  // ── which categories can get a breakthrough ───────────────────────────────────────────────────────────────────────
+  function released() {
+    const out = new Set(), from = today() - 730;
+    for (const e of Object.values(D.engines)) {
+      const a = arr(e.device);
+      if (!a || out.has(e.creating)) continue;
+      for (let x = 0; x < a.width && !out.has(e.creating); x++) for (let y = 0; y < a.height; y++) {
+        if (num(a.getAt(x, y, e.costCol)) > 0 && num(a.getAt(x, y, D.releaseCol)) >= from) { out.add(e.creating); break; }
+      }
+    }
+    return out;
+  }
+  function candidates() {
+    const rel = released(), out = [];
+    for (const [id, r] of Object.entries(D.research)) {
+      if (r.start > today() || !D.counters[r.array]) continue;
+      const t = B.target(level(id), borns(r.array, r.bornCol), today(), r.cost);
+      if (t) out.push({ id, w: B.relevance(rel, r.creating), t });
+    }
+    return out;
+  }
+
+  // ── a finished project ────────────────────────────────────────────────────────────────────────────────────────────
+  const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];   // the game's year: 365 days from day 1 of 2008
+  function dateOf(day) {
+    let rest = Math.max(0, day - 1), m = 0;
+    const y = 2008 + Math.floor(rest / 365);
+    rest %= 365;
+    while (rest >= DAYS[m]) rest -= DAYS[m++];
+    return String(rest + 1).padStart(2, '0') + '.' + String(m + 1).padStart(2, '0') + '.' + y;
+  }
+  const pending = [];
+  function showDialog() {
+    if (!pending.length) return;
+    const L = lang(), lines = pending.map(g => T.t(T.breakthroughLine, L)
+      .replace('{part}', String(arr('ArrayLanguage').getAt(L, D.research[g.id].nameText)).replace(/\[[^\]]*\]/g, '').trim())
+      .replace('{date}', dateOf(g.born)));
+    if (BetterDTUI.dialog(T.t(T.breakthroughTitle, L), lines.join('\n'), [{ label: 'OK', go: true, cb() {} }])) {
+      pending.length = 0;
+      const t = document.querySelector('#bdt-dlg .bdt-text');
+      if (t) t.style.whiteSpace = 'pre-line';
+    }
+  }
+  const retry = setInterval(kit.guard(showDialog), 1000);
+  function finish(Y, rng = Math.random, opts = {}) {
+    const cands = candidates(), ids = B.pick(cands, B.attempts(Y, rng), rng), R = arr('ArrayMyResearch'), out = [];
+    for (const id of ids) {
+      const t = cands.find(c => c.id === id).t, r = D.research[id];
+      R.setAt(t.level, +id);
+      out.push({ id, row: t.row, level: t.level, born: borns(r.array, r.bornCol)[t.row] });
+    }
+    if (!opts.quiet) { api.lastProject = { Y, day: today(), out }; BetterDT.log('lab project ended, yield', Y, 'breakthroughs', out.map(g => g.id + '→' + g.level).join(' ') || 'none'); }
+    if (out.length && !opts.quiet) { pending.push(...out); showDialog(); }
+    return out;
+  }
+  let invest = null;
+  kit.wrapCalls('ResearchInvestEngine', {
+    before() { const a = arr('ArrayMyResearch_Invest'); invest = { pool: num(a.getAt(0, 0)), days: num(a.getAt(0, 1)) }; },
+    after() {
+      const was = invest; invest = null;
+      if (was && was.days === 1 && num(arr('ArrayMyResearch_Invest').getAt(0, 1)) === 0 && was.pool > 0) finish(was.pool);
+    },
+  });
+
+  // ── the designer lists the parts up to the research level ─────────────────────────────────────────────────────────
+  // the list counts the parts on the market into ArrayFunctionsOpened, starting from the value set here
+  function extra(array) {
+    const ids = idsOf[array] || [], r = D.research[ids[0]];
+    if (!r) return 0;
+    const b = borns(array, r.bornCol), A = B.datedCount(b, today());
+    let L = 0;
+    for (const id of ids) L = Math.max(L, level(id));
+    // only rows that a breakthrough can give: born within a year
+    let n = A;
+    while (n < L && n < b.length && b[n] <= today() + B.AHEAD_DAYS) n++;
+    return n - A;
+  }
+  for (const [array, sids] of Object.entries(D.counters)) {
+    for (const sid of sids) kit.wrapAction(sid, { after() { const n = extra(array); if (n > 0) gv.ArrayFunctionsOpened = n; } });
+  }
+
+  // ── innovative devices sell more ──────────────────────────────────────────────────────────────────────────────────
+  const POP = 2, sales = [...new Set(Object.values(D.engines).map(e => e.device))].filter(n => n !== 'ArrayGamepads');
+  let bonusDay = -1, bonusCache = new Map();
+  function bonus(name, x, y) {
+    if (api.testBonus) return api.testBonus(name, x, y);
+    if (bonusDay !== today()) { bonusDay = today(); bonusCache = new Map(); }
+    const k = name + ':' + x + ':' + y;
+    let b = bonusCache.get(k);
+    if (b === undefined) {
+      const a = arr(name), rel = num(a.getAt(x, y, D.releaseCol));
+      b = rel > 0 ? C.salesBonus(C.effectiveParts(C.partsOf(rt, D, name, x, y, rel).borns, today())) : 0;
+      bonusCache.set(k, b);
+    }
+    return b;
+  }
+  let patched = [];
+  function salesOn() {
+    if (api.salesOff) return;
+    for (const name of sales) {
+      const a = arr(name);
+      if (!a || Object.prototype.hasOwnProperty.call(a, 'getAt')) continue;
+      const get = a.getAt, set = a.setAt, nat = new Map();
+      a.getAt = function (x, y, z) {
+        const v = get.apply(this, arguments);
+        if (z !== POP || !(v > 0)) return v;
+        const b = bonus(name, x, y);
+        if (!b) return v;
+        nat.set(x + ':' + y, v);
+        return v * (1 + b);
+      };
+      a.setAt = function (v, x, y, z) {
+        if (z === POP && nat.has(x + ':' + y)) { v = Math.max(0, v - nat.get(x + ':' + y) * bonus(name, x, y)); nat.delete(x + ':' + y); }
+        return set.apply(this, [v, x, y, z]);
+      };
+      patched.push(a);
+    }
+  }
+  function salesOff() { for (const a of patched) { delete a.getAt; delete a.setAt; } patched = []; }
+  if (!kit.wrapScript(D.salesScript, { before: salesOn, after: salesOff })) kit.warn('daily sales script not found, no sales bonus');
+  kit.onStop(salesOff);
+
+  const api = {
+    salesOff: false, testBonus: null, lastProject: null, finish, candidates, extra, bonus, salesOn, salesOffNow: salesOff,
+    dispose() { clearInterval(retry); salesOff(); delete globalThis.__bdtBreakthroughs; },
+  };
+  globalThis.__bdtBreakthroughs = api;
+  return () => api.dispose();
+});
