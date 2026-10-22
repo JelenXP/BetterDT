@@ -135,7 +135,12 @@ BetterDTKit.mod('research-breakthroughs', {
       R.setAt(t.level, +id);
       out.push({ id, row: t.row, level: t.level, born: borns(r.array, r.bornCol)[t.row] });
     }
-    if (!opts.quiet) { api.lastProject = { Y, day: today(), out }; BetterDT.log('lab project ended, yield', Y, 'breakthroughs', out.map(g => g.id + '→' + g.level).join(' ') || 'none'); }
+    if (!opts.quiet) {
+      // the last 10 projects, to see later what they gave
+      api.lastProject = { Y, day: today(), out };
+      api.projects = [...api.projects, api.lastProject].slice(-10);
+      BetterDT.log('lab project ended, yield', Y, 'breakthroughs', out.map(g => g.id + '→' + g.level).join(' ') || 'none');
+    }
     if (out.length && !opts.quiet) announce(out);
     return out;
   }
@@ -221,7 +226,7 @@ BetterDTKit.mod('research-breakthroughs', {
   kit.onStop(salesOff);
 
   const api = {
-    salesOff: false, testBonus: null, lastProject: null, get lab() { return lab; }, finish, announce, candidates, extra, bonus,
+    salesOff: false, testBonus: null, lastProject: null, projects: [], get lab() { return lab; }, finish, announce, candidates, extra, bonus,
     salesOn, salesOffNow: salesOff,
     dispose() { clearInterval(retry); salesOff(); delete globalThis.__bdtBreakthroughs; },
   };
