@@ -65,11 +65,13 @@
       INNOV),
   ];
   const innovativeParts = L('Innovative parts: {n} | Инновационные компоненты: {n} | Innovative Bauteile: {n} | Composants innovants : {n} | Componenti innovativi: {n} | Componentes innovadores: {n} | इनोवेटिव पार्ट्स: {n} | Yenilikçi parçalar: {n} | Componentes inovadores: {n} | Інноваційні компоненти: {n} | Komponen inovatif: {n} | Innowacyjne podzespoły: {n} | 创新部件：{n} | 혁신 부품: {n} | 革新的なパーツ：{n}');
+  const bestRatings = L('Best ratings | Лучшие оценки | Beste Bewertungen | Meilleures notes | Voti migliori | Mejores valoraciones | सबसे अच्छी रेटिंग | En iyi puanlar | Melhores avaliações | Найкращі оцінки | Nilai terbaik | Najlepsze oceny | 最高评分 | 최고 평점 | 最高評価');
+  const worstRatings = L('Worst ratings | Худшие оценки | Schlechteste Bewertungen | Pires notes | Voti peggiori | Peores valoraciones | सबसे खराब रेटिंग | En kötü puanlar | Piores avaliações | Найгірші оцінки | Nilai terburuk | Najgorsze oceny | 最低评分 | 최저 평점 | 最低評価');
   const breakthroughTitle = L('Research breakthrough! | Прорыв в исследованиях! | Forschungsdurchbruch! | Percée scientifique ! | Svolta nella ricerca! | ¡Avance en la investigación! | रिसर्च में बड़ी सफलता! | Araştırmada atılım! | Avanço na pesquisa! | Прорив у дослідженнях! | Terobosan riset! | Przełom w badaniach! | 研究突破！ | 연구 돌파구! | 研究のブレークスルー！');
   const breakthroughLine = L('{part} – normally available {date} | {part} – обычно доступно с {date} | {part} – normalerweise ab {date} | {part} – normalement disponible le {date} | {part} – normalmente disponibile dal {date} | {part} – normalmente disponible el {date} | {part} – सामान्यतः {date} से उपलब्ध | {part} – normalde {date} tarihinde gelir | {part} – normalmente disponível em {date} | {part} – зазвичай доступно з {date} | {part} – biasanya tersedia {date} | {part} – normalnie dostępne od {date} | {part} – 通常于 {date} 推出 | {part} – 원래 {date}부터 이용 가능 | {part} – 通常は{date}に登場');
 
   globalThis.BDTReviewTexts = Object.freeze({
-    cat, value, innovation, innovativeParts, breakthroughTitle, breakthroughLine,
+    cat, value, innovation, innovativeParts, bestRatings, worstRatings, breakthroughTitle, breakthroughLine,
     t: (a, lang) => a[lang] || a[0],
   });
 })();
