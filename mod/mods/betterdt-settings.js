@@ -16,6 +16,7 @@
 // A mod registered with BetterDTKit.mod(name, spec, init) starts only once the game data is loaded (main menu)
 // and only when everything it needs from the game is there:
 //   spec.needs = { functions: [global functions], objects: [object types], vars: [global variables],
+//                  calls: [event sheet functions], actions: [action SIDs],
 //                  check: (rt) => problem text or '',
 //                  arrays: { ArrayName: [min width, min height] }, dataCheck: (rt) => problem text or '' }
 //                arrays and dataCheck are checked once a saved game is loaded (the company tables are empty in
@@ -26,6 +27,9 @@
 //                x, y is used
 // init(rt, kit) returns a dispose function. kit.guard(fn) wraps timers and listeners: errors are counted and after
 // 20 of them the mod is stopped. kit.inst(uid), kit.text(index), kit.fail(problem), kit.warn(problem).
+// kit.wrapCalls(eventFunction, { before, after }), kit.wrapAction(sid, …) and kit.wrapScript(scriptName, …) run
+// code around the game's event sheet actions (every call site of an event function, one action, the script action
+// "EventGameplay_Event449_Act1" …); they are undone when the mod stops. An async action's after runs once it settled.
 // A mod that does not fit this game version is not started; the BetterDT settings say why.
 (() => {
   const B = globalThis.BetterDT;
@@ -126,11 +130,64 @@
     }, 500);
   }
 
+  // The event sheet manager is not reachable from the runtime's public API. It is captured while the runtime looks
+  // up a function block: the prototype method is patched for the length of one callFunction of a name that does
+  // not exist.
+  let esmCache = null;
+  function eventSheets() {
+    if (esmCache) return esmCache;
+    const P = self.C3 && self.C3.EventSheetManager && self.C3.EventSheetManager.prototype;
+    if (!P || !rt || typeof P.GetFunctionBlockByName !== 'function') return null;
+    const orig = P.GetFunctionBlockByName;
+    P.GetFunctionBlockByName = function () { esmCache = this; return orig.apply(this, arguments); };
+    try { rt.callFunction('betterdt-probe'); } catch { } finally { P.GetFunctionBlockByName = orig; }
+    return esmCache;
+  }
+  // Function-call actions bind the function's event block at start, so a call is changed by wrapping each call site.
+  function callSites(fnName) {
+    const esm = eventSheets(), fb = esm && esm.GetFunctionBlockByName(fnName);
+    if (!fb) return [];
+    const eb = fb.GetEventBlock(), out = [];
+    for (const act of esm._actsBySid.values()) if (act._callEventBlock === eb) out.push(act);
+    return out;
+  }
+  // Script actions have no SID and hold their function bound ("bound EventGameplay_Event449_Act1"), so they are
+  // found by name in the event blocks.
+  function scriptActs(name) {
+    const esm = eventSheets(), out = [];
+    if (esm) for (const b of esm._blocksBySid.values()) for (const act of b._actions || []) {
+      if (act._func && act._func.name === 'bound ' + name) out.push(act);
+    }
+    return out;
+  }
+  // wraps act.Run; returns the undo function
+  function wrapRun(act, before, after) {
+    const orig = act.Run;
+    act.Run = function () {
+      if (before) before(act);
+      const r = orig.apply(this, arguments);
+      if (after) {
+        if (r && typeof r.then === 'function') return r.then(v => { after(act); return v; });
+        after(act);
+      }
+      return r;
+    };
+    return () => { act.Run = orig; };
+  }
+
   function check(spec) {
     const p = [], n = spec.needs || {};
     for (const f of n.functions || []) if (typeof globalThis[f] !== 'function') p.push('function ' + f);
     for (const o of n.objects || []) if (!rt.objects[o]) p.push('object ' + o);
     for (const v of n.vars || []) if (!(v in rt.globalVars)) p.push('variable ' + v);
+    if ((n.calls || []).length || (n.actions || []).length) {
+      const e = eventSheets();
+      if (!e) p.push('event sheets');
+      else {
+        for (const f of n.calls || []) if (!e.GetFunctionBlockByName(f)) p.push('event function ' + f);
+        for (const s of n.actions || []) if (!e.GetActionBySID(s)) p.push('action ' + s);
+      }
+    }
     for (const name of Object.keys(n.arrays || {})) if (!rt.objects[name]) p.push('table ' + name);
     for (const [idx, en] of Object.entries(spec.texts || {})) if (healText(Number(idx), en) < 0) p.push(`text ${idx} "${en}"`);
     if (n.check) { try { const r = n.check(rt); if (r) p.push(String(r)); } catch (e) { p.push('check: ' + e); } }
@@ -153,13 +210,14 @@
   const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
 
   function mod(name, spec, init) {
-    const m = { name, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map() };
+    const m = { name, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
     mods.set(name, m);
     function stop(state, problem) {
       if (m.state !== 'running' && m.state !== 'waiting') return;
       m.state = state;
       if (problem) m.problems.push(problem);
       log('[BetterDTKit] mod', name, state + ':', problem);
+      for (const u of m.undo.splice(0).reverse()) { try { u(); } catch { } }
       if (m.dispose) { try { m.dispose(); } catch (e) { console.error('[BetterDT] mod', name, 'dispose:', e); } }
     }
     const kit = {
@@ -213,6 +271,24 @@
         log('[BetterDTKit]', name + ':', problem);
       },
       fail(problem) { stop('incompatible', problem); },
+      wrapCalls(fnName, h) {
+        const acts = callSites(fnName);
+        for (const a of acts) m.undo.push(wrapRun(a, h.before && kit.guard(h.before), h.after && kit.guard(h.after)));
+        return acts.length;
+      },
+      wrapAction(sid, h) {
+        const e = eventSheets(), a = e && e.GetActionBySID(sid);
+        if (!a) return false;
+        m.undo.push(wrapRun(a, h.before && kit.guard(h.before), h.after && kit.guard(h.after)));
+        return true;
+      },
+      wrapScript(name, h) {
+        const acts = scriptActs(name);
+        for (const a of acts) m.undo.push(wrapRun(a, h.before && kit.guard(h.before), h.after && kit.guard(h.after)));
+        return acts.length;
+      },
+      // undone when the mod stops, before its dispose
+      onStop(fn) { m.undo.push(fn); },
     };
     B.register(name, (runtime) => {
       rt = runtime;
@@ -240,6 +316,7 @@
 
   const api = {
     mod,
+    eventSheets: () => eventSheets(),
     status: () => [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice() })),
     // cb runs once the game data is loaded and the mods have been checked
     whenReady(runtime, cb) { rt = rt || runtime; waitReady(() => setTimeout(cb, 0)); },
