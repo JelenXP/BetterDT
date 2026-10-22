@@ -25,6 +25,9 @@ game file and does not touch your saves.
   by default).
 - **Endless game:** keep playing after the end of the game in 2101. The final screen gets a **Continue game**
   button, and the calendar goes on right away, no reload needed. Based on a mod by **M1lan.**
+- **Custom start (NEW GAME):** under the game's start years (2008, 2010, 2014, 2020, 2026) a "Custom start" row
+  with a month and a year. The company starts on that date, with research and rivals set between the game's start
+  years (May 2017 is 55 % of the way from 2014 to 2020). The latest date is the latest year you reached in any game.
 - **Auto continue (NEWS):** a checkbox to the right of the OK button of news. When it is checked, news with a single
   OK closes by itself 3 seconds after its text is typed (1 to 10 seconds in the settings). Dialogs with a choice are
   never closed; unchecking the box or a click in the dialog keeps the open one until you press OK.
@@ -241,6 +244,28 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - **Skip the final screen** (option, off by default) continues right away without the summary.
 - A game stuck in `"END GAME"` without the screen (e.g. after a mod that only removed the screen) is put back to
   `"GAMEPLAY"` after 3 seconds.
+
+### `custom-start.js`: custom start (NEW GAME)
+- The game's start years are presets. When a new game loads, `Loading_NewGame_2` (event sheet LOADING GAME)
+  compares `Year` exactly with 2008, 2010, 2014, 2020 and 2026 and then sets the date and copies one column of
+  `ArrayMyResearch_NewGame.json` (the start level of each of the 800 research items, one column per start year)
+  into `ArrayMyResearch`. Nothing else in the game depends on the start year: money, office, employees and bank
+  are the same. The rivals (`ArrayRatings/ArrayRatingsCompanies.json`) have one layer per start year (earnings,
+  price, fans…); at the first game day the game keeps the layer of the start year. New product lines and parts
+  come by game day (`DictionaryTimeline.json`, e.g. smartwatches on day 2549, December 2014), for any date.
+- Under the start year cards a "Custom start" row in the game's look: month and year with arrows, how far the date
+  is between two start years ("2014 → 2020: 55 %") and the next product line that comes later ("Next:
+  Smartwatches 12/2014"). Selecting it selects the game's card of the start year at or before the date (the
+  company is built on it); a click on a game card turns the custom start off. The chosen date is remembered.
+- While that new game loads, the game's requests (XHR) for the two files get changed copies: that start year's
+  column and layer are moved toward the next start year by that share (research rounded to whole levels).
+  When the game asks for `DictionaryTimeline.json`, right after setting its start date, `Year`, `Month`, `Day`,
+  `DayTotal` and `DayInMonth` get the chosen date, so the game's timeline check that follows counts from it.
+- The latest date is December of the latest year reached in any game (the game's own rule for its start years),
+  at most December 2026. `getCampaignStart()` counts from the first month of the game. The stats page counts
+  its days with the game's internal copy, so for a start late in a year it shows up to 11 months more.
+- Tested in game 1.6: start in May 2017 = date 1. 5. 2017 (game day 3406), research between the 2014 and 2020
+  columns as computed (e.g. 11 → 18 gives 15), rivals between the two layers; a normal 2014 start unchanged.
 
 ### `auto-continue.js`: auto continue (NEWS)
 - The game shows news, warnings and tips in one HTML dialog (`showOfficeNews`) with no button, one OK, or two
