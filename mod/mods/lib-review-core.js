@@ -71,9 +71,10 @@
   // the component array of a generational aspect: some depend on a switch of the device (SSD or HDD)
   function compOf(rt, gen, x, y) {
     const c = gen.arrays.length > 1 ? gen.arrays.find(a => (String(devAt(rt, gen, x, y, a.when.col)) === 'ON') === a.when.on) : gen.arrays[0];
-    return c && inst(rt, c.array) ? { a: inst(rt, c.array), bornCol: c.bornCol } : null;
+    return c && inst(rt, c.array) ? { a: inst(rt, c.array), array: c.array, bornCol: c.bornCol } : null;
   }
-  // generations behind the newest part on the market at `day` (negative: a part from the future), and its born day
+  // generations behind the newest part on the market at `day` (negative: a part from the future), its born day and
+  // its component array
   function generation(rt, gen, x, y, day) {
     const c = compOf(rt, gen, x, y);
     if (!c) return null;
@@ -81,9 +82,10 @@
     if (row < 0 || row >= c.a.width) return null;
     let n = 0;
     for (let i = 0; i < c.a.width; i++) if (num(c.a.getAt(i, c.bornCol)) <= day) n++;
-    return { gens: n - 1 - row, born: num(c.a.getAt(row, c.bornCol)) };
+    return { gens: n - 1 - row, born: num(c.a.getAt(row, c.bornCol)), array: c.array };
   }
-  // the innovative parts of a device: every distinct generational part born after `day`
+  // the innovative parts of a device: every distinct generational part born after `day`, from a list the designer
+  // limits by date (D.counters); some lists offer every researched part whatever its date, those are ordinary research
   function partsOf(rt, D, designArray, x, y, day) {
     const borns = [], seen = new Set();
     for (const e of Object.values(D.engines)) {
@@ -94,7 +96,7 @@
         if (seen.has(k)) continue;
         seen.add(k);
         const g = generation(rt, s.gen, x, y, day);
-        if (g && g.born > day) borns.push(g.born);
+        if (g && g.born > day && D.counters[g.array]) borns.push(g.born);
       }
     }
     return { count: borns.length, borns };

@@ -65,3 +65,15 @@ test('sales bonus', () => {
   assert.equal(C.effectiveParts([100, 100], 90), 2); assert.equal(C.effectiveParts([100], 130), 0.5);
   assert.equal(C.effectiveParts([100], 160), 0);
 });
+test('innovative parts: only from lists the designer limits by date', () => {
+  const comp = (borns) => ({ width: borns.length, getAt: (i) => borns[i] });
+  const objs = {
+    Dev: { getAt: (x, y, col) => ({ 10: 2, 11: 2 })[col] },
+    Dated: comp([100, 200, 900]), Free: comp([100, 200, 900]),
+  };
+  const rt = { objects: Object.fromEntries(Object.entries(objs).map(([k, v]) => [k, { getFirstInstance: () => v }])) };
+  const gen = (array, col) => ({ arrays: [{ array, bornCol: 0 }], src: 'Dev', model: true, col });
+  const D = { counters: { Dated: [1] }, engines: { E: { device: 'Dev', aspects: [{ gen: gen('Dated', 10) }, { gen: gen('Free', 11) }] } } };
+  assert.deepEqual(C.partsOf(rt, D, 'Dev', 0, 0, 500), { count: 1, borns: [900] });
+  assert.equal(C.generation(rt, gen('Free', 11), 0, 0, 500).gens, -1);
+});
