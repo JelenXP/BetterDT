@@ -1,0 +1,21 @@
+{
+  "_": "Category of an aspect group (key = first DB index of the group) where the rules in gen-review-data.mjs get it wrong. '*' applies to every type that has that category.",
+  "*": {
+    "39": "design", "45": "design", "48": "design", "213": "camera", "471": "sound", "517": "features",
+    "529": "design", "550": "features", "625": "memory", "679": "connectivity", "694": "features", "700": "features",
+    "703": "features", "706": "features", "712": "design", "715": "design", "829": "sound", "835": "sound",
+    "850": "features", "865": "features", "1096": "connectivity", "1138": "features", "1156": "features",
+    "1162": "connectivity", "1252": "sound", "1276": "sound", "1282": "sound", "1294": "features", "1312": "features",
+    "1318": "features", "1084": "picture", "1150": "picture", "1759": "picture", "1828": "features", "1879": "features",
+    "2005": "tracking", "2041": "features", "775": "features", "1909": "controls"
+  },
+  "Watches": { "799": "health", "712": "design", "715": "design" },
+  "Gamepad": { "799": "controls" },
+  "Laptops": { "631": "cpu" },
+  "Consoles": { "631": "perf" },
+  "VR": { "631": "perf", "1999": "features" },
+  "Scooter": {
+    "330": "safety", "342": "safety", "366": "range", "1327": "safety", "1474": "comfort", "1486": "range", "1492": "range",
+    "1498": "range", "1504": "range", "1510": "safety"
+  }
+}
