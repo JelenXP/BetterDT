@@ -14,7 +14,10 @@
   const PRICE_BASE = [20, 30, 35, 40];
   const PRICE_SHIFT = { budget: -5, mid: 0, flagship: 10 };
   const PRICE_BANDS = [[9, 10], [7, 8], [5, 6], [3, 4], [1, 2]];
-  const PRICE_WEIGHT = 2, SHOWN_MUL = 1.25, FINAL_JITTER = 0.3, VALUE_JITTER = 0.5, INNOV_JITTER = 0.3;
+  const PRICE_WEIGHT = 2, SHOWN_MUL = 1.25, FINAL_JITTER = 0.45, VALUE_JITTER = 0.5, INNOV_JITTER = 0.3;
+  // the final rating is the mean of REVIEWERS reviewers; each weighs every category a bit differently, a category
+  // at or above the mean score of the device by STRONG_W, the others by WEAK_W
+  const REVIEWERS = 4, STRONG_W = [1.0, 1.3], WEAK_W = [0.8, 1.1];
   const FADE_DAYS = 60;
 
   const priceClass = (share) => share <= 0.40 ? 'budget' : share <= 0.75 ? 'mid' : 'flagship';
@@ -51,12 +54,18 @@
     return [...best, ...worst];
   }
   function finalRating(scores, shown, rng) {
-    let s = 0, w = 0;
-    for (const [c, v] of Object.entries(scores)) {
-      const k = (c === 'price' ? PRICE_WEIGHT : 1) * (shown.includes(c) ? SHOWN_MUL : 1);
-      s += v * k; w += k;
+    const entries = Object.entries(scores), m = mean(entries.map(([, v]) => v));
+    let total = 0;
+    for (let r = 0; r < REVIEWERS; r++) {
+      let s = 0, w = 0;
+      for (const [c, v] of entries) {
+        const [lo, hi] = v >= m ? STRONG_W : WEAK_W;
+        const k = (c === 'price' ? PRICE_WEIGHT : 1) * (shown.includes(c) ? SHOWN_MUL : 1) * (lo + (hi - lo) * rng());
+        s += v * k; w += k;
+      }
+      total += s / w;
     }
-    return clamp(Math.round(s / w + (rng() * 2 - 1) * FINAL_JITTER), 1, 10);
+    return clamp(Math.round(total / REVIEWERS + (rng() * 2 - 1) * FINAL_JITTER), 1, 10);
   }
   // the game's closing phrase bands: score ≤ 3, 4–7, ≥ 8 (on the rounded score)
   const reviewBand = (score) => { const r = Math.round(score); return r <= 3 ? 0 : r <= 7 ? 1 : 2; };

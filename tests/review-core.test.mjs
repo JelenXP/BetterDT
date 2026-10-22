@@ -52,8 +52,11 @@ test('shown categories', () => {
 });
 test('final rating', () => {
   const s = { display: 9, cpu: 9, battery: 3, price: 6, value: 6 };
-  // weights: display 1.25, cpu 1.25, battery 1.25, price 2.5, value 1 → (11.25+11.25+3.75+15+6)/7.25 = 6.517
+  // weights at rng 0.5 (mean 6.6: display and cpu strong ×1.15, the rest ×0.95): display 1.4375, cpu 1.4375,
+  // battery 1.1875, price 2.375, value 0.95 → 49.3875 / 7.3875 = 6.685
   assert.equal(C.finalRating(s, ['display', 'cpu', 'battery', 'price'], half), 7);
+  // the strong categories weigh more: 9 and 3 at rng 0 → (9·1.0 + 3·0.8) / 1.8 = 6.33, minus the jitter 0.45 → 6
+  assert.equal(C.finalRating({ a: 9, b: 3 }, [], lo), 6);
   assert.equal(C.finalRating({ a: 0.2, price: 1 }, [], lo), 1);
   assert.equal(C.finalRating({ a: 10, price: 10 }, [], hi), 10);
 });

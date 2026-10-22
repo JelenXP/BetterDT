@@ -14,8 +14,8 @@
 //   - two more categories: Value for money (quality of the parts against the price) and Innovation.
 // The price class is the device's price against the flagship price of its type in that year (simulateDeviceCost).
 // The rating the game stores and shows as the total is the mean of the 4 shown scores; while it does that, all 4
-// hold the final rating, which weighs every category (the shown ones and the price more). The average badges of the
-// review screen show the final rating too.
+// hold the final rating: the mean of 4 reviewers, each weighing every category a bit differently (the shown ones, the
+// price and the strong ones more). The average badges of the review screen show the final rating too.
 // The upper row of reviews is headed "Best ratings", the lower one "Worst ratings". Under the reviews a strip shows
 // every category with its score once all 4 reviews are in; the 2 best are framed green, the 2 worst red.
 BetterDTKit.mod('fair-reviews', {

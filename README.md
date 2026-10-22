@@ -368,8 +368,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
     today).
 - The aspects are grouped into categories (display, camera, performance, …). The 4 reviews are the two best and two
   worst categories, with the game's own review texts for that score and the game's closing sentence; an overpriced
-  device always shows Price among the worst. The final rating weighs every category (the shown ones and the price
-  more); while the game stores the rating, all 4 scores hold it.
+  device always shows Price among the worst. The final rating is the mean of 4 reviewers, each weighing every
+  category a bit differently (the shown ones, the price and the device's strong points more); while the game
+  stores the rating, all 4 scores hold it.
 - Under the reviews a strip shows every category with its score as stars, the 4 shown ones framed.
 - The aspect table (`lib-review-data.js`) is generated from the game's data by `tools/gen-review-data.mjs`, so a
   game update is checked by generating it again. The math is in `lib-review-core.js`, the texts the game does not
