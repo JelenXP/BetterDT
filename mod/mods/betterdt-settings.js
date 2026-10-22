@@ -85,6 +85,14 @@
     }
     return true;
   }
+  function tablesEmpty(spec) {
+    for (const name of Object.keys((spec.needs || {}).arrays || {})) {
+      let a = null;
+      try { a = rt.objects[name] && rt.objects[name].getFirstInstance(); } catch { }
+      if (a && (a.width === 0 || a.height === 0)) return true;
+    }
+    return false;
+  }
   function whenGameLoaded(spec, cb) {
     gameWaiters.push({ spec, cb });
     if (gameTimer) return;
@@ -97,7 +105,9 @@
       const force = Date.now() - gameSince >= 60000;
       for (let i = gameWaiters.length - 1; i >= 0; i--) {
         const w = gameWaiters[i];
-        if (!force && !tablesReady(w.spec)) continue;
+        // an empty table (0 rows or columns) is not loaded yet (a new game being set up, a save still loading):
+        // keep waiting for it even after the timeout, only a filled table of the wrong size is incompatible
+        if ((!force && !tablesReady(w.spec)) || tablesEmpty(w.spec)) continue;
         gameWaiters.splice(i, 1);
         try { w.cb(); } catch (e) { console.error('[BetterDTKit]', e); }
       }
