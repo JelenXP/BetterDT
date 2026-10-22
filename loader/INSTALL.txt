@@ -49,6 +49,8 @@ WHAT YOU GET
 
 Each of these can be turned off in Settings > BetterDT > Mods.
 
+The game's own settings are saved as soon as you change them, without the Apply button.
+
 
 UPDATES
 -------

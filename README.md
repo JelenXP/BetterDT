@@ -90,6 +90,13 @@ pause menu during a game.
 Settings are saved right away into `mods\betterdt.ini`. Turning a mod or the GPU switch on or off takes
 effect after restarting the game; the page says so.
 
+The game's own settings are saved right away too: as soon as a control changes something, BetterDT runs the game's
+Apply (`applyGameSettings()`), so the game shows "Settings applied" and the Apply button is hidden. A slider is
+saved when you let it go. It works from the game's own "unsaved changes" state (`debugGameSettings().dirty`), not
+from a list of settings, so settings added by a game update are saved right away as well. If the game no longer has
+these functions, the Apply button stays as it is. A mod's control on a game page (the autosave slider) shows
+"Saved" there.
+
 ## The mods in detail (`mod/mods`)
 
 ### `os-perf.js`: smooth OS upgrade cards

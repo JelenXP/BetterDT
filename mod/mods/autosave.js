@@ -75,6 +75,8 @@ BetterDTKit.mod('autosave', {
         show();
         Promise.resolve(S.set('autosave.days', Number(input.value))).catch(e => console.error('[autosave] save', e));
       }));
+      // let go: "Saved" in the footer, like the game's other settings
+      input.addEventListener('change', kit.guard(() => globalThis.__betterdtSettings?.flash?.()));
       box.append(input, val);
       seg.after(box);
       show();

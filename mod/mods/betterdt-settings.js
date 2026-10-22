@@ -4,8 +4,8 @@
 // #gs-main-body on the right, #gs-foot at the bottom). We add a "BetterDT" group with two items to the
 // navigation and render their pages with the same classes (gs-card, gs-row, gs-sw, gs-slider…), so they look
 // like the game's. The game rebuilds the navigation on every change (innerHTML = ''), so a MutationObserver
-// watches it. Settings are saved immediately (through the loader into mods\betterdt.ini); the Apply button
-// belongs to the game pages only.
+// watches it. Settings are saved immediately (through the loader into mods\betterdt.ini). The game's own pages
+// are saved immediately too (autoApply below), so their Apply button is hidden.
 //
 // It also shows two dialogs in the style of the game's news window: "BetterDT x.y.z is ready" (keep playing or
 // restart the game now) and, after the loader reloaded a crashed game page, "The game crashed" with a bug report.
@@ -1123,7 +1123,32 @@ BetterDT.register('betterdt-settings', (rt) => {
 #gs-root .gs-row-hint.bdt-warn { color: rgb(var(--warn)); opacity: 1; }
 #gs-root .gs-row-hint.bdt-good { color: rgb(var(--good)); opacity: 1; }
 #gs-root .gs-row.bdt-opt .gs-row-name { padding-left: calc(var(--gs, 1) * 18px); opacity: .9; }
+#gs-root.bdt-autoapply #gs-apply { visibility: hidden; }
 `;
+  }
+
+  // The game's own pages keep changes in a draft until Apply. We apply the draft as soon as a control changes
+  // it, so every setting (also ones a game update adds) is saved right away and Apply is hidden. The game
+  // tells whether its draft differs from what is saved (debugGameSettings().dirty) and saves it with
+  // applyGameSettings(), which shows its own "Applied". Without these functions Apply stays as it is.
+  function autoApply(r) {
+    if (r.__bdtAutoApply || typeof globalThis.applyGameSettings !== 'function' || typeof globalThis.debugGameSettings !== 'function') return;
+    r.__bdtAutoApply = true;
+    r.classList.add('bdt-autoapply');
+    let held = false, timer = 0;
+    const run = () => {
+      timer = 0;
+      // a slider still being dragged: the game re-renders the page on apply, so wait until it is let go
+      if (held || !r.isConnected) return;
+      let dirty = false;
+      try { dirty = !!globalThis.debugGameSettings().dirty; } catch (e) { return; }
+      if (dirty) try { globalThis.applyGameSettings(); } catch (e) { console.error('[BetterDT] apply settings', e); }
+    };
+    const later = () => { if (!timer) timer = setTimeout(run, 0); };
+    r.addEventListener('pointerdown', () => { held = true; }, true);
+    window.addEventListener('pointerup', () => { if (held) { held = false; later(); } }, true);
+    // capture: the game stops some clicks (its checkboxes) before they reach #gs-root; we check after its handlers
+    for (const type of ['click', 'change', 'keyup']) r.addEventListener(type, later, true);
   }
 
   function attach() {
@@ -1137,6 +1162,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     navObs = new MutationObserver(onNavRebuilt);
     navObs.observe(nav, { childList: true });
     addNav();
+    autoApply(r);
   }
   // the settings page: the SETTINGS layout (main menu) or, since game 1.6, a window over the game (pause menu)
   let settingsSince = 0;
@@ -1188,5 +1214,22 @@ BetterDT.register('betterdt-settings', (rt) => {
     }, [{ label: t('ok'), go: true, cb: () => { } }]);
   }
 
-  globalThis.__betterdtSettings = { get active() { return active; }, open(p) { attach(); nav?.querySelector(`[data-page="${p}"]`)?.click(); } };
+  // "Saved" in the footer for a mod's control on a game page (e.g. the autosave slider), like the game's "Applied"
+  let flashTimer = 0;
+  function flash() {
+    const r = document.getElementById('gs-root');
+    const st = r && r.querySelector('.gs-status'), tx = r && r.querySelector('.gs-status-text');
+    if (!st || !tx) return;
+    if (active) { status(true); return; }
+    clearTimeout(flashTimer);
+    tx.textContent = t('saved');
+    st.classList.add('gs-status-ok'); st.classList.remove('gs-status-warn', 'gs-status-idle');
+    flashTimer = setTimeout(() => {
+      if (tx.textContent !== t('saved')) return;
+      tx.textContent = '';
+      st.classList.remove('gs-status-ok'); st.classList.add('gs-status-idle');
+    }, 1800);
+  }
+
+  globalThis.__betterdtSettings = { get active() { return active; }, open(p) { attach(); nav?.querySelector(`[data-page="${p}"]`)?.click(); }, flash };
 });
