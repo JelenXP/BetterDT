@@ -699,6 +699,66 @@ BetterDT.register('betterdt-settings', (rt) => {
       '新游戏：国家卡片显示税率、研究和效果；按需求排序，前三名带星标',
       '새 게임: 국가 카드에 세금, 연구, 효과 표시; 필요에 맞게 정렬, 상위 3개에 별표',
       'ニューゲーム：国のカードに税率・研究・効果を表示。目的別に並べ替え、上位3つに星'],
+    'fair-reviews': ['Fair reviews',
+      'Честные обзоры',
+      'Faire Testberichte',
+      'Critiques équitables',
+      'Recensioni eque',
+      'Reseñas justas',
+      'निष्पक्ष समीक्षाएँ',
+      'Adil incelemeler',
+      'Análises justas',
+      'Чесні огляди',
+      'Ulasan adil',
+      'Uczciwe recenzje',
+      '公正评测',
+      '공정한 리뷰',
+      '公正なレビュー'],
+    'fair-reviews.d': ['The rating comes from all parts of a device. Reviews show its two best and two worst categories, with a breakdown of all of them',
+      'Оценка складывается из всех компонентов устройства. Обзоры показывают две лучшие и две худшие категории и разбор всех категорий',
+      'Die Wertung ergibt sich aus allen Bauteilen eines Geräts. Die Tests zeigen die zwei besten und zwei schlechtesten Kategorien und eine Übersicht aller',
+      'La note vient de tous les composants de l\'appareil. Les critiques montrent ses deux meilleures et deux pires catégories, avec le détail de toutes',
+      'Il voto deriva da tutti i componenti del dispositivo. Le recensioni mostrano le due categorie migliori e le due peggiori, con il dettaglio di tutte',
+      'La nota sale de todos los componentes del dispositivo. Las reseñas muestran sus dos mejores y dos peores categorías, con el desglose de todas',
+      'रेटिंग डिवाइस के सभी पार्ट्स से बनती है। समीक्षाएँ दो सबसे अच्छी और दो सबसे कमज़ोर श्रेणियाँ दिखाती हैं, साथ में सभी का ब्योरा',
+      'Puan cihazın tüm parçalarından gelir. İncelemeler en iyi iki ve en kötü iki kategoriyi ve hepsinin dökümünü gösterir',
+      'A nota vem de todos os componentes do aparelho. As análises mostram as duas melhores e as duas piores categorias, com o detalhe de todas',
+      'Оцінка складається з усіх компонентів пристрою. Огляди показують дві найкращі й дві найгірші категорії та розбір усіх категорій',
+      'Nilai berasal dari semua komponen perangkat. Ulasan menampilkan dua kategori terbaik dan dua terburuk, beserta rincian semuanya',
+      'Ocena wynika ze wszystkich podzespołów urządzenia. Recenzje pokazują dwie najlepsze i dwie najgorsze kategorie oraz rozbicie wszystkich',
+      '评分来自设备的所有部件。评测显示最好的两项和最差的两项，并列出所有类别的明细',
+      '평점은 기기의 모든 부품으로 정해집니다. 리뷰는 가장 좋은 두 항목과 가장 나쁜 두 항목을 보여 주고, 모든 항목의 내역도 표시합니다',
+      '評価はデバイスの全パーツから決まります。レビューは最も良い2項目と悪い2項目を示し、全項目の内訳も表示します'],
+    'research-breakthroughs': ['Research breakthroughs',
+      'Прорывы в исследованиях',
+      'Forschungsdurchbrüche',
+      'Percées scientifiques',
+      'Svolte nella ricerca',
+      'Avances en investigación',
+      'रिसर्च में बड़ी सफलताएँ',
+      'Araştırma atılımları',
+      'Avanços na pesquisa',
+      'Прориви в дослідженнях',
+      'Terobosan riset',
+      'Przełomy w badaniach',
+      '研究突破',
+      '연구 돌파구',
+      '研究のブレークスルー'],
+    'research-breakthroughs.d': ['A finished lab project can research parts up to a year early. Innovative devices get better reviews and sell more',
+      'Завершённый проект лаборатории может открыть компоненты на год раньше. Инновационные устройства получают лучшие обзоры и продаются лучше',
+      'Ein abgeschlossenes Laborprojekt kann Bauteile bis zu einem Jahr früher erforschen. Innovative Geräte bekommen bessere Tests und verkaufen sich besser',
+      'Un projet de labo terminé peut rechercher des composants jusqu\'à un an plus tôt. Les appareils innovants ont de meilleures critiques et se vendent mieux',
+      'Un progetto di laboratorio concluso può ricercare componenti fino a un anno prima. I dispositivi innovativi ricevono recensioni migliori e vendono di più',
+      'Un proyecto de laboratorio terminado puede investigar componentes hasta un año antes. Los dispositivos innovadores reciben mejores reseñas y venden más',
+      'पूरा हुआ लैब प्रोजेक्ट पार्ट्स को एक साल तक पहले रिसर्च कर सकता है। इनोवेटिव डिवाइस को बेहतर समीक्षाएँ और ज़्यादा बिक्री मिलती है',
+      'Biten bir laboratuvar projesi parçaları bir yıla kadar erken araştırabilir. Yenilikçi cihazlar daha iyi inceleme alır ve daha çok satar',
+      'Um projeto de laboratório concluído pode pesquisar componentes até um ano antes. Aparelhos inovadores recebem análises melhores e vendem mais',
+      'Завершений проєкт лабораторії може відкрити компоненти на рік раніше. Інноваційні пристрої отримують кращі огляди й продаються краще',
+      'Proyek lab yang selesai bisa meriset komponen hingga setahun lebih awal. Perangkat inovatif mendapat ulasan lebih baik dan lebih laris',
+      'Ukończony projekt laboratorium może zbadać podzespoły nawet rok wcześniej. Innowacyjne urządzenia dostają lepsze recenzje i lepiej się sprzedają',
+      '完成的实验室项目可以提前最多一年研究出部件。创新设备评测更好、销量更高',
+      '완료된 연구소 프로젝트는 부품을 최대 1년 일찍 연구할 수 있습니다. 혁신적인 기기는 더 좋은 리뷰를 받고 더 많이 팔립니다',
+      '完了したラボのプロジェクトはパーツを最大1年早く研究できます。革新的なデバイスはレビューが良くなり、よく売れます'],
     'auto-continue': ['Auto continue',
       'Автопродолжение',
       'Automatisch weiter',
@@ -1111,7 +1171,7 @@ BetterDT.register('betterdt-settings', (rt) => {
 
   function renderMods(body) {
     for (const m of B.mods) {
-      if (m.file === 'betterdt-settings.js') continue;
+      if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
       const card = el('div', 'gs-card', body);
       const on = S.bool('mod.' + m.file, true);
       const mctl = row(card, modTitle(m.file), modDesc(m.file));
@@ -1366,7 +1426,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     dialog(t('fbTitle'), t('fbText'), (c) => {
       const list = el('div', 'bdt-notes', c);
       for (const m of B.mods) {
-        if (m.file === 'betterdt-settings.js') continue;
+        if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
         const line = el('label', '', list);
         line.style.cssText = 'display:block;cursor:pointer;margin:4px 0';
         const box = el('input', '', line);

@@ -49,6 +49,10 @@ WHAT YOU GET
   lasts (it asks first, with the money it will spend).
 - A high fixed FPS no longer slows the game down, and it can go above the game's 165 limit
   (Settings > BetterDT > Mods).
+- Fair reviews: the rating of a device comes from all its parts. Reviews show its two best and two worst
+  categories, and a strip under them shows the score of every category (all 16 device types).
+- Research breakthroughs: a finished research lab project can research parts up to a year early. Devices
+  with innovative parts get better reviews and sell more.
 - MY OS UPGRADE: the screen no longer stutters.
 - Laptops with two graphics cards: the game runs on the faster one.
 

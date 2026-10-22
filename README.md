@@ -45,6 +45,13 @@ game file and does not touch your saves.
 - **Fixed FPS at full speed, above 165:** with a high fixed FPS the game used to run slower (at 240 FPS about 78 %
   of normal speed, at 500 FPS about 37 %), so game 1.6 caps it at 165. With the slowdown fixed, BetterDT lets you go
   higher (Settings → BetterDT → Mods; in practice up to about 200 FPS, the browser's limit).
+- **Fair reviews:** the rating of a device comes from all its parts, not from four picked at random. A budget phone
+  may have an older camera, a flagship may not; the price is judged by the markup, and a missing feature does not
+  count against a cheap device. The reviews show the device's two best and two worst categories (plus Value for
+  money and Innovation), and a strip under them shows the score of every category. Works for all 16 device types.
+- **Research breakthroughs:** a finished research lab project can research parts before the market has them (up to
+  a year early). The device designer then offers the future part, and a device with innovative parts gets better
+  reviews and sells more (+10 % per part while the part is new).
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -345,6 +352,48 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   opened like a click on them does (`MiniPage`, `Research_ButtonsOpacity`, `ResearchPage`), and the tab you had open
   comes back at the end. Sounds are muted during the batch (one plays at the end); if the game rejects a click,
   the mod stops. Functions that only become available after others are researched are left for the next click.
+
+### `fair-reviews.js`: fair reviews
+- The game's review function for the device type (`ReviewsEngine_<Type>`, 16 of them) pushes one entry per aspect
+  (camera, screen, price, …) into `ArrayReviews_Temp`, then `ReviewsEngineResults` picks 4 of them at random,
+  each with a random score from its range, and the stored rating is the mean of those 4. The mod keeps the game's
+  run and, after it, scores every pushed aspect:
+  - a part the game compares with the newest one on the market by how many generations it is behind, on a scale
+    that depends on the device's price class (budget, mid, flagship: the price against the flagship cost of that type
+    in that year, `simulateDeviceCost`); a part from the future scores like the newest one;
+  - the price by the markup over the production cost, with limits that move with the class and the number of
+    innovative parts;
+  - a missing feature (a yes/no aspect) is not counted for a budget device; other aspects keep the game's range;
+  - two more categories: Value for money (quality of the parts against the price) and Innovation (parts born after
+    today).
+- The aspects are grouped into categories (display, camera, performance, …). The 4 reviews are the two best and two
+  worst categories, with the game's own review texts for that score and the game's closing sentence; an overpriced
+  device always shows Price among the worst. The final rating weighs every category (the shown ones and the price
+  more); while the game stores the rating, all 4 scores hold it.
+- Under the reviews a strip shows every category with its score as stars, the 4 shown ones framed.
+- The aspect table (`lib-review-data.js`) is generated from the game's data by `tools/gen-review-data.mjs`, so a
+  game update is checked by generating it again. The math is in `lib-review-core.js`, the texts the game does not
+  have (Value for money, Innovation, the strip) in `lib-review-texts.js`, in the game's 15 languages.
+- Turned off, the game's own random reviews are back; ratings already stored stay.
+
+### `research-breakthroughs.js`: research breakthroughs
+- A research lab project runs 30 days and fills the lab's point pool. When it ends, the pool decides how many
+  breakthroughs it gives: the first comes with a chance of about 47 % at 750 points, a second and third only after
+  the first, and more points give more (`lib-breakthrough-core.js`).
+- A breakthrough raises one research category one level ahead of the parts on the market: the next part of that
+  category, normally available up to a year later. A category you are more than a few levels behind in cannot get
+  one. Categories of the device types you released in the last two years are drawn three times as often. A dialog
+  names the parts and the day they would normally come out.
+- The device designer lists a category's parts up to the number already on the market (it counts them into
+  `ArrayFunctionsOpened`); for a category researched ahead the mod raises that count to the research level, so the
+  future part is offered and unlocked.
+- Sales: a device whose parts were not on the market at its release sells more. While the game computes the daily
+  sales (`tickDeviceSales`), its popularity counts 10 % more per innovative part (20 % for two, then less per
+  part), fading out within 60 days after the part reached the market; the popularity it keeps is the game's own.
+- Tested in game 1.6: a project with 732 points gave one breakthrough and the dialog; the laptop designer offered
+  the future screen resolution; with a 30 % bonus a device sold 1.30× the units with the same popularity left.
+- Turned off: no new breakthroughs and no sales bonus; levels already researched stay, but the designer offers only
+  the parts on the market again.
 
 All buttons use the game's own look (its HTML buttons' CSS, or its canvas buttons, gradients, icons and font).
 
