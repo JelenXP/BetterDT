@@ -382,6 +382,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   it decides how many breakthroughs it gives: the points you collected on the way count too, the points lost over
   the pool's cap do not. The first comes with a chance of about 47 % at 750 points and 60 % at 1 700, a second and
   third only after the first, and more points give more (`lib-breakthrough-core.js`).
+- The research investing screen shows, under its window, the points a project makes (average income × 30 days)
+  and the chances of one, two and three breakthroughs for them; they change with the amount like the average
+  income does. The game's info line below moves down to make room.
 - A breakthrough raises one research category one level ahead of the parts on the market: the next part of that
   category, normally available 10 to 460 days later. A category you are more than a few levels behind in cannot get
   one. A part further ahead is drawn more often: the weight grows with the lead up to 190 days and stays the same

@@ -16,7 +16,7 @@ BetterDTKit.mod('research-breakthroughs', {
     calls: ['ResearchInvestEngine'],
     objects: ['ArrayMyResearch', 'ArrayMyResearch_Invest', 'ArrayLanguage', 'ArrayGameAssistant'],
     vars: ['DayTotal', 'LanguageChoose', 'ArrayFunctionsOpened', 'AssistantTheme', 'AssistantTitle', 'AssistantText',
-      'AssistantImage', 'AssistantButtons', 'AssistantButtonsText_1'],
+      'AssistantImage', 'AssistantButtons', 'AssistantButtonsText_1', 'class', 'ResearchInvest_AvarageEarnings'],
     actions: Object.values((globalThis.BDTReviewData || { counters: {} }).counters).flat(),
     check: () => !globalThis.BDTReviewData ? 'lib-review-data.js' : !globalThis.BDTReviewCore ? 'lib-review-core.js'
       : !globalThis.BDTReviewTexts ? 'lib-review-texts.js' : !globalThis.BDTBreakthroughCore ? 'lib-breakthrough-core.js'
@@ -225,10 +225,96 @@ BetterDTKit.mod('research-breakthroughs', {
   if (!kit.wrapScript(D.salesScript, { before: salesOn, after: salesOff })) kit.warn('daily sales script not found, no sales bonus');
   kit.onStop(salesOff);
 
+  // ── the research investing screen: what a project would give ─────────────────────────────────────────────────────
+  // The screen is drawn on the game's canvas (class RESEARCH INVEST). Under its window a panel shows the points a
+  // project makes (the game's average income × 30 days, or for a running project the points made so far and the rest
+  // at that pace) and the breakthrough chances for them; it follows the average income, so it changes with the amount
+  // like the game's number does. The game's info line below moves down to make room while the screen is open.
+  const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
+  const SCREEN = 'RESEARCH INVEST', BACK = 'RESEARCH INVEST (Back)', TOP = 'RESEARCH INVEST (Top)', INFO_SHIFT = 70;
+  const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const pct = (p) => Math.round(p * 100) + ' %';
+  function projectYield() {
+    const a = arr('ArrayMyResearch_Invest'), days = a ? num(a.getAt(0, 1)) : 0;
+    if (days > 0 && lab.seen > 0) return lab.made + lab.made / lab.seen * days;
+    return num(gv.ResearchInvest_AvarageEarnings) * PROJECT_DAYS;
+  }
+  // the window (the biggest frame on the back layer) and the info line (the text under it), looked up once per visit
+  function screenParts() {
+    let win = null, info = null;
+    for (const name of Object.keys(rt.objects)) {
+      let all;
+      try { all = rt.objects[name].getAllInstances(); } catch { continue; }
+      for (const i of all) {
+        const ln = i.layer && i.layer.name;
+        if (ln === BACK && i.width < 1500 && i.height > 300 && (!win || i.width * i.height > win.width * win.height)) win = i;
+        else if (ln === TOP && typeof i.text === 'string' && (!info || i.y > info.y)) info = i;
+      }
+    }
+    return win && { win, info: info && info.y > win.y + win.height / 2 ? { inst: info, y: info.y } : null };
+  }
+  let screen = null, labEl = null, labRaf = 0;
+  function labPanel() {
+    const el = document.createElement('div');
+    el.id = 'bdt-lab-chances';
+    el.style.cssText = 'position:fixed;z-index:5;pointer-events:none;box-sizing:border-box;display:flex;flex-direction:column;'
+      + 'justify-content:center;background:rgba(18,28,24,.62);color:#fff;font-family:SofiaSansExtraCondensed-Medium,Oswald,sans-serif;'
+      + 'backdrop-filter:blur(6px)';
+    el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1em">'
+      + '<b class="t" style="font-family:SofiaSansExtraCondensed-Bold,SofiaSansExtraCondensed-Medium,Oswald,sans-serif;'
+      + 'text-transform:uppercase;letter-spacing:.04em"></b><span class="p"></span></div>'
+      + '<div class="c"></div><div class="h" style="opacity:.7"></div>';
+    document.body.append(el);
+    return el;
+  }
+  function labFrame() {
+    labRaf = 0;
+    if (!screen || !labEl) return;
+    const { win } = screen, L = win.layer, s = L.layerToCssPx(1920, 0)[0] - L.layerToCssPx(0, 0)[0];
+    const k = s / 1920, bottom = win.y + win.height / 2;
+    const [x0, y0] = L.layerToCssPx(win.x - win.width / 2, bottom + 12), [x1] = L.layerToCssPx(win.x + win.width / 2, 0);
+    Object.assign(labEl.style, {
+      left: x0 + 'px', top: y0 + 'px', width: x1 - x0 + 'px', height: 112 * k + 'px', padding: `0 ${28 * k}px`,
+      borderRadius: 12 * k + 'px', fontSize: 26 * k + 'px', lineHeight: 1.25, opacity: String(win.opacity),
+    });
+    labEl.querySelector('.t').style.fontSize = 28 * k + 'px';
+    labEl.querySelector('.h').style.fontSize = 20 * k + 'px';
+    const Y = projectYield(), p = B.K.map(kk => B.chance(Y, kk)), l = lang(), y = (v) => `<span style="color:#FFD800">${v}</span>`;
+    const c = T.t(T.labChance, l).replace('{a}', y(pct(p[0]))).replace('{b}', y(pct(p[0] * p[1]))).replace('{c}', y(pct(p[0] * p[1] * p[2])));
+    const html = [T.t(T.labTitle, l), T.t(T.labPoints, l).replace('{n}', fmt(Y)), c, T.t(T.labHint, l)];
+    ['.t', '.p', '.c', '.h'].forEach((sel, i) => {
+      const e = labEl.querySelector(sel);
+      if (e.innerHTML !== html[i]) e.innerHTML = html[i];
+    });
+    labRaf = requestAnimationFrame(guardedLabFrame);
+  }
+  const guardedLabFrame = kit.guard(labFrame);
+  function labHide() {
+    if (labRaf) cancelAnimationFrame(labRaf);
+    labRaf = 0;
+    if (labEl) labEl.remove();
+    labEl = null;
+    if (screen && screen.info) { try { screen.info.inst.y = screen.info.y; } catch { } }
+    screen = null;
+  }
+  const labTimer = setInterval(kit.guard(() => {
+    const open = String(gv.class) === SCREEN;
+    if (!open) { if (screen) labHide(); return; }
+    if (screen && !alive(screen.win)) labHide();
+    if (!screen) {
+      screen = screenParts();
+      if (!screen) return;
+      if (screen.info) screen.info.inst.y = screen.info.y + INFO_SHIFT;
+      labEl = labPanel();
+    }
+    if (!labRaf) labFrame();
+  }), 150);
+  kit.onStop(() => { clearInterval(labTimer); labHide(); });
+
   const api = {
     salesOff: false, testBonus: null, lastProject: null, projects: [], get lab() { return lab; }, finish, announce, candidates, extra, bonus,
-    salesOn, salesOffNow: salesOff,
-    dispose() { clearInterval(retry); salesOff(); delete globalThis.__bdtBreakthroughs; },
+    salesOn, salesOffNow: salesOff, projectYield,
+    dispose() { clearInterval(retry); clearInterval(labTimer); labHide(); salesOff(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
   return () => api.dispose();
