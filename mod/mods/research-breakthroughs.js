@@ -4,6 +4,7 @@
 // raises a research category by one level ahead of the parts on the market: the next part of that category, normally
 // available up to a year later, can be built into devices now. A category the player is far behind in cannot get one.
 // Categories of the device types the player released in the last two years are drawn three times as often.
+// The parts come as the game's own news in the office (the game waits while it is open, Auto continue closes it).
 // The device designer lists a category's parts up to the number of parts on the market; for a category researched
 // ahead that number is raised to the research level, so the future parts are offered.
 // A device with innovative parts (born after its release) sells more: its popularity counts 10 % more per part while
@@ -12,8 +13,9 @@
 BetterDTKit.mod('research-breakthroughs', {
   needs: {
     calls: ['ResearchInvestEngine'],
-    objects: ['ArrayMyResearch', 'ArrayMyResearch_Invest', 'ArrayLanguage'],
-    vars: ['DayTotal', 'LanguageChoose', 'ArrayFunctionsOpened'],
+    objects: ['ArrayMyResearch', 'ArrayMyResearch_Invest', 'ArrayLanguage', 'ArrayGameAssistant'],
+    vars: ['DayTotal', 'LanguageChoose', 'ArrayFunctionsOpened', 'AssistantTheme', 'AssistantTitle', 'AssistantText',
+      'AssistantImage', 'AssistantButtons', 'AssistantButtonsText_1'],
     actions: Object.values((globalThis.BDTReviewData || { counters: {} }).counters).flat(),
     check: () => !globalThis.BDTReviewData ? 'lib-review-data.js' : !globalThis.BDTReviewCore ? 'lib-review-core.js'
       : !globalThis.BDTReviewTexts ? 'lib-review-texts.js' : !globalThis.BDTBreakthroughCore ? 'lib-breakthrough-core.js'
@@ -75,19 +77,55 @@ BetterDTKit.mod('research-breakthroughs', {
     while (rest >= DAYS[m]) rest -= DAYS[m++];
     return String(rest + 1).padStart(2, '0') + '.' + String(m + 1).padStart(2, '0') + '.' + y;
   }
+  const lines = (out) => out.map(g => T.t(T.breakthroughLine, lang())
+    .replace('{part}', String(arr('ArrayLanguage').getAt(lang(), D.research[g.id].nameText)).replace(/\[[^\]]*\]/g, '').trim())
+    .replace('{date}', dateOf(g.born))).join('\n');
+  // The news goes into the game's assistant queue (ArrayGameAssistant, its theme in column 0), like the game's own
+  // news: it shows in the office on the next day, the game waits while it is open, and Auto continue can close it.
+  // The theme carries the parts (research id and born day), so a saved game still has them. The game shows a theme
+  // it does not know as a plain NEWS window; its text is filled in just before the game shows it.
+  const THEME = 'BETTERDT BREAKTHROUGH', SHOW_SCRIPT = 'EventAssistant_Event1709_Act1';
+  function queue(out) {
+    const q = arr('ArrayGameAssistant');
+    if (!q) return false;
+    const w = q.width, h = Math.max(2, q.height);
+    q.setSize(w + 1, h, Math.max(1, q.depth));
+    for (let i = w; i > 0; i--) for (let j = 0; j < h; j++) q.setAt(q.getAt(i - 1, j), i, j);
+    q.setAt(THEME + ':' + out.map(g => g.id + '@' + g.born).join(','), 0, 0);
+    q.setAt(1, 0, 1);
+    for (let j = 2; j < h; j++) q.setAt(0, 0, j);
+    return true;
+  }
+  function fill() {
+    const th = String(gv.AssistantTheme);
+    if (!th.startsWith(THEME + ':')) return;
+    const out = th.slice(THEME.length + 1).split(',').map(s => s.split('@')).filter(([id]) => D.research[id]).map(([id, born]) => ({ id, born: +born }));
+    let title = T.t(T.breakthroughTitle, lang());
+    try { title = title.toLocaleUpperCase(); } catch { }
+    gv.AssistantTitle = title;
+    gv.AssistantText = lines(out);
+    gv.AssistantImage = '-999';
+    gv.AssistantButtons = 1;
+    gv.AssistantButtonsText_1 = 'OK';
+  }
+  const queued = kit.wrapScript(SHOW_SCRIPT, { before: fill }) > 0;
+  if (!queued) kit.warn('news script not found, the breakthroughs show in a dialog of their own');
+  // without the game's news: a dialog of its own, tried again while another one is open
   const pending = [];
   function showDialog() {
     if (!pending.length) return;
-    const L = lang(), lines = pending.map(g => T.t(T.breakthroughLine, L)
-      .replace('{part}', String(arr('ArrayLanguage').getAt(L, D.research[g.id].nameText)).replace(/\[[^\]]*\]/g, '').trim())
-      .replace('{date}', dateOf(g.born)));
-    if (BetterDTUI.dialog(T.t(T.breakthroughTitle, L), lines.join('\n'), [{ label: 'OK', go: true, cb() {} }])) {
+    if (BetterDTUI.dialog(T.t(T.breakthroughTitle, lang()), lines(pending), [{ label: 'OK', go: true, cb() {} }])) {
       pending.length = 0;
       const t = document.querySelector('#bdt-dlg .bdt-text');
       if (t) t.style.whiteSpace = 'pre-line';
     }
   }
   const retry = setInterval(kit.guard(showDialog), 1000);
+  function announce(out) {
+    if (queued && queue(out)) return;
+    pending.push(...out);
+    showDialog();
+  }
   function finish(Y, rng = Math.random, opts = {}) {
     const cands = candidates(), ids = B.pick(cands, B.attempts(Y, rng), rng), R = arr('ArrayMyResearch'), out = [];
     for (const id of ids) {
@@ -96,7 +134,7 @@ BetterDTKit.mod('research-breakthroughs', {
       out.push({ id, row: t.row, level: t.level, born: borns(r.array, r.bornCol)[t.row] });
     }
     if (!opts.quiet) { api.lastProject = { Y, day: today(), out }; BetterDT.log('lab project ended, yield', Y, 'breakthroughs', out.map(g => g.id + '→' + g.level).join(' ') || 'none'); }
-    if (out.length && !opts.quiet) { pending.push(...out); showDialog(); }
+    if (out.length && !opts.quiet) announce(out);
     return out;
   }
   let invest = null;
@@ -167,7 +205,7 @@ BetterDTKit.mod('research-breakthroughs', {
   kit.onStop(salesOff);
 
   const api = {
-    salesOff: false, testBonus: null, lastProject: null, finish, candidates, extra, bonus, salesOn, salesOffNow: salesOff,
+    salesOff: false, testBonus: null, lastProject: null, finish, announce, candidates, extra, bonus, salesOn, salesOffNow: salesOff,
     dispose() { clearInterval(retry); salesOff(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
