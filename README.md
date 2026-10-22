@@ -25,6 +25,9 @@ game file and does not touch your saves.
   by default).
 - **Endless game:** keep playing after the end of the game in 2101. The final screen gets a **Continue game**
   button, and the calendar goes on right away, no reload needed. Based on a mod by **M1lan.**
+- **Auto continue (NEWS):** a checkbox to the right of the OK button of news. When it is checked, news with a single
+  OK closes by itself 3 seconds after its text is typed (1 to 10 seconds in the settings). Dialogs with a choice are
+  never closed; unchecking the box or a click in the dialog keeps the open one until you press OK.
 - **Real company names:** the other companies are called Sony, Intel, Samsung, … instead of Somy, Infel,
   Samsong, … (game 1.4+), without downloading and loading the names file in the game's editor.
 - **Unlimited shares (INVESTING):** the exchange offers as many shares of a company as you can afford, so one
@@ -77,7 +80,9 @@ or ask on [Discord](https://discord.gg/JdQEMNNTrN).
   - autosave: save every N game days (default 90, 5 to 360; also in the game's own settings),
   - fixed-fps: the FPS used when the game's limit is set to 165 (165 to 360, default 165 = the game's own),
   - low-end: limit to 30 FPS, turn off blur (both off by default; take effect right away),
-  - no-ending: skip the final screen and continue right away (off by default).
+  - no-ending: skip the final screen and continue right away (off by default),
+  - auto-continue: close news with a single OK by itself (off by default; also the checkbox in the news), seconds
+    before OK (1 to 10, default 3).
 
 The BetterDT section is in the settings from the main menu and, since game 1.6, also in the settings opened from the
 pause menu during a game.
@@ -229,6 +234,20 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - **Skip the final screen** (option, off by default) continues right away without the summary.
 - A game stuck in `"END GAME"` without the screen (e.g. after a mod that only removed the screen) is put back to
   `"GAMEPLAY"` after 3 seconds.
+
+### `auto-continue.js`: auto continue (NEWS)
+- The game shows news, warnings and tips in one HTML dialog (`showOfficeNews`) with no button, one OK, or two
+  buttons for a choice; with one button it has the class `on-single`. The text is typed letter by letter.
+- To the right of OK (positioned absolutely, so the game's button stays exactly in the middle) a checkbox
+  **Auto continue** in the look of the dialog, remembered in the BetterDT settings. When it is checked, a dialog with
+  a single button closes 3 seconds (1–10, Settings → BetterDT → Mods) after the game has typed the whole text, by a
+  click on the game's own OK, so the game does what OK does (an award ceremony starts, for example). A small ring
+  next to the checkbox fills up meanwhile; OK can be pressed any time.
+- Never closed: dialogs with two buttons (a choice, e.g. "Later" / "Pay bonuses to all employees") or without
+  buttons. Unchecking the box stops the countdown of the open dialog too, and so does a click anywhere else in the
+  dialog (to read it in peace): it then waits for OK. Checking the box again starts the countdown from the beginning.
+- Tested in game 1.6 on the game's own news: closed 3.0 s after the text was typed; a click in the dialog and
+  unchecking kept it open; a two-button dialog had no checkbox.
 
 ### `autosave.js`: adjustable autosave
 - The game autosaves every 30, 60, 90, 180 or 365 game days, or never (Settings → General → Autosave). It calls

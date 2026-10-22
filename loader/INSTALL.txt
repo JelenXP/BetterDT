@@ -35,6 +35,8 @@ WHAT YOU GET
 - Low-end mode for older computers: limit to 30 FPS and turn off blur (Settings -> BetterDT -> Mods, off by default).
 - Endless game: keep playing after the end of the game in 2101 ("Continue game" on the final screen).
   Based on a mod by M1lan.
+- NEWS: an "Auto continue" checkbox next to OK closes news with a single OK by itself after 3 seconds
+  (1 to 10 in Settings -> BetterDT -> Mods). Dialogs with a choice are never closed.
 - Real company names (game 1.4+): Sony, Intel, Samsung, ... instead of Somy, Infel, Samsong, ...
 - INVESTING: buy as many shares as your money allows, up to the game's 49 % limit, in one purchase.
   Based on a mod by M1lan.
