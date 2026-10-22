@@ -81,6 +81,12 @@ BetterDTKit.mod('autosave', {
     }
   }
 
+  // replaced as soon as the game inserts the row, before it is painted
+  const observer = new MutationObserver(kit.guard(() => {
+    if (document.querySelector('.gs-seg:not(.bdt-autosave-off)')) settingsRow();
+  }));
+  observer.observe(document.body, { childList: true, subtree: true });
+
   const timer = setInterval(kit.guard(() => {
     install();
     settingsRow();
@@ -92,6 +98,7 @@ BetterDTKit.mod('autosave', {
 
   return () => {
     clearInterval(timer);
+    observer.disconnect();
     for (const b of document.querySelectorAll('.bdt-autosave')) b.remove();
     for (const seg of document.querySelectorAll('.bdt-autosave-off')) { seg.style.display = ''; seg.classList.remove('bdt-autosave-off'); }
     if (globalThis.tickAutoSave === tick) globalThis.tickAutoSave = origTick;

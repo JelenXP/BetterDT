@@ -238,11 +238,17 @@ BetterDTKit.mod('store-upgrade-all', {
     // the game's #usa-* rules, for our own ids
     st.textContent = `
 #bdt-sam-root { position: absolute; left: calc(100% + 1.5vh); top: 0; height: 100%; width: 64%; container-type: size;
-  display: flex; align-items: center; justify-content: center; pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease; }
-#bdt-sam-root.bdt-off { opacity: 0; transform: translateY(14%) scale(0.88); }
+  display: flex; align-items: center; justify-content: center; pointer-events: none; }
+/* shown and hidden together with the game's button: the same classes and keyframes, no frame later */
+#bdt-sam-btn { opacity: 0; pointer-events: none; }
+#usa-root.usa-shown ~ #bdt-sam-root #bdt-sam-btn { animation: usa-in 0.42s cubic-bezier(0.2, 1.35, 0.4, 1) forwards; pointer-events: auto; }
+#usa-root.usa-ready ~ #bdt-sam-root #bdt-sam-btn { opacity: 1; transform: none; animation: none; }
+#usa-root.usa-hiding ~ #bdt-sam-root #bdt-sam-btn { animation: usa-out 320ms cubic-bezier(0.5, 0, 0.75, 0) forwards; pointer-events: none; }
+#usa-root.usa-shown:not(.usa-hiding) ~ #bdt-sam-root #bdt-sam-btn:active { transform: scale(0.96); }
+/* it would cover the money in the top bar */
+#bdt-sam-root.bdt-off { visibility: hidden; }
 #bdt-sam-root.bdt-off #bdt-sam-btn { pointer-events: none; }
-#bdt-sam-btn { pointer-events: auto; box-sizing: border-box; width: 96%; height: 84%;
+#bdt-sam-btn { box-sizing: border-box; width: 96%; height: 84%;
   display: flex; align-items: center; justify-content: center; gap: 4cqw; padding: 0 4cqw;
   border: none; border-radius: 99px; background: linear-gradient(175deg, #ffe27a, #f2b419);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(120,70,0,0.30), 0 4px 14px rgba(0,0,0,0.35);
@@ -276,7 +282,6 @@ BetterDTKit.mod('store-upgrade-all', {
     injectCss();
     const root = document.createElement('div');
     root.id = 'bdt-sam-root';
-    root.className = 'bdt-off';
     root.innerHTML = '<button id="bdt-sam-btn" type="button"><span id="bdt-sam-label"></span><span id="bdt-sam-pct"></span></button>';
     el.appendChild(root);
     const btn = root.querySelector('#bdt-sam-btn');
@@ -293,6 +298,7 @@ BetterDTKit.mod('store-upgrade-all', {
       askMax().catch(err => log(err));
     }));
     ui = { root, btn, label: root.querySelector('#bdt-sam-label'), pct: root.querySelector('#bdt-sam-pct'), cache: null, at: 0 };
+    tick();                                        // the texts are there before the first frame
   }
 
   function tick() {
@@ -304,11 +310,10 @@ BetterDTKit.mod('store-upgrade-all', {
     if (ui.label.textContent !== label) ui.label.textContent = label;
     if (ui.pct.textContent !== pct) ui.pct.textContent = pct;
     ui.btn.classList.toggle('bdt-empty', !running && !(c.n > 0 && c.min <= budget));
-    // shown and hidden with the game's button; hidden when the money in the top bar would be covered
-    const g = document.getElementById('usa-root');
-    let on = !!g && g.classList.contains('usa-shown') && !g.classList.contains('usa-hiding');
+    // hidden when the money in the top bar would be covered (shown and hidden with the game's button by CSS)
+    let on = true;
     const money = kit.inst(UID.money);
-    if (on && money) {
+    if (money) {
       const left = money.layer.layerToCssPx(money.x - (money.textWidth || 300), money.y)[0];
       const r = ui.root.getBoundingClientRect(), canvas = document.querySelector('canvas').getBoundingClientRect();
       if (r.right - canvas.left > left - 8) on = false;
@@ -398,7 +403,7 @@ BetterDTKit.mod('store-upgrade-all', {
 
   const onLayoutStart = kit.guard(() => { teardown(); if (layoutName() === LAYOUT) setup(); });
   // our button fades out with the game's one; the page removes both elements
-  const onLayoutEnd = () => { if (ui) ui.root.classList.add('bdt-off'); ui = null; stopReq = true; };
+  const onLayoutEnd = () => { ui = null; stopReq = true; };
   const onTick = kit.guard(tick);
   rt.addEventListener('afteranylayoutstart', onLayoutStart);
   rt.addEventListener('beforeanylayoutend', onLayoutEnd);

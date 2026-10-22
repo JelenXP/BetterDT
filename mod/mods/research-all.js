@@ -297,8 +297,14 @@ BetterDTKit.mod('research-all', {
   const refreshSafe = kit.guard(refresh);
   timer = setInterval(refreshSafe, 400);
   refreshSafe();
+  // the button goes in as soon as the game builds the top bar, before it is painted
+  const domObs = new MutationObserver(() => {
+    const bar = document.getElementById('research-topbar');
+    if (bar && !running && !(ui && ui.bar === bar && ui.all.isConnected)) refreshSafe();
+  });
+  domObs.observe(document.body, { childList: true, subtree: true });
 
-  const dispose = () => { clearInterval(timer); teardown(); document.getElementById('bdt-research-all-css')?.remove(); };
+  const dispose = () => { clearInterval(timer); domObs.disconnect(); teardown(); document.getElementById('bdt-research-all-css')?.remove(); };
   globalThis.__dtResearchAll = { dispose };
   return dispose;
 });

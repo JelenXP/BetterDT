@@ -26,8 +26,8 @@ WHAT YOU GET
 ------------
 - FIND EMPLOYEES: next to every agency there is a second button with a number. It keeps searching
   until your office is full. The AUTO-HIRE checkbox (top right) hires everyone who is found.
-- UPGRADE EMPLOYEES: under the game's button (now "UPGRADE DESIGNERS" etc.) a "DESIGNERS TO MAX" button
-  trains the whole profession to the maximum level (as long as you have money and research points).
+- UPGRADE EMPLOYEES: under the game's button (now "UPGRADE DESIGNERS" etc.) an "ALL TO MAX" button trains
+  everyone of all professions to the maximum level (as long as you have money and research points).
 - RESEARCH LAB: next to the game's button (now "Research tab") "Research all" researches everything
   on all tabs, for research points and money (the button is grey when you cannot afford it).
 - Game speed: the speed button in the corner also offers x2 and x3.

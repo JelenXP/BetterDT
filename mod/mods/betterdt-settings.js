@@ -44,14 +44,24 @@
       return layoutName() === 'MENU' || Number(rt.globalVars.DayTotal) > 0;
     } catch { return false; }
   }
+  // time that passes while the game runs: a minimized window does not tick, so the game loads nothing meanwhile
+  function runningClock() {
+    let ms = 0, last = Date.now();
+    return () => {
+      const now = Date.now();
+      if (document.visibilityState !== 'hidden') ms += now - last;
+      last = now;
+      return ms;
+    };
+  }
   function waitReady(cb) {
     if (readyAt) return cb();
     readyWaiters.push(cb);
     if (readyWaiters.length > 1) return;
-    const t0 = Date.now();
+    const waited = runningClock();
     (function poll() {
-      // a renamed menu or table must not block the mods forever: after 60 s the checks run anyway
-      if (dataReady() || Date.now() - t0 > 60000) {
+      // a renamed menu or table must not block the mods forever: after 60 s of play the checks run anyway
+      if (dataReady() || waited() > 60000) {
         readyAt = Date.now();
         for (const f of readyWaiters.splice(0)) { try { f(); } catch (e) { console.error('[BetterDTKit]', e); } }
       } else setTimeout(poll, 300);
@@ -76,7 +86,7 @@
   // A saved game is loaded after its required tables have been filled.  Since game 1.5, DayTotal becomes
   // positive before several of those tables are populated, so time alone is not a reliable signal.
   const gameWaiters = [];
-  let gameSince = 0, gameTimer = 0;
+  let gameSince = null, gameTimer = 0;
   function tablesReady(spec) {
     for (const [name, [w, h]] of Object.entries((spec.needs || {}).arrays || {})) {
       let a = null;
@@ -97,12 +107,13 @@
     gameWaiters.push({ spec, cb });
     if (gameTimer) return;
     gameTimer = setInterval(() => {
-      if (!(Number(rt.globalVars.DayTotal) > 0)) { gameSince = 0; return; }
-      if (!gameSince) { gameSince = Date.now(); return; }
-      if (Date.now() - gameSince < 2000) return;
+      if (!(Number(rt.globalVars.DayTotal) > 0)) { gameSince = null; return; }
+      if (!gameSince) { gameSince = runningClock(); return; }
+      const since = gameSince();
+      if (since < 2000) return;
       // Keep waiting only for tables that have not arrived yet.  The timeout lets checkData still report a
       // genuinely incompatible game instead of leaving a mod in the waiting state forever.
-      const force = Date.now() - gameSince >= 60000;
+      const force = since >= 60000;
       for (let i = gameWaiters.length - 1; i >= 0; i--) {
         const w = gameWaiters[i];
         // an empty table (0 rows or columns) is not loaded yet (a new game being set up, a save still loading):
@@ -348,12 +359,12 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Rekrut otomatis semua yang ditemukan', 'Automatycznie zatrudniaj znalezionych', '自动雇佣找到的所有人', '찾은 사람 자동 채용', '見つけた人を自動で採用'],
     'train-all': ['Train all', 'Обучить всех', 'Alle schulen', 'Tout former', 'Forma tutti', 'Entrenar a todos', 'सभी को प्रशिक्षित करें', 'Hepsini eğit', 'Treinar todos',
       'Навчити всіх', 'Latih semua', 'Szkol wszystkich', '全部培训', '모두 교육', '全員を研修'],
-    'train-all.d': ['UPGRADE EMPLOYEES: one button trains the whole profession to the max', 'УЛУЧШЕНИЕ: одна кнопка обучает всю профессию до максимума',
-      'MITARBEITER VERBESSERN: ein Knopf schult den ganzen Beruf aufs Maximum', 'AMÉLIORER : un bouton forme tout le métier au maximum',
-      'MIGLIORA: un pulsante forma tutta la professione al massimo', 'MEJORAR: un botón entrena toda la profesión al máximo',
-      'अपग्रेड: एक बटन पूरे पेशे को अधिकतम तक प्रशिक्षित करता है', 'GELİŞTİR: tek tuşla tüm meslek maksimuma', 'MELHORAR: um botão treina a profissão toda ao máximo',
-      'ПОКРАЩЕННЯ: одна кнопка навчає всю професію до максимуму', 'TINGKATKAN: satu tombol melatih seluruh profesi ke maksimum',
-      'ULEPSZ: jeden przycisk szkoli cały zawód do maksimum', '升级员工：一键把整个职业培训到满级', '직원 강화: 버튼 하나로 직종 전체를 최대까지', '社員強化：ボタン1つで職種全体を最大まで'],
+    'train-all.d': ['UPGRADE EMPLOYEES: one button trains everyone of all professions to the max', 'УЛУЧШЕНИЕ: одна кнопка обучает всех сотрудников всех профессий до максимума',
+      'MITARBEITER VERBESSERN: ein Knopf schult alle Mitarbeiter aller Berufe aufs Maximum', 'AMÉLIORER : un bouton forme tous les employés de tous les métiers au maximum',
+      'MIGLIORA: un pulsante forma tutti i dipendenti di tutte le professioni al massimo', 'MEJORAR: un botón entrena a todos los empleados de todas las profesiones al máximo',
+      'अपग्रेड: एक बटन सभी पेशों के सभी कर्मचारियों को अधिकतम तक प्रशिक्षित करता है', 'GELİŞTİR: tek tuşla tüm mesleklerdeki herkes maksimuma', 'MELHORAR: um botão treina todos de todas as profissões ao máximo',
+      'ПОКРАЩЕННЯ: одна кнопка навчає всіх працівників усіх професій до максимуму', 'TINGKATKAN: satu tombol melatih semua karyawan semua profesi ke maksimum',
+      'ULEPSZ: jeden przycisk szkoli wszystkich pracowników wszystkich zawodów do maksimum', '升级员工：一键把所有职业的员工培训到满级', '직원 강화: 버튼 하나로 모든 직종의 직원을 최대까지', '社員強化：ボタン1つで全職種の全員を最大まで'],
     'train-all.mute': ['Mute the click sounds while training', 'Без звуков кликов во время обучения', 'Klickgeräusche beim Schulen stummschalten',
       'Couper les sons de clic pendant la formation', 'Silenzia i clic durante la formazione', 'Silenciar los clics durante el entrenamiento',
       'प्रशिक्षण के दौरान क्लिक ध्वनियाँ बंद', 'Eğitim sırasında tık seslerini kapat', 'Silenciar os cliques durante o treino', 'Без звуків кліків під час навчання',

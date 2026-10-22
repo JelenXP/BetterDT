@@ -12,8 +12,8 @@ game file and does not touch your saves.
 - **Hiring (FIND EMPLOYEES):** a second button next to every agency keeps searching until your office is
   full. With **AUTO-HIRE** (checkbox in the top right) everyone found is hired right away.
 - **Training (UPGRADE EMPLOYEES):** the game's button says which profession it upgrades (**UPGRADE DESIGNERS**:
-  one step for everyone), and **DESIGNERS TO MAX** under it trains the whole profession to the maximum level, as
-  long as you have money and research points.
+  one step for everyone), and **ALL TO MAX** under it trains everyone of all professions to the maximum level, as
+  long as you have money and research points (it shows about how many points and how much money that takes).
 - **Research (RESEARCH LAB):** next to the game's own button (renamed **Research tab**: the tab you have open,
   recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
   research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
@@ -115,16 +115,22 @@ its own layer.
 - Game 1.6 has its own **UPGRADE ALL** button in the left panel: one training step for every employee of the
   selected profession, all or nothing. The mod renames it to **UPGRADE DESIGNERS** (the profession as the game
   shows it, so it changes when you switch professions) and puts a second button in the same look under it:
-  **DESIGNERS TO MAX (N)**, where N is the number of people of the profession who are not at MAX LEVEL yet. A click
-  goes through all pages of the profession and trains until everyone is at the maximum or the money or research
-  points run out. To fit both, the game's button is made a little lower.
+  **ALL TO MAX**. A click goes through every profession (the tabs on the left, the shown one first) and all its
+  pages and trains until everyone is at the maximum or the money or research points run out; then the profession
+  you had open is shown again. To fit both, the game's button is made a little lower. Both buttons appear and
+  disappear together, with the game's animation.
+- Under the label, like the price on the game's button: about how many research points and how much money it takes
+  to get everyone to the maximum (red when you do not have that much). A training step gains 3 to 12 levels at
+  random, so it is an estimate with the average gain; in a test it was 818 points and $71.7 million, the training
+  took 831 points and $72.5 million.
 - Training clicks the game's own buttons on the cards, so the price (sum of the three levels × $1,500 and
   ⌈sum × 0.015⌉ points), gains, salary and perks are computed by the game. The mod only switches pages (`SubPage`)
   and clicks.
 - Sounds are muted during the batch (optional), one chime plays at the end. A summary ("Training finished: 29
   upgrades", money and points spent) appears in the game notification. When the money runs out it is appended
   under the game's message.
-- Tested in game 1.6: 17 programmers, 37 upgrades; with 2 research points the game's "not enough" message.
+- Tested in game 1.6: 5 professions, 81 employees, 178 upgrades in 10 s; with 2 research points the game's "not
+  enough" message.
 
 ### `game-speed.js`: game speed ×2 and ×3
 - The game's speed button (`#sbx-speed`) cycles through a fixed list `[1, 1.25, 1.5]`. The mod catches its click
