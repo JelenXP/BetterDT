@@ -27,7 +27,7 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
   const panel = Object.assign(document.createElement('div'), { className: 'bdt-insp' });
   const box = Object.assign(document.createElement('div'), { className: 'bdt-insp-box' });
 
-  let shown = false, px = -1, py = -1, frame = 0, hits = [], sel = 0, note = '', noteUntil = 0;
+  let shown = false, px = -1, py = -1, frame = 0, dirty = false, listAt = 0, lastHtml = '', hits = [], sel = 0, note = '', noteUntil = 0;
   let types = [], typesAt = 0, typesLayout = '';
   const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const short = (v, n) => { const t = String(v).replace(/\s+/g, ' '); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
@@ -78,9 +78,18 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
   const uidEntry = (i) => `${i.uid}: { layout: '${rt.layout.name}', t: '${typeOf(i)}', l: '${i.layer.name}', `
     + `w: ${Math.round(i.width)}, h: ${Math.round(i.height)}, x: ${Math.round(i.x)}, y: ${Math.round(i.y)} },`;
 
-  function render() {
+  // every frame while shown: the frame follows the selected object (animated objects move and scale); the list is
+  // looked up again when the cursor moved, and every 150 ms otherwise
+  function loop() {
     frame = 0;
-    if (!shown || px < 0) return;
+    if (!shown) return;
+    if (dirty || Date.now() - listAt > 150) render();
+    else placeBox();
+    frame = requestAnimationFrame(kit.guard(loop));
+  }
+  function render() {
+    dirty = false; listAt = Date.now();
+    if (px < 0) return;
     let screen = '';
     try { screen = rt.layout.name; hits = hitTest(px, py); } catch (e) { hits = []; }
     if (sel >= hits.length) sel = Math.max(0, hits.length - 1);
@@ -102,21 +111,27 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
     const el = document.elementFromPoint(px, py);
     if (el && el.tagName !== 'CANVAS' && !panel.contains(el)) lines.push('', `<s>HTML</s> ${esc(htmlPath(el))}`);
     lines.push('', Date.now() < noteUntil ? `<b>${esc(note)}</b>` : '<s>↑↓ select · Ctrl+C copy for spec.uids · Ctrl+Shift+C copy type · F9 hide</s>');
-    panel.innerHTML = lines.join('\n');
+    const html = lines.join('\n');
+    if (html !== lastHtml) panel.innerHTML = lastHtml = html;
 
     // next to the cursor, inside the window
     const w = panel.offsetWidth, h = panel.offsetHeight;
     panel.style.left = (px + 18 + w > innerWidth ? Math.max(4, px - 18 - w) : px + 18) + 'px';
     panel.style.top = (py + 18 + h > innerHeight ? Math.max(4, py - 18 - h) : py + 18) + 'px';
-    // the frame around the selected object
-    if (cur && typeof cur.getBoundingBox === 'function') {
-      const b = cur.getBoundingBox();
+    placeBox();
+  }
+  // the frame around the selected object
+  function placeBox() {
+    const cur = hits[sel];
+    let b = null;
+    try { if (cur && cur.layer) b = cur.getBoundingBox(); } catch { }   // destroyed with the last screen
+    if (b) {
       const [x1, y1] = cur.layer.layerToCssPx(b.left, b.top), [x2, y2] = cur.layer.layerToCssPx(b.right, b.bottom);
       Object.assign(box.style, { display: '', left: Math.min(x1, x2) + 'px', top: Math.min(y1, y2) + 'px',
         width: Math.abs(x2 - x1) + 'px', height: Math.abs(y2 - y1) + 'px' });
     } else box.style.display = 'none';
   }
-  const schedule = () => { if (!frame) frame = requestAnimationFrame(kit.guard(render)); };
+  const schedule = () => { dirty = true; if (shown && !frame) frame = requestAnimationFrame(kit.guard(loop)); };
 
   function copy(text, what) {
     const done = () => { note = 'Copied: ' + what; noteUntil = Date.now() + 1500; schedule(); };
@@ -132,7 +147,7 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
   function show(on) {
     shown = on;
     if (on) { document.body.append(box, panel); schedule(); }
-    else { panel.remove(); box.remove(); }
+    else { panel.remove(); box.remove(); if (frame) cancelAnimationFrame(frame); frame = 0; }
   }
 
   const onMove = kit.guard((e) => { px = e.clientX; py = e.clientY; if (shown) schedule(); });
@@ -149,8 +164,6 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
     } else used = false;
     if (used) { e.preventDefault(); e.stopImmediatePropagation(); }
   });
-  // the game moves objects under a still cursor too
-  const timer = setInterval(() => { if (shown) schedule(); }, 250);
   const offSetting = S.onChange((k) => { if (k === 'dev-inspector.on' && !enabled()) show(false); });
   addEventListener('pointermove', onMove, true);
   addEventListener('keydown', onKey, true);
@@ -158,7 +171,6 @@ BetterDTKit.mod('dev-inspector', {}, (rt, kit) => {
   return () => {
     removeEventListener('pointermove', onMove, true);
     removeEventListener('keydown', onKey, true);
-    clearInterval(timer);
     offSetting();
     if (frame) cancelAnimationFrame(frame);
     show(false);
