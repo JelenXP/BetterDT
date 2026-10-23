@@ -455,27 +455,22 @@ What it shows the player:
 
 ### Writing your own mod
 
-Put a `.js` file into `mods` and add it to `mods\mods.json`:
+**[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, the BetterDTKit API, the game's runtime, how to
+find variables, tables, texts and functions of the game without its source code, recipes, and a development setup.
+In short, put a `.js` file into `mods` and add it to `mods\mods.json`:
 
 ```js
 BetterDTKit.mod('my-mod', {
-  needs: { functions: ['setGameSpeed'], objects: ['ArrayOffices'], vars: ['Budget'], arrays: { ArrayOffices: [5, 1] } },
-  texts: { 10974: "You don't have enough funds" },
+  needs: { functions: ['setGameSpeed'], vars: ['Budget'] },
 }, (runtime, kit) => {
-  runtime.globalVars.Budget;                       // global variables from the event sheets
-  runtime.objects.ArrayOffices.getFirstInstance(); // arrays, dictionaries, sprites…
-  const tick = kit.guard(() => {});                // errors are counted, 20 stop the mod
-  runtime.addEventListener('tick', tick);          // every frame
-  kit.text(10974);                                 // a game text in the player's language
-  BetterDT.settings.bool('my-mod.option', true);   // settings from betterdt.ini
+  const tick = kit.guard(() => { /* every frame */ });
+  runtime.addEventListener('tick', tick);
   return () => runtime.removeEventListener('tick', tick);   // dispose
 });
 ```
 
-`BetterDT.register('my-mod', runtime => { … })` still works for a mod without checks.
-
-`DTMods` is an alias of `BetterDT` for older mods. `examples/mods` has two development helpers:
-`example.js` and `probe.js` (with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
+`examples/mods` has a complete example (`money-goal.js`) and two development helpers: `example.js` and `probe.js`
+(with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
 
 ## How the loader works (`loader/`)
 
