@@ -1,0 +1,23 @@
+{
+  "title": { "en": "Monthly report", "de": "Monatsbericht" },
+  "description": {
+    "en": "At the start of every month: how much money the company made in the last one. A button in the office shows the last 12 months.",
+    "de": "Zu Beginn jedes Monats: wie viel Geld die Firma im letzten verdient hat. Ein Knopf im Büro zeigt die letzten 12 Monate."
+  },
+  "version": "1.0.0",
+  "author": "BetterDT example",
+  "requires": { "betterdt": "0.4.0" },
+  "files": ["mod.js"],
+  "options": [
+    { "key": "toast", "type": "bool", "default": true,
+      "label": { "en": "Message at the start of a month", "de": "Meldung zu Monatsbeginn" } },
+    { "key": "min", "type": "range", "default": 0, "min": 0, "max": 100, "step": 5,
+      "label": { "en": "Only when the change is at least (millions)", "de": "Nur ab einer Änderung von (Millionen)" } },
+    { "key": "format", "type": "choice", "default": "short",
+      "label": { "en": "Numbers", "de": "Zahlen" },
+      "choices": [
+        { "value": "short", "label": { "en": "$1.2M", "de": "1,2 Mio. $" } },
+        { "value": "full", "label": { "en": "$1 234 567", "de": "1 234 567 $" } }
+      ] }
+  ]
+}

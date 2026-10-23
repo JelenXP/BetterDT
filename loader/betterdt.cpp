@@ -7,14 +7,15 @@
 //    for CreateWebViewEnvironmentWithOptionsInternal, we return our own wrapper, which
 //      – adds the Chromium switch --force_high_performance_gpu (render on the high-performance GPU),
 //      – after the webview is created, registers a script (AddScriptToExecuteOnDocumentCreated) built
-//        from the mods in the mods\ folder next to the exe (order from mods\mods.json),
+//        from the mods in the mods\ folder next to the exe (order from mods\mods.json), then from the
+//        folder mods (mods\<folder>\mod.json, in folder name order),
 //      – serves https://betterdt.localhost/… (WebResourceRequested): the BetterDT section in the game
 //        settings uses it to read state, save settings and run updates.
 //  • DevTools and remote debugging stay off; game files (assets.dat, package.json) stay untouched,
 //    so game updates do not remove the mod.
 //
 // Settings: mods\betterdt.ini (key=value lines, written by the BetterDT section in the game settings):
-//   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 disables a mod,
+//   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 or mod.<folder>=0 disables a mod,
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
 // Updates: BetterDT-update.zip (a copy of BetterDT.zip) from the latest GitHub release (every file checked by its CRC-32).
 // Crashes: a crashed game page is reloaded automatically (see OnProcessFailed).
@@ -27,6 +28,7 @@
 #include <shellapi.h>
 #include <tlhelp32.h>
 #include <wrl.h>
+#include <algorithm>
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -221,6 +223,58 @@ static std::vector<std::string> ModList() {
 }
 static bool ModEnabled(const std::string &name) {
   return name == kCoreMod || IniOn("mod." + name, true);
+}
+
+// ── folder mods: mods\<folder>\mod.json + its files ─────────────────────────────────────────────
+// The folder name is the mod's id (switch mod.<folder> in betterdt.ini); the manifest goes to the page as it is.
+struct FolderMod {
+  std::string name, manifest;
+  std::vector<std::string> files;
+};
+static bool ValidFolderName(const std::string &s) {
+  if (s.empty() || s.size() > 60 || s[0] == '.') return false;
+  for (char c : s) if (!(isalnum((unsigned char)c) || c == '.' || c == '_' || c == '-')) return false;
+  return true;
+}
+// "files": ["a.js", "b.js"] of the manifest (flat file names), default mod.js
+static std::vector<std::string> ManifestFiles(const std::string &json) {
+  std::vector<std::string> files;
+  size_t k = json.find("\"files\"");
+  size_t a = k == std::string::npos ? k : json.find('[', k);
+  size_t b = a == std::string::npos ? a : json.find(']', a);
+  if (b != std::string::npos) {
+    for (size_t i = a; (i = json.find('"', i)) != std::string::npos && i < b;) {
+      size_t j = json.find('"', i + 1);
+      if (j == std::string::npos || j > b) break;
+      std::string f = json.substr(i + 1, j - i - 1);
+      if (ValidModName(f)) files.push_back(f);
+      i = j + 1;
+    }
+  }
+  if (files.empty()) files.push_back("mod.js");
+  return files;
+}
+static std::vector<FolderMod> FolderMods(const std::vector<std::string> &listed) {
+  std::vector<FolderMod> out;
+  WIN32_FIND_DATAW fd;
+  HANDLE h = FindFirstFileW((g_modsDir + L"*").c_str(), &fd);
+  if (h == INVALID_HANDLE_VALUE) return out;
+  do {
+    if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+    std::string name = Narrow(fd.cFileName);
+    if (!ValidFolderName(name)) continue;
+    FolderMod m;
+    m.name = name;
+    if (!ReadFileUtf8(g_modsDir + fd.cFileName + L"\\mod.json", m.manifest)) continue;
+    bool clash = false;
+    for (const std::string &n : listed) clash |= n == name + ".js";
+    if (clash) { Log("folder mod %s: skipped, %s.js is in mods.json", name.c_str(), name.c_str()); continue; }
+    m.files = ManifestFiles(m.manifest);
+    out.push_back(m);
+  } while (FindNextFileW(h, &fd));
+  FindClose(h);
+  std::sort(out.begin(), out.end(), [](const FolderMod &a, const FolderMod &b) { return _stricmp(a.name.c_str(), b.name.c_str()) < 0; });
+  return out;
 }
 
 // ── update state ────────────────────────────────────────────────────────────────────────────────
@@ -925,6 +979,40 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
   return "{\"error\":\"unknown\"}";
 }
 
+// mod/<folder>/<file>: a file of a folder mod, flat names only
+static std::string ModAsset(const std::string &path, int &status, std::wstring &type) {
+  status = 404;
+  size_t sl = path.find('/');
+  if (sl == std::string::npos) return "";
+  std::string dir = UrlDecode(path.substr(0, sl)), file = UrlDecode(path.substr(sl + 1));
+  if (!ValidFolderName(dir) || file.empty() || file.size() > 100 || file[0] == '.' ||
+      file.find_first_of("\\/:*?\"<>|") != std::string::npos || file.find("..") != std::string::npos) return "";
+  HANDLE h = CreateFileW((g_modsDir + Widen(dir) + L"\\" + Widen(file)).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+  if (h == INVALID_HANDLE_VALUE) return "";
+  LARGE_INTEGER sz{};
+  std::string data;
+  if (GetFileSizeEx(h, &sz) && sz.QuadPart <= (LONGLONG)kMaxAsset) {
+    data.resize((size_t)sz.QuadPart);
+    DWORD got = 0;
+    if (data.empty() || ReadFile(h, &data[0], (DWORD)data.size(), &got, nullptr)) { data.resize(got); status = 200; }
+  }
+  CloseHandle(h);
+  if (status != 200) return "";
+  static const struct { const char *ext; const wchar_t *type; } kTypes[] = {
+    { ".png", L"image/png" }, { ".jpg", L"image/jpeg" }, { ".jpeg", L"image/jpeg" }, { ".webp", L"image/webp" },
+    { ".gif", L"image/gif" }, { ".svg", L"image/svg+xml" }, { ".mp3", L"audio/mpeg" }, { ".ogg", L"audio/ogg" },
+    { ".wav", L"audio/wav" }, { ".json", L"application/json; charset=utf-8" }, { ".css", L"text/css; charset=utf-8" },
+    { ".txt", L"text/plain; charset=utf-8" }, { ".woff2", L"font/woff2" } };
+  type = L"application/octet-stream";
+  std::string low = file;
+  for (char &c : low) c = (char)tolower((unsigned char)c);
+  for (const auto &t : kTypes) {
+    size_t n = strlen(t.ext);
+    if (low.size() > n && low.compare(low.size() - n, n, t.ext) == 0) { type = t.type; break; }
+  }
+  return data;
+}
+
 static void InstallApi(ICoreWebView2 *wv) {
   HRESULT hr = wv->AddWebResourceRequestedFilter(L"https://betterdt.localhost/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
   EventRegistrationToken tok{};
@@ -951,11 +1039,15 @@ static void InstallApi(ICoreWebView2 *wv) {
       int status = 403;
       std::string body = "{\"error\":\"origin\"}";
       const std::string app = "://app.localhost";
-      if (origin.size() >= app.size() && origin.compare(origin.size() - app.size(), app.size(), app) == 0)
-        body = HandleApi(rest, query, status);
+      const bool fromGame = origin.size() >= app.size() && origin.compare(origin.size() - app.size(), app.size(), app) == 0;
+      std::wstring type = L"application/json; charset=utf-8";
+      // files of a folder mod (images, sounds, data); <img> and <audio> send no Origin
+      if (rest.compare(0, 4, "mod/") == 0) {
+        if (fromGame || origin.empty()) body = ModAsset(rest.substr(4), status, type);
+      } else if (fromGame) body = HandleApi(rest, query, status);
       ComPtr<IStream> st;
       st.Attach(SHCreateMemStream((const BYTE *)body.data(), (UINT)body.size()));
-      std::wstring headers = L"Content-Type: application/json; charset=utf-8\nCache-Control: no-store\n"
+      std::wstring headers = L"Content-Type: " + type + L"\nCache-Control: no-store\n"
                              L"Access-Control-Allow-Origin: " + (origin.empty() ? std::wstring(L"null") : Widen(origin));
       ComPtr<ICoreWebView2WebResourceResponse> resp;
       g_env->CreateWebResourceResponse(st.Get(), status, status == 200 ? L"OK" : L"Error", headers.c_str(), &resp);
@@ -981,9 +1073,13 @@ static std::wstring BuildScript() {
   bool hasCore = false;
   for (auto &n : mods) hasCore |= n == kCoreMod;
   if (!hasCore) mods.insert(mods.begin(), kCoreMod);
+  std::vector<FolderMod> folders = FolderMods(mods);
   std::string modsJson = "[";
   for (size_t i = 0; i < mods.size(); i++)
     modsJson += std::string(i ? "," : "") + "{\"file\":" + JsonStr(mods[i]) + ",\"enabled\":" + (ModEnabled(mods[i]) ? "true" : "false") + "}";
+  for (const FolderMod &f : folders)
+    modsJson += std::string(modsJson.size() > 1 ? "," : "") + "{\"file\":" + JsonStr(f.name) + ",\"folder\":true,\"enabled\":" +
+                (ModEnabled(f.name) ? "true" : "false") + ",\"manifest\":" + JsonStr(f.manifest) + "}";
   modsJson += "]";
 
   std::string js;
@@ -1006,9 +1102,16 @@ static std::wstring BuildScript() {
         "    return api('set', { k, v }); },\n"
         "  onChange(f) { listeners.add(f); return () => listeners.delete(f); },\n"
         "});\n"
+        // a folder mod's manifest comes as text: parsed here, null when it is not valid JSON
+        "const modList = " + modsJson + ";\n"
+        "for (const m of modList) {\n"
+        "  if (typeof m.manifest === 'string') try { m.manifest = JSON.parse(m.manifest); }\n"
+        "    catch (e) { console.error('[BetterDT] mod ' + m.file + ': mod.json', e); m.manifest = null; }\n"
+        "  Object.freeze(m);\n"
+        "}\n"
         "const B = Object.freeze({\n"
         "  native: true, version: " + JsonStr(BETTERDT_VERSION) + ", repo: " + JsonStr(kRepo) + ",\n"
-        "  mods: Object.freeze(" + modsJson + "),\n"
+        "  mods: Object.freeze(modList),\n"
         "  settings: S, state, api,\n"
         "  register(name, init) { if (names.has(name)) return; names.add(name); mods.push({ name, init }); },\n"
         "  log,\n"
@@ -1031,6 +1134,21 @@ static std::wstring BuildScript() {
     loaded++;
     js += "try { (function () {\n" + code + "\n})(); } catch (e) { console.error('[BetterDT] mod " + name +
           " failed while loading:', e); }\n";
+  }
+  for (const FolderMod &f : folders) {
+    if (!ModEnabled(f.name)) { Log("mod %s/: disabled", f.name.c_str()); continue; }
+    for (const std::string &file : f.files) {
+      std::string code;
+      if (!ReadFileUtf8(g_modsDir + Widen(f.name) + L"\\" + Widen(file), code)) {
+        Log("mod %s/%s: cannot read the file", f.name.c_str(), file.c_str());
+        js += "console.error('[BetterDT] cannot load " + f.name + "/" + file + "');\n";
+        continue;
+      }
+      Log("mod %s/%s: %zu B", f.name.c_str(), file.c_str(), code.size());
+      loaded++;
+      js += "try { (function () {\n" + code + "\n})(); } catch (e) { console.error('[BetterDT] mod " + f.name + "/" + file +
+            " failed while loading:', e); }\n";
+    }
   }
   js += "function startAll(rt) {\n"
         "  for (const m of mods) {\n"

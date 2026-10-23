@@ -31,6 +31,15 @@
 // code around the game's event sheet actions (every call site of an event function, one action, the script action
 // "EventGameplay_Event449_Act1" …); they are undone when the mod stops. An async action's after runs once it settled.
 // A mod that does not fit this game version is not started; the BetterDT settings say why.
+//
+// Added for mods by others (all optional, the calls above stay as they are; MODDING.md has the details):
+//   spec.info = { title, description, version, author, options, requires }   texts are a string or
+//                { en, ru, de, … }; a folder mod (mods\<folder>\mod.json) has the same fields in its manifest
+//   kit.option(key)        the value of one of the mod's options (typed, default from spec.info / mod.json)
+//   kit.on(event, [filter], fn)   tick, screen, leave, day, month, year, gameLoaded, gameClosed, language, option,
+//                          setting; returns off(), removed when the mod stops
+//   kit.table(name, fields), kit.game   game tables with named fields, money, date, screen, …
+//   kit.ui                 css, el, shield, anchor, button, toast, dialog in the game's look; removed on stop
 (() => {
   const B = globalThis.BetterDT;
   if (!B || globalThis.BetterDTKit) return;
@@ -205,12 +214,249 @@
     return p;
   }
 
+  // ── metadata: mod.json of a folder mod or spec.info of a single-file mod ─────────────────────────
+  const LANGS = ['en', 'ru', 'de', 'fr', 'it', 'es', 'hi', 'tr', 'pt', 'uk', 'id', 'pl', 'zh', 'ko', 'ja'];
+  // the runtime of the first started mod, or the game's own before that (the settings page asks early)
+  const langIdx = () => {
+    try { const n = Math.round(Number((rt || globalThis.runtime).globalVars.LanguageChoose)); return n >= 0 && n < 15 ? n : 0; } catch { return 0; }
+  };
+  // a text of a manifest: 'text' or { en: 'text', de: 'Text', … }
+  function localize(v) {
+    if (v === undefined || v === null) return '';
+    if (typeof v !== 'object') return String(v);
+    const x = v[LANGS[langIdx()]] ?? v.en ?? Object.values(v)[0];
+    return x === undefined || x === null ? '' : String(x);
+  }
+  function cmpVersion(a, b) {
+    const x = String(a).split('.').map(n => parseInt(n, 10) || 0), y = String(b).split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); }
+    return 0;
+  }
+  const folderMod = (name) => (B.mods || []).find(f => f.folder && f.file === name) || null;
+  function infoOf(name) {
+    const f = folderMod(name), m = mods.get(name);
+    const i = (f && f.manifest) || (m && m.spec && m.spec.info);
+    return i && typeof i === 'object' ? i : null;
+  }
+  // options with full keys: 'days' of the mod 'my-mod' is stored as my-mod.days
+  function optionsOf(name) {
+    const i = infoOf(name);
+    return (i && Array.isArray(i.options) ? i.options : []).filter(o => o && typeof o.key === 'string' && o.key).map(o => {
+      const key = o.key.includes('.') ? o.key : name + '.' + o.key;
+      const type = o.type || (typeof o.default === 'boolean' ? 'bool' : Array.isArray(o.choices) ? 'choice' : 'range');
+      const choices = (Array.isArray(o.choices) ? o.choices : []).map(c => (c && typeof c === 'object' ? c : { value: c, label: String(c) }));
+      return { ...o, key, type, choices };
+    });
+  }
+  function optionValue(o) {
+    const S = B.settings;
+    if (o.type === 'bool') return S.bool(o.key, !!o.default);
+    if (o.type === 'range') {
+      let n = S.num(o.key, Number(o.default) || 0);
+      if (typeof o.min === 'number') n = Math.max(o.min, n);
+      if (typeof o.max === 'number') n = Math.min(o.max, n);
+      return n;
+    }
+    if (o.type === 'choice') {
+      const v = S.get(o.key), c = o.choices.find(c => String(c.value) === String(v));
+      return c ? c.value : o.default;
+    }
+    return S.get(o.key, o.default);
+  }
+  function checkRequires(name) {
+    const i = infoOf(name), q = i && i.requires, p = [];
+    if (!q || typeof q !== 'object') return p;
+    if (q.betterdt && cmpVersion(B.version, q.betterdt) < 0) p.push('BetterDT ' + q.betterdt + ' or newer');
+    const gv = api.gameVersion;
+    if (q.game && gv && cmpVersion(gv, q.game) < 0) p.push('game ' + q.game + ' or newer');
+    return p;
+  }
+
+  // ── events: one tick listener for all mods ──────────────────────────────────────────────────────
+  // Every subscription remembers what it has seen, so a new one also gets the current screen / loaded game.
+  const subs = new Set();
+  let dispatching = false, settingsHooked = false;
+  function gameState() {
+    const g = rt.globalVars, n = (v) => Number(g[v]) || 0;
+    return { screen: layoutName(), total: n('DayTotal'), day: n('Day'), month: n('Month'), year: n('Year'), lang: langIdx() };
+  }
+  const isLoad = (from, to) => to > 0 && (!(from > 0) || to < from || to - from > 40);   // another save, not days passing
+  function dispatch() {
+    if (!subs.size) return;
+    let st;
+    try { st = gameState(); } catch { return; }
+    for (const s of [...subs]) {
+      if (!subs.has(s)) continue;
+      const seen = s.seen;
+      switch (s.type) {
+        case 'tick': s.fn(rt.dt); break;
+        case 'screen':
+          if (seen === st.screen) break;
+          s.seen = st.screen;
+          if (!s.filter || s.filter === st.screen) s.fn(st.screen, seen);
+          break;
+        case 'leave':
+          if (seen === st.screen) break;
+          s.seen = st.screen;
+          if (seen !== undefined && (!s.filter || s.filter === seen)) s.fn(seen, st.screen);
+          break;
+        case 'gameLoaded':
+          if (st.screen === 'LOADING GAME') break;   // the date is set before the save's tables are
+          s.seen = st.total;
+          if (seen === undefined ? st.total > 0 : isLoad(seen, st.total)) s.fn(dateOf(st));
+          break;
+        case 'gameClosed':
+          s.seen = st.total;
+          if (seen > 0 && !(st.total > 0)) s.fn();
+          break;
+        case 'day': case 'month': case 'year': {
+          s.seen = st;
+          if (!seen || !(st.total > 0) || isLoad(seen.total, st.total) || st.total === seen.total) break;
+          if (s.type === 'day' || (s.type === 'month' ? st.month !== seen.month || st.year !== seen.year : st.year !== seen.year)) s.fn(dateOf(st));
+          break;
+        }
+        case 'language':
+          if (seen === st.lang) break;
+          s.seen = st.lang;
+          if (seen !== undefined) s.fn(st.lang, LANGS[st.lang]);
+          break;
+      }
+    }
+  }
+  const dateOf = (st) => ({ day: st.day, month: st.month, year: st.year, total: st.total });
+  function startDispatch() {
+    if (dispatching || !rt) return;
+    dispatching = true;
+    rt.addEventListener('tick', dispatch);
+  }
+  function hookSettings() {
+    if (settingsHooked) return;
+    settingsHooked = true;
+    B.settings.onChange((key, value) => {
+      for (const s of [...subs]) {
+        if (s.type === 'setting' && (!s.filter || s.filter === key)) s.fn(key, value);
+        if (s.type === 'option' && s.filter === key) s.fn(optionValue(s.option), key);
+      }
+    });
+  }
+
+  // ── tables ──────────────────────────────────────────────────────────────────────────────────────
+  // kit.table('ArrayCountries', { name: 0, tax: 2 }): x = record (country, company, employee …), y = field
+  function table(name, fields) {
+    const F = fields || {};
+    const inst = () => { try { const o = rt.objects[name]; return o ? o.getFirstInstance() : null; } catch { return null; } };
+    const t = {
+      name,
+      fields: F,
+      get exists() { return !!inst(); },
+      get width() { const a = inst(); return a ? a.width : 0; },
+      get height() { const a = inst(); return a ? a.height : 0; },
+      get(x, y, z = 0) { const a = inst(); return a ? a.getAt(x, typeof y === 'string' ? F[y] : y, z) : undefined; },
+      set(x, y, v) { const a = inst(); if (a) a.setAt(v, x, typeof y === 'string' ? F[y] : y); },
+      column(x) { const a = inst(); return a ? Array.from({ length: a.height }, (_, y) => a.getAt(x, y)) : []; },
+      row(y) { const a = inst(); return a ? Array.from({ length: a.width }, (_, x) => a.getAt(x, y)) : []; },
+      record(x) {
+        const rec = { id: x };
+        for (const k of Object.keys(F)) {
+          Object.defineProperty(rec, k, { enumerable: true, get: () => t.get(x, F[k]), set: (v) => t.set(x, F[k], v) });
+        }
+        return rec;
+      },
+      records() { return Array.from({ length: t.width }, (_, x) => t.record(x)); },
+      find(fn) { return t.records().find(fn) || null; },
+      filter(fn) { return t.records().filter(fn); },
+    };
+    return t;
+  }
+
+  // ── named game data (from the BetterDT mods, checked in game 1.6) ──────────────────────────────────
+  const TABLES = {
+    countries: ['ArrayCountries', { name: 0, money: 1, tax: 2, costOfProduction: 3, trade: 4, tech: 5 }],
+    research: ['ArrayResearch', { points: 1, money: 2 }],
+    myResearch: ['ArrayMyResearch', { level: 0 }],
+    employees: ['ArrayEmployees', { profession: 4 }],
+    employeeSkills: ['ArrayEmployees_Characters', { design: 0, speed: 1, research: 2 }],
+    myEmployees: ['ArrayMyEmployees', { id: 0 }],
+    companies: ['ArrayCompanyNames', { defaultName: 0, name: 1 }],
+    shares: ['ArrayInvesting', { total: 4, ownedCompany: 7, offer: 8 }],
+    myShares: ['ArrayInvestingMyStocks', { owned: 0 }],
+    stores: ['ArrayMyShops', { level: 0, count: 1 }],
+  };
+  function makeGame() {
+    const g = () => rt.globalVars, num = (k) => Number(g()[k]) || 0;
+    const tables = {};
+    for (const [k, [name, fields]] of Object.entries(TABLES)) Object.defineProperty(tables, k, { enumerable: true, get: () => table(name, fields) });
+    return Object.freeze({
+      get money() { return num('Budget'); }, set money(v) { g().Budget = Number(v); },
+      get researchPoints() { return num('ResearchCoins'); }, set researchPoints(v) { g().ResearchCoins = Number(v); },
+      get date() { return { day: num('Day'), month: num('Month'), year: num('Year'), total: num('DayTotal') }; },
+      get inGame() { return num('DayTotal') > 0; },
+      get screen() { return layoutName(); },
+      get language() { return langIdx(); },
+      get lang() { return LANGS[langIdx()]; },
+      get company() { return { name: String(g().CompanyName ?? ''), countryId: num('CompanyCountryID') }; },
+      get speed() { try { return Number(globalThis.getGameSpeed()) || 1; } catch { return 1; } },
+      set speed(v) { if (typeof globalThis.setGameSpeed === 'function') globalThis.setGameSpeed(Number(v)); },
+      get version() { return api.gameVersion; },
+      tables,
+      // hired employees: { id, profession, design, speed, research }
+      employees() {
+        const my = tables.myEmployees, e = tables.employees, c = tables.employeeSkills, out = [];
+        for (let x = 0; x < my.width; x++) {
+          const id = Math.round(Number(my.get(x, 0)));
+          if (!Number.isFinite(id)) continue;
+          out.push({ id, profession: String(e.get(id, 'profession') ?? ''), design: Number(c.get(id, 'design')) || 0,
+            speed: Number(c.get(id, 'speed')) || 0, research: Number(c.get(id, 'research')) || 0 });
+        }
+        return out;
+      },
+    });
+  }
+
+  // ── UI in the game's look ───────────────────────────────────────────────────────────────────────
+  const FONT = 'SofiaSansExtraCondensed-Medium, Oswald, "Segoe UI", sans-serif';
+  function uiCss() {
+    if (document.getElementById('bdt-kit-ui-css')) return;
+    const s = document.createElement('style');
+    s.id = 'bdt-kit-ui-css';
+    // --bdt-s: the game's scale (design size 1920 × 1080)
+    s.textContent = `
+.bdt-ui-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  min-width: calc(var(--bdt-s, 1) * 160px); height: calc(var(--bdt-s, 1) * 50px); padding: 0 calc(var(--bdt-s, 1) * 24px);
+  border-radius: calc(var(--bdt-s, 1) * 8px); font: calc(var(--bdt-s, 1) * 25px)/1 ${FONT}; color: #fff; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .35); cursor: pointer; user-select: none;
+  background: linear-gradient(180deg, #a8d418 0%, #63b303 100%); box-shadow: 0 6px 18px -6px rgba(120, 190, 20, .55);
+  transition: transform .16s ease, filter .16s ease; }
+.bdt-ui-btn.bdt-ui-red { background: linear-gradient(180deg, #ff6b7f 0%, #e8455c 100%); box-shadow: 0 6px 18px -6px rgba(230, 70, 90, .55); }
+.bdt-ui-btn.bdt-ui-grey { background: linear-gradient(180deg, #5d6878 0%, #434c5a 100%); box-shadow: 0 6px 18px -6px rgba(0, 0, 0, .55); }
+.bdt-ui-btn:hover { transform: translateY(-2px); filter: brightness(1.12); }
+.bdt-ui-btn:active { transform: translateY(0) scale(.96); filter: brightness(.95); }
+.bdt-ui-btn.bdt-ui-off { pointer-events: none; opacity: .55; }
+.bdt-ui-toasts { position: fixed; right: calc(var(--bdt-s, 1) * 28px); bottom: calc(var(--bdt-s, 1) * 28px); z-index: 2147482000;
+  display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--bdt-s, 1) * 10px); pointer-events: none; }
+.bdt-ui-toast { max-width: calc(var(--bdt-s, 1) * 520px); padding: calc(var(--bdt-s, 1) * 12px) calc(var(--bdt-s, 1) * 18px);
+  border-radius: calc(var(--bdt-s, 1) * 10px); background: rgba(12, 15, 22, .86); border: 1px solid rgba(255, 255, 255, .10);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); color: #fff; font: calc(var(--bdt-s, 1) * 22px)/1.3 ${FONT};
+  animation: bdt-ui-in .3s cubic-bezier(.30, 1.35, .45, 1) both; }
+.bdt-ui-toast.bdt-ui-good { border-color: rgba(168, 212, 24, .7); }
+.bdt-ui-toast.bdt-ui-bad { border-color: rgba(255, 107, 127, .8); }
+.bdt-ui-toast.bdt-ui-out { opacity: 0; transition: opacity .3s ease; }
+@keyframes bdt-ui-in { from { opacity: 0; transform: translateY(16px); } }
+`;
+    document.head.appendChild(s);
+    const scale = () => document.documentElement.style.setProperty('--bdt-s', Math.min(innerWidth / 1920, innerHeight / 1080).toFixed(4));
+    scale();
+    addEventListener('resize', scale);
+  }
+  const SHIELD = ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'click', 'dblclick', 'wheel', 'contextmenu', 'touchstart', 'touchend'];
+  const KEYS = ['keydown', 'keyup', 'keypress'];
+
   const near = (a, b, tol) => b === undefined || Math.abs(a - b) <= tol;
   const fits = (i, s) => !!i && i.objectType.name === s.t && i.layer.name === s.l && near(i.width, s.w, 2) && near(i.height, s.h, 2);
   const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
 
   function mod(name, spec, init) {
-    const m = { name, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
+    const m = { name, spec, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
     mods.set(name, m);
     function stop(state, problem) {
       if (m.state !== 'running' && m.state !== 'waiting') return;
@@ -289,11 +535,121 @@
       },
       // undone when the mod stops, before its dispose
       onStop(fn) { m.undo.push(fn); },
+
+      // the value of one of this mod's options ('days' or 'my-mod.days')
+      option(key) {
+        const full = String(key).includes('.') ? String(key) : name + '.' + key;
+        const o = optionsOf(name).find(x => x.key === full);
+        return o ? optionValue(o) : B.settings.get(full);
+      },
+      // kit.on('day', fn), kit.on('screen', 'INVESTING STOCK', fn) … ; returns off()
+      on(type, filter, fn) {
+        if (typeof filter === 'function') { fn = filter; filter = undefined; }
+        const known = ['tick', 'screen', 'leave', 'day', 'month', 'year', 'gameLoaded', 'gameClosed', 'language', 'option', 'setting'];
+        if (!known.includes(type)) throw new Error('kit.on: unknown event ' + type);
+        const s = { type, filter, fn: kit.guard(fn), seen: undefined };
+        if (type === 'option') {
+          s.filter = String(filter).includes('.') ? String(filter) : name + '.' + filter;
+          s.option = optionsOf(name).find(x => x.key === s.filter) || { key: s.filter, type: 'text' };
+        }
+        subs.add(s);
+        if (type === 'option' || type === 'setting') hookSettings(); else startDispatch();
+        const off = () => { subs.delete(s); };
+        m.undo.push(off);
+        return off;
+      },
+      table,
+      game: makeGame(),
     };
+    // kit.ui: everything it creates is removed when the mod stops
+    const ui = {
+      font: FONT,
+      css(text) {
+        const s = document.createElement('style');
+        s.textContent = text;
+        document.head.appendChild(s);
+        m.undo.push(() => s.remove());
+        return s;
+      },
+      // el('div', { className: 'my-panel', textContent: 'Hi', style: { left: '10px' }, onclick: fn }, parent)
+      // parent: an element, null = not attached, default document.body
+      el(tag, props, parent) {
+        const e = document.createElement(tag);
+        for (const [k, v] of Object.entries(props || {})) {
+          if (k === 'style' && v && typeof v === 'object') Object.assign(e.style, v);
+          else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), kit.guard(v));
+          else if (k in e) e[k] = v;
+          else e.setAttribute(k, v);
+        }
+        if (parent !== null) (parent || document.body).appendChild(e);
+        m.undo.push(() => e.remove());
+        return e;
+      },
+      // clicks (and keys, unless keys is false) on the element do not reach the game
+      shield(e, keys = true) {
+        const stop = (ev) => ev.stopPropagation();
+        for (const t of SHIELD.concat(keys ? KEYS : [])) e.addEventListener(t, stop);
+        return e;
+      },
+      // keeps a fixed element at x, y of a layer of the game (design pixels); hidden on screens without that layer.
+      // opts.screen: only on this screen; opts.scale: scale the element with the game (transform-origin: top left)
+      anchor(e, layer, x, y, opts = {}) {
+        e.style.position = 'fixed';
+        if (opts.scale) e.style.transformOrigin = '0 0';
+        const off = kit.on('tick', () => {
+          let l = null;
+          try { l = (!opts.screen || layoutName() === opts.screen) && rt.layout.getLayer(layer); } catch { }
+          if (!l) { e.style.display = 'none'; return; }
+          const [cx, cy] = l.layerToCssPx(x, y);
+          e.style.display = '';
+          e.style.left = cx + 'px';
+          e.style.top = cy + 'px';
+          if (opts.scale) e.style.transform = 'scale(' + ((l.layerToCssPx(x + 1000, y)[0] - cx) / 1000).toFixed(4) + ')';
+        });
+        return off;
+      },
+      // a button in the look of the game's dialog buttons: opts.color 'green' (default), 'red', 'grey'
+      button(label, onClick, opts = {}) {
+        uiCss();
+        const b = ui.el('div', { className: 'bdt-ui-btn' + (opts.color && opts.color !== 'green' ? ' bdt-ui-' + opts.color : ''), textContent: label },
+          opts.parent === undefined ? null : opts.parent);
+        ui.shield(b, false);
+        b.addEventListener('click', kit.guard((ev) => { globalThis.tapMain?.(); if (onClick) onClick(ev); }));
+        return b;
+      },
+      // a short message in the bottom right corner; opts.ms (default 4000), opts.type 'good' / 'bad'
+      toast(text, opts = {}) {
+        uiCss();
+        let box = document.querySelector('.bdt-ui-toasts');
+        if (!box) { box = document.createElement('div'); box.className = 'bdt-ui-toasts'; document.body.appendChild(box); }
+        const t = document.createElement('div');
+        t.className = 'bdt-ui-toast' + (opts.type ? ' bdt-ui-' + opts.type : '');
+        t.textContent = text;
+        box.appendChild(t);
+        const remove = () => { t.remove(); if (box && !box.children.length) box.remove(); };
+        const timer = setTimeout(() => { t.classList.add('bdt-ui-out'); setTimeout(remove, 320); }, opts.ms || 4000);
+        m.undo.push(() => { clearTimeout(timer); remove(); });
+        return t;
+      },
+      // the BetterDT dialog: resolves with the index of the clicked button (waits while another dialog is open)
+      dialog({ title = '', text = '', buttons = [{ label: 'OK', go: true }], content } = {}) {
+        return new Promise((resolve) => {
+          const open = () => {
+            if (m.state !== 'running') return;
+            const D = globalThis.BetterDTUI;
+            const list = buttons.map((b, i) => ({ label: b.label, go: !!b.go, cb: () => resolve(i) }));
+            const d = D && D.dialog(title, text, list, content && kit.guard(content));
+            if (!d) setTimeout(open, 400);
+          };
+          open();
+        });
+      },
+    };
+    kit.ui = ui;
     B.register(name, (runtime) => {
       rt = runtime;
       waitReady(() => {
-        const p = check(spec);
+        const p = checkRequires(name).concat(check(spec));
         if (p.length) {
           m.problems.push(...p); m.state = 'incompatible';
           log('[BetterDTKit] mod', name, 'not started, missing:', p.join(', '));
@@ -316,6 +672,10 @@
 
   const api = {
     mod,
+    // for the settings page: metadata and options of a mod (folder or single file), texts in the player's language
+    info: (name) => infoOf(name),
+    options: (name) => optionsOf(name),
+    localize: (v) => localize(v),
     eventSheets: () => eventSheets(),
     status: () => [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice() })),
     // cb runs once the game data is loaded and the mods have been checked
@@ -327,7 +687,11 @@
 
 BetterDT.register('betterdt-settings', (rt) => {
   const B = globalThis.BetterDT, S = B.settings, KIT = globalThis.BetterDTKit;
-  const kitStatus = (file) => (KIT ? KIT.status().find(m => m.name + '.js' === file) : null);
+  // a single-file mod is registered as its file name without .js, a folder mod as its folder name
+  const kitName = (file) => file.replace(/\.js$/, '');
+  const kitStatus = (file) => (KIT ? KIT.status().find(m => m.name === kitName(file)) : null);
+  // title, description, author and options that a mod by someone else brings (mod.json or spec.info)
+  const kitInfo = (file) => (KIT && KIT.info ? KIT.info(kitName(file)) : null);
   const PAGES = ['bdt-general', 'bdt-mods'];
 
   // language order as in the game (LanguageChoose): en ru de fr it es hi tr pt-BR uk id pl zh ko ja
@@ -407,7 +771,11 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Menyalakan atau mematikan mod berlaku setelah mulai ulang', 'Włączenie lub wyłączenie moda zadziała po restarcie',
       '启用或禁用模组需重启后生效', '모드 켜기/끄기는 다시 시작한 후 적용됩니다', 'MOD のオン/オフは再起動後に反映されます'],
     options: ['Options', 'Параметры', 'Optionen', 'Options', 'Opzioni', 'Opciones', 'विकल्प', 'Seçenekler', 'Opções', 'Параметри', 'Opsi', 'Opcje', '选项', '옵션', 'オプション'],
-    custom: ['Custom mod', 'Свой мод', 'Eigener Mod', 'Mod personnel', 'Mod personale', 'Mod propio', 'कस्टम मॉड', 'Özel mod', 'Mod próprio', 'Власний мод',
+    badManifest: ['mod.json is not valid JSON', 'mod.json — неверный JSON', 'mod.json ist kein gültiges JSON', 'mod.json n’est pas un JSON valide',
+      'mod.json non è un JSON valido', 'mod.json no es un JSON válido', 'mod.json मान्य JSON नहीं है', 'mod.json geçerli bir JSON değil',
+      'mod.json não é um JSON válido', 'mod.json — некоректний JSON', 'mod.json bukan JSON yang valid', 'mod.json nie jest poprawnym JSON',
+      'mod.json 不是有效的 JSON', 'mod.json이 올바른 JSON이 아닙니다', 'mod.json が正しい JSON ではありません'],
+    custom: ['Custom mod','Свой мод', 'Eigener Mod', 'Mod personnel', 'Mod personale', 'Mod propio', 'कस्टम मॉड', 'Özel mod', 'Mod próprio', 'Власний мод',
       'Mod kustom', 'Własny mod', '自定义模组', '사용자 모드', 'カスタム MOD'],
     restart: ['Restart the game to apply the change', 'Перезапустите игру, чтобы применить', 'Starte das Spiel neu, um es zu übernehmen',
       'Relancez le jeu pour appliquer', 'Riavvia il gioco per applicare', 'Reinicia el juego para aplicar', 'लागू करने के लिए गेम फिर से शुरू करें',
@@ -1120,6 +1488,16 @@ BetterDT.register('betterdt-settings', (rt) => {
     i.addEventListener('change', () => cb(Number(i.value)));
     return i;
   }
+  // one of several values: a row of the game's small buttons, the chosen one lit
+  function choice(ctl, choices, val, cb) {
+    const bs = choices.map(c => {
+      const b = btn(ctl, c.label, () => { val = c.value; paint(); cb(c.value); });
+      b.classList.add('bdt-choice');
+      return b;
+    });
+    const paint = () => choices.forEach((c, i) => bs[i].classList.toggle('bdt-chosen', String(c.value) === String(val)));
+    paint();
+  }
   function btn(ctl, label, cb) {
     const b = el('div', 'gs-btn gs-btn-ghost', ctl);
     b.textContent = label;
@@ -1203,8 +1581,29 @@ BetterDT.register('betterdt-settings', (rt) => {
   }
   function stopPoll() { clearInterval(poll); poll = 0; }
 
-  function modTitle(file) { const id = file.replace(/\.js$/, ''); return TXT[id] ? t(id) : file; }
-  function modDesc(file) { const id = file.replace(/\.js$/, ''); return TXT[id + '.d'] ? t(id + '.d') : t('custom') + ' · ' + file; }
+  function modTitle(file) {
+    const id = kitName(file), i = kitInfo(file);
+    if (TXT[id]) return t(id);
+    return (i && i.title && KIT.localize(i.title)) || file;
+  }
+  function modDesc(file) {
+    const id = kitName(file), i = kitInfo(file);
+    if (TXT[id + '.d']) return t(id + '.d');
+    const by = i ? [i.version ? 'v' + i.version : '', i.author ? KIT.localize(i.author) : ''].filter(Boolean).join(', ') : '';
+    const d = i && i.description ? KIT.localize(i.description) : '';
+    return [d, t('custom') + ' · ' + file + (by ? ' · ' + by : '')].filter(Boolean).join('\n');
+  }
+  // options of a mod by someone else, in the same form as OPTIONS (labels already translated)
+  function modOptions(file) {
+    if (OPTIONS[file]) return OPTIONS[file];
+    if (!KIT || !KIT.options) return [];
+    return KIT.options(kitName(file)).filter(o => o.type === 'bool' || o.type === 'range' || o.type === 'choice').map(o => ({
+      key: o.key, type: o.type, def: o.type === 'bool' ? !!o.default : o.default,
+      min: Number(o.min ?? 0), max: Number(o.max ?? 100), step: Number(o.step ?? 1),
+      label: KIT.localize(o.label) || o.key, hint: KIT.localize(o.hint),
+      choices: (o.choices || []).map(c => ({ value: c.value, label: KIT.localize(c.label ?? c.value) })),
+    }));
+  }
 
   function renderMods(body) {
     for (const m of B.mods) {
@@ -1216,6 +1615,8 @@ BetterDT.register('betterdt-settings', (rt) => {
       if (CREDITS[m.file]) {
         el('div', 'gs-row-hint bdt-credit', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('credit', { n: CREDITS[m.file] });
       }
+      // a folder mod whose mod.json is not valid JSON: its files still load, but without title and options
+      if (m.folder && !m.manifest) el('div', 'gs-row-hint bdt-warn', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('badManifest');
       // what the compatibility check found (BetterDTKit)
       const st = m.enabled && kitStatus(m.file);
       if (st && (st.state !== 'running' || st.problems.length)) {
@@ -1226,12 +1627,13 @@ BetterDT.register('betterdt-settings', (rt) => {
         }
       }
       const opts = [];
-      for (const o of OPTIONS[m.file] || []) {
-        const ctl = row(card, t(o.key));
+      for (const o of modOptions(m.file)) {
+        const ctl = row(card, o.label || t(o.key), o.hint);
         const r = ctl.parentNode;
         r.classList.add('bdt-opt');
         opts.push(r);
         if (o.type === 'bool') sw(ctl, S.bool(o.key, o.def), (v) => save(o.key, v));
+        else if (o.type === 'choice') choice(ctl, o.choices, S.get(o.key, o.def), (v) => save(o.key, v));
         else slider(ctl, o.min, o.max, o.step, S.num(o.key, o.def), (v) => save(o.key, v));
       }
       const paintOpts = () => { const off = !S.bool('mod.' + m.file, true); for (const r of opts) r.classList.toggle('gs-row-off', off); };
@@ -1386,6 +1788,9 @@ BetterDT.register('betterdt-settings', (rt) => {
 #gs-root .bdt-val { margin-right: calc(var(--gs, 1) * 14px); font-size: calc(var(--gs, 1) * 22px); opacity: .85; }
 #gs-root .gs-row-hint.bdt-warn { color: rgb(var(--warn)); opacity: 1; }
 #gs-root .gs-row-hint.bdt-good { color: rgb(var(--good)); opacity: 1; }
+#gs-root .gs-row-hint { white-space: pre-line; }
+#gs-root .gs-btn.bdt-choice { margin-left: calc(var(--gs, 1) * 6px); opacity: .7; }
+#gs-root .gs-btn.bdt-choice.bdt-chosen { opacity: 1; background: linear-gradient(180deg, #a8d418 0%, #63b303 100%); color: #fff; border-color: transparent; }
 #gs-root .gs-row.bdt-opt .gs-row-name { padding-left: calc(var(--gs, 1) * 18px); opacity: .9; }
 #gs-root.bdt-autoapply #gs-apply { visibility: hidden; }
 `;
