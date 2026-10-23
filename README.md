@@ -55,6 +55,8 @@ game file and does not touch your saves.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
+- **Inspector (for modders, off by default):** F9 shows what is under the cursor: the screen, the game's objects
+  with type, UID, layer and instance variables, and the HTML element. Ctrl+C copies an entry for `spec.uids`.
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -422,6 +424,17 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   when the hover began and where it is now (up to 40 px of sliding). The animation itself is unchanged; a label that
   scrolls away in a list is not kept.
 
+### `dev-inspector.js`: inspector (for modders)
+- Off by default; turn it on in Settings → BetterDT → Mods → Inspector. Then F9 shows or hides a panel next to the
+  cursor, and nothing else changes in the game.
+- The panel lists the screen name and the game's objects under the cursor from the topmost down: type, UID, layer,
+  position, size and text. Fully transparent objects (click areas, fade overlays) come last and are marked. The
+  selected object gets a yellow frame and its instance variables are listed. Over the game's HTML the panel also
+  shows the element's path (tag, id, classes).
+- ↑ / ↓ select another object, Ctrl+C copies the selected object as an entry for `spec.uids` of BetterDTKit
+  (UID, screen, type, layer, size, position), Ctrl+Shift+C copies its type name. These keys do not reach the game
+  while the panel is shown. It uses no developer tools.
+
 All buttons use the game's own look (its HTML buttons' CSS, or its canvas buttons, gradients, icons and font).
 
 ### Game updates
@@ -455,33 +468,22 @@ What it shows the player:
 
 ### Writing your own mod
 
-**[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, `mod.json`, the BetterDTKit API (events, game
-data, UI in the game's look), the game's runtime, how to find variables, tables, texts and functions of the game
-without its source code, recipes, and a development setup. In short, a mod is a folder in `mods` (BetterDT 0.4.0+):
-
-`mods\hello\mod.json`
-
-```json
-{ "title": "Hello", "description": "A message every month.", "version": "1.0.0",
-  "options": [{ "key": "loud", "type": "bool", "default": false, "label": "Also show a dialog" }] }
-```
-
-`mods\hello\mod.js`
+**[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, the BetterDTKit API, the game's runtime, how to
+find variables, tables, texts and functions of the game without its source code, recipes, and a development setup.
+In short, put a `.js` file into `mods` and add it to `mods\mods.json`:
 
 ```js
-BetterDTKit.mod('hello', { needs: { vars: ['Budget'] } }, (rt, kit) => {
-  kit.on('month', (d) => {
-    kit.ui.toast(`${d.month}/${d.year}: $${Math.round(kit.game.money)}`);
-    if (kit.option('loud')) kit.ui.dialog({ title: 'Hello', text: 'A new month' });
-  });
+BetterDTKit.mod('my-mod', {
+  needs: { functions: ['setGameSpeed'], vars: ['Budget'] },
+}, (runtime, kit) => {
+  const tick = kit.guard(() => { /* every frame */ });
+  runtime.addEventListener('tick', tick);
+  return () => runtime.removeEventListener('tick', tick);   // dispose
 });
 ```
 
-The title, description and options appear in Settings → BetterDT → Mods. Single-file mods listed in
-`mods\mods.json` work as before.
-
-`examples/mods` has two complete examples (`monthly-report/`, a folder mod, and `money-goal.js`) and two development
-helpers: `example.js` and `probe.js` (with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
+`examples/mods` has a complete example (`money-goal.js`) and two development helpers: `example.js` and `probe.js`
+(with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
 
 ## How the loader works (`loader/`)
 

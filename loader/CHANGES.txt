@@ -2,6 +2,7 @@
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
 0.4.0 Mods by others: a mod can be a folder with mod.json; its title, description and options show in Settings > BetterDT
 0.4.0 Research lab and investing: a search field finds a project or a company, the long lists get a scroll bar
+0.4.0 For modders: an inspector (off by default, F9) shows the objects under the cursor and copies their UID
 0.4.0 Device editors: labels no longer shake when the cursor is on their first letters
 0.4.0 Fair reviews: the rating comes from all parts of a device, the two best and two worst are shown
 0.4.0 Research breakthroughs: lab projects can research parts early, innovative devices sell more
