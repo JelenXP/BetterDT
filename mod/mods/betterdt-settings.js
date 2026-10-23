@@ -996,9 +996,6 @@ BetterDT.register('betterdt-settings', (rt) => {
       'F9 显示光标下的内容：对象类型、UID、图层、位置、变量。Ctrl+C 复制给模组使用',
       'F9로 커서 아래의 객체 유형, UID, 레이어, 위치, 변수를 표시합니다. Ctrl+C로 모드용으로 복사합니다',
       'F9でカーソルの下にあるもの（オブジェクトの種類、UID、レイヤー、位置、変数）を表示。Ctrl+CでMOD用にコピー'],
-    'dev-inspector.on': ['Turn on (F9 shows it)', 'Включить (F9 показывает)', 'Einschalten (F9 zeigt ihn)', 'Activer (F9 l’affiche)',
-      'Attiva (F9 lo mostra)', 'Activar (F9 lo muestra)', 'चालू करें (F9 दिखाता है)', 'Aç (F9 gösterir)', 'Ativar (F9 mostra)',
-      'Увімкнути (F9 показує)', 'Aktifkan (F9 menampilkan)', 'Włącz (F9 pokazuje)', '开启（按 F9 显示）', '켜기 (F9로 표시)', 'オンにする（F9で表示）'],
     'custom-start': ['Custom start',
       'Свой старт',
       'Eigener Start',
@@ -1380,11 +1377,14 @@ BetterDT.register('betterdt-settings', (rt) => {
     'autosave.js': [{ key: 'autosave.days', type: 'range', def: 90, min: 5, max: 360, step: 5 }],
     'fixed-fps.js': [{ key: 'fixed-fps.max', type: 'range', def: 165, min: 165, max: 360, step: 5 }],
     'low-end.js': [{ key: 'low-end.fps', type: 'bool', def: false }, { key: 'low-end.blur', type: 'bool', def: false }],
-    'dev-inspector.js': [{ key: 'dev-inspector.on', type: 'bool', def: false }],
     'no-ending.js': [{ key: 'no-ending.skip', type: 'bool', def: false }],
     'auto-continue.js': [{ key: 'auto-continue.on', type: 'bool', def: false },
       { key: 'auto-continue.secs', type: 'range', def: 3, min: 1, max: 10, step: 1 }],
   };
+  // mods that always load but stay idle until turned on: the mod's own switch sets this key (no restart needed)
+  const SWITCH = { 'dev-inspector.js': { key: 'dev-inspector.on', def: false } };
+  const modOn = (f) => (SWITCH[f] ? S.bool(SWITCH[f].key, SWITCH[f].def) : S.bool('mod.' + f, true));
+  const setModOn = (f, v) => (SWITCH[f] ? save(SWITCH[f].key, v) : save('mod.' + f, v));
   // mods based on someone else's work: shown under the mod in the settings
   const CREDITS = { 'no-ending.js': 'M1lan.', 'unlimited-shares.js': 'M1lan.' };
   // what only takes effect after a restart: state at game start
@@ -1632,9 +1632,8 @@ BetterDT.register('betterdt-settings', (rt) => {
     for (const m of B.mods) {
       if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
       const card = el('div', 'gs-card', body);
-      const on = S.bool('mod.' + m.file, true);
       const mctl = row(card, modTitle(m.file), modDesc(m.file));
-      sw(mctl, on, (v) => { save('mod.' + m.file, v); paintOpts(); });
+      sw(mctl, modOn(m.file), (v) => { setModOn(m.file, v); paintOpts(); });
       if (CREDITS[m.file]) {
         el('div', 'gs-row-hint bdt-credit', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('credit', { n: CREDITS[m.file] });
       }
@@ -1659,7 +1658,7 @@ BetterDT.register('betterdt-settings', (rt) => {
         else if (o.type === 'choice') choice(ctl, o.choices, S.get(o.key, o.def), (v) => save(o.key, v));
         else slider(ctl, o.min, o.max, o.step, S.num(o.key, o.def), (v) => save(o.key, v));
       }
-      const paintOpts = () => { const off = !S.bool('mod.' + m.file, true); for (const r of opts) r.classList.toggle('gs-row-off', off); };
+      const paintOpts = () => { const off = !modOn(m.file); for (const r of opts) r.classList.toggle('gs-row-off', off); };
       paintOpts();
     }
   }
@@ -1896,9 +1895,9 @@ BetterDT.register('betterdt-settings', (rt) => {
         line.style.cssText = 'display:block;cursor:pointer;margin:4px 0';
         const box = el('input', '', line);
         box.type = 'checkbox';
-        box.checked = S.bool('mod.' + m.file, true);
+        box.checked = modOn(m.file);
         box.style.cssText = 'width:20px;height:20px;margin-right:10px;vertical-align:middle';
-        box.addEventListener('change', () => S.set('mod.' + m.file, box.checked));
+        box.addEventListener('change', () => (SWITCH[m.file] ? S.set(SWITCH[m.file].key, box.checked) : S.set('mod.' + m.file, box.checked)));
         const st = m.enabled && kitStatus(m.file);
         const bad = st && (st.state === 'incompatible' || st.state === 'failed');
         el('span', '', line).textContent = modTitle(m.file) + (bad ? ' – ' + t(st.state === 'failed' ? 'stFailed' : 'stIncompat') : '');
