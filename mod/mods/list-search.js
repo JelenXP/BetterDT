@@ -70,6 +70,15 @@ BetterDTKit.mod('list-search', {
   padding: 0 calc(var(--rs, 1) * 14px); border-radius: calc(var(--rs, 1) * 11px); border: 1px solid rgba(255,255,255,0.22);
   background: rgba(10,12,40,0.45); color: #fff; outline: none; font-family: "SofiaSansExtraCondensed-Medium", "Oswald", sans-serif;
   font-size: calc(var(--rs, 1) * 20px); letter-spacing: calc(var(--rs, 1) * 0.4px); }
+/* the research top bar with the search field: nothing wraps; when one row is too narrow (many device tabs), the tabs
+   get the first row and the search field, the buttons and the checkbox the second */
+#research-topbar.bdt-ls-bar > * { flex-shrink: 0; }
+#research-topbar.bdt-ls-bar #research-cats { flex-wrap: nowrap; }
+#research-topbar.bdt-ls-bar #research-hide-label { white-space: nowrap; }
+#research-topbar.bdt-ls-2row { flex-wrap: wrap; row-gap: calc(var(--rs, 1) * 10px); }
+#research-topbar.bdt-ls-2row > * { order: 2; }
+#research-topbar.bdt-ls-2row > .bdt-ls { order: 1; }
+#research-topbar.bdt-ls-2row #research-cats { order: 0; flex-basis: 100%; }
 .bdt-ls-in::placeholder { color: rgba(255,255,255,0.55); }
 .bdt-ls-in:focus { border-color: rgba(255,255,255,0.55); background: rgba(10,12,40,0.65); }
 .bdt-ls-res { position: absolute; left: 0; top: calc(100% + calc(var(--rs, 1) * 6px)); z-index: 40; min-width: 100%;
@@ -255,10 +264,18 @@ BetterDTKit.mod('list-search', {
     });
   }
   const rs = makeSearch(researchIndex, pickResearch);
+  let fitAt = 0;
   function ensureResearch() {
     const topbar = document.querySelector('#research-root #research-topbar');
     if (!topbar) return;
-    if (rs.wrap.parentNode !== topbar) { topbar.insertBefore(rs.wrap, topbar.firstChild); rs.reset(); }
+    if (rs.wrap.parentNode !== topbar) { topbar.insertBefore(rs.wrap, topbar.firstChild); rs.reset(); fitAt = 0; }
+    topbar.classList.add('bdt-ls-bar');
+    // one row or two: checked again now and then (the game adds device tabs, the window can change size)
+    const now = Date.now();
+    if (now - fitAt < 400) return;
+    fitAt = now;
+    topbar.classList.remove('bdt-ls-2row');
+    topbar.classList.toggle('bdt-ls-2row', topbar.scrollWidth > topbar.clientWidth + 1);
   }
 
   // ── INVESTING STOCK ────────────────────────────────────────────────────────────────────────────
@@ -326,5 +343,7 @@ BetterDTKit.mod('list-search', {
   return () => {
     rt.removeEventListener('tick', onTick);
     bar.remove(); rs.wrap.remove(); is.wrap.remove(); style.remove();
+    const tb = document.querySelector('#research-topbar');
+    if (tb) tb.classList.remove('bdt-ls-bar', 'bdt-ls-2row');
   };
 });
