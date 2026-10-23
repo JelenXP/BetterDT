@@ -52,6 +52,9 @@ game file and does not touch your saves.
 - **Research breakthroughs:** a finished research lab project can research parts before the market has them (up to
   a year early). The device designer then offers the future part, and a device with innovative parts gets better
   reviews and sells more (+10 % per part while the part is new).
+- **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
+  company by name and jumps to it; the long lists get a scroll bar you can drag or click.
+- **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
 - **MY OS UPGRADE** no longer stutters.
 - **Laptops with two graphics cards:** the game runs on the faster one.
 - A **BetterDT** section in the game settings, where you can turn each of these on or off.
@@ -401,6 +404,23 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   the future screen resolution; with a 30 % bonus a device sold 1.30× the units with the same popularity left.
 - Turned off: no new breakthroughs and no sales bonus; levels already researched stay, but the designer offers only
   the parts on the market again.
+
+### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
+- **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in
+  the game's language, accents ignored, matches at the start first). Picking one opens its tab, scrolls the list to
+  it and makes it flash briefly.
+- **Investing:** a search field in the header finds a company of the list on the left; picking one scrolls to its
+  card and opens it as if clicked.
+- **Scroll bars:** both lists get a scroll bar in the game's colours (drag the thumb or click the track). The
+  company list, which the game lets scroll past its end, stops at the first and the last card.
+- Keys typed into the fields do not reach the game (Escape closes the results, not the screen).
+
+### `steady-hover.js`: steady hover
+- **The problem:** in the device editors a hovered label slides 20 px to the right. With the cursor over its first
+  letters the label slides away from the cursor, the hover ends, it slides back, and so on: the text shakes.
+- **The fix:** a text that is hovered stays hovered while the cursor stays on its line between where the text was
+  when the hover began and where it is now (up to 40 px of sliding). The animation itself is unchanged; a label that
+  scrolls away in a list is not kept.
 
 All buttons use the game's own look (its HTML buttons' CSS, or its canvas buttons, gradients, icons and font).
 
