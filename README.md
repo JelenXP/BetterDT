@@ -55,6 +55,12 @@ game file and does not touch your saves.
   reviews and sells more (+10 % per part while the part is new).
 - **Living market:** old and much-sold devices sell less, most of all in the categories you dominate; new models
   with current parts win the customers back. Gentle in the first two years and for small companies.
+- **Parts in reviews:** reviewers rate the operating system and the processor (and a laptop's graphics card) like the
+  other parts: a cheap or outdated OS and a weak chip lower the rating, your own OS and chips get a bonus. The OS page
+  of the device designer shows the rating next to the chosen OS. Needs Fair reviews.
+- **Own chip savings:** your own processor or graphics card makes a device cheaper to build than a custom chip from
+  the market would. Part of the saving (50, 70 or 85 %) can go into the price without buyers and reviewers taking
+  the device as overpriced; the chip page and the price page of the designer show how much.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -433,6 +439,32 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - Computed from the save once a game day; nothing is saved, so turning it off restores the game's own sales.
 - Tested in game 1.6 on a late save: with a dominated category a four-year-old laptop sold 0.44× the units, very old
   models 0.2×; with the save's small market share 0.77× to 0.89×. The daily sales took no measurable extra time.
+
+### `parts-reviews.js`: parts in reviews
+- **Operating system** (phones, tablets, laptops, watches, TV), 0–10: a free OS gets a fixed base of 2.5–4.5 (per OS
+  family and game), a paid one 5–9.5 by its licence price against the other paid licences on the market, your own
+  OS 10 × ★ / (★ + 1000) from the rating its updates earned. A version loses 0.5 for every year it is older than the
+  newest OS version on the market (at most 3) and 3 without support (a version past its end of support, an own OS
+  not updated for two years). An own OS gets +0.5, a PRIVATE one +1.
+- **Processor**, 0–10: the designer's indicators of the chip (power, performance, gaming, energy) weighted by the
+  device type, +0.5 for your own chip. A laptop's graphics card is rated from the designer's graphics bars the same
+  way. It replaces the phones' and tablets' CPU load review (the game never computes the load, so it always gave
+  8–10); the laptops' storage reviews, which the game files under the processor, count as memory.
+- The OS page of the designer shows "★ x.x / 10" next to the chosen OS; a paid OS whose licence you have not bought
+  shows the range up to its best version (the designer offers only the oldest one until then).
+- A released model is rated from its own columns at its release day; the designer's variables are set from them for
+  a moment and restored.
+
+### `own-chip-savings.js`: own chip savings
+- **Saving:** the device's production cost with your own chip against the same device with a custom chip of the same
+  parameters from the market (the game's own cost formula, the same day, research discount and perks).
+- **Reference cost:** the production cost + 50, 70 (default) or 85 % of the saving. The daily sales use the game's
+  price factor with the reference cost instead of the production cost (they get F(reference) / F(cost)), and the
+  price review of Fair reviews judges the markup against it. The real production cost and the profit stay as they are.
+- The chip page of the designer shows the chip's production cost, its market price and the saving per unit; the
+  price page says how much you can raise the price.
+- Tested in game 1.6 on a late save: own laptop CPUs saved $28–186 per unit; where the price allowed it, the sales
+  grew 10–15 %.
 
 ### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
 - **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in
