@@ -432,7 +432,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 ### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
 - **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in
   the game's language, accents ignored, matches at the start first). Picking one opens its tab, scrolls the list to
-  it and makes it flash briefly.
+  it and makes it flash briefly. The top bar stays one row of the same height on every tab: with many device tabs
+  the search field gets narrower, so the cards do not jump when you switch tabs.
 - **Investing:** a search field in the header finds a company of the list on the left; picking one scrolls to its
   card and opens it as if clicked.
 - **Scroll bars:** both lists get a scroll bar in the game's colours (drag the thumb or click the track). The

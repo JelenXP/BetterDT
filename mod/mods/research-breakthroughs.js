@@ -333,7 +333,8 @@ BetterDTKit.mod('research-breakthroughs', {
   const tipHide = () => { if (tip) tip.remove(); tip = null; };
   function aheadOf(id) {
     const r = D.research[id];
-    if (!r || !D.counters[r.array]) return null;
+    // a research not started yet keeps the game's starting level (Type-D Port: level 1, its first part years away)
+    if (!r || !D.counters[r.array] || r.start > today()) return null;
     return B.ahead(borns(r.array, r.bornCol), level(id), today());
   }
   function badges() {
@@ -351,16 +352,20 @@ BetterDTKit.mod('research-breakthroughs', {
         b.addEventListener('mouseleave', tipHide);
         card.appendChild(b);
       }
-      b.textContent = T.t(T.aheadBadge, lang());
+      const label = T.t(T.aheadBadge, lang());
+      if (b.textContent !== label) b.textContent = label;
       b.dataset.tip = text;
       // next to the game's Recommended badge
       const rec = card.querySelector(':scope > .rc-rec-badge');
       b.style.left = rec ? (rec.offsetLeft + rec.offsetWidth + 6) + 'px' : '';
     }
   }
-  const badgeTimer = setInterval(kit.guard(badges), 250);
+  // at once when the game draws the cards (before the frame is painted), and now and then for a new day or level
+  const badgeObs = new MutationObserver(kit.guard(() => { if (document.querySelector('#research-grid')) badges(); }));
+  badgeObs.observe(document.body, { childList: true, subtree: true });
+  const badgeTimer = setInterval(kit.guard(badges), 500);
   function badgesOff() {
-    clearInterval(badgeTimer); tipHide();
+    badgeObs.disconnect(); clearInterval(badgeTimer); tipHide();
     for (const b of document.querySelectorAll('.bdt-innov')) b.remove();
     badgeCss.remove();
   }
