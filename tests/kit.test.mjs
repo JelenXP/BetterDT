@@ -145,6 +145,32 @@ test('kit.table and kit.game', () => {
   assert.equal(kit.game.version, '1.6.0');
 });
 
+test('sales multipliers: their product while the sales run, the decay kept, gone when the mod stops', () => {
+  const pop = new Map([['0:0', 50], ['1:0', 40]]);
+  // Construct arrays have getAt/setAt on the prototype
+  const tv = Object.create({
+    getAt(x, y, z) { return z === 2 ? pop.get(x + ':' + y) : 7; },
+    setAt(v, x, y, z) { if (z === 2) pop.set(x + ':' + y, v); },
+  });
+  rt.objects.ArrayTV = { getFirstInstance: () => tv };
+  const a = start('mul-a', {}), b = start('mul-b', {});
+  a.salesMultiplier((n, x) => (n === 'ArrayTV' && x === 0 ? 0.5 : 1));
+  b.salesMultiplier((n, x) => (x === 0 ? 1.2 : 'x'));
+  KIT._sales.on(['ArrayTV']);
+  assert.ok(Math.abs(tv.getAt(0, 0, 2) - 30) < 1e-9);   // 50 × 0.5 × 1.2
+  assert.equal(tv.getAt(1, 0, 2), 40);
+  assert.equal(tv.getAt(0, 0, 5), 7);
+  tv.setAt(30 - 3, 0, 0, 2);                            // the game writes back what it read minus its decay of 3
+  KIT._sales.off();
+  assert.ok(Math.abs(pop.get('0:0') - 47) < 1e-9);
+  assert.equal(Object.prototype.hasOwnProperty.call(tv, 'getAt'), false);
+  a.fail('stop');
+  KIT._sales.on(['ArrayTV']);
+  assert.ok(Math.abs(tv.getAt(0, 0, 2) - 47 * 1.2) < 1e-9);
+  KIT._sales.off();
+  delete rt.objects.ArrayTV;
+});
+
 test('an old mod without the new fields works as before', () => {
   let got = null;
   KIT.mod('old', { needs: { vars: ['Budget'] } }, (r, k) => { got = [typeof k.guard, typeof k.text, typeof k.wrapCalls]; });

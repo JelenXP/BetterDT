@@ -30,6 +30,8 @@
 // kit.wrapCalls(eventFunction, { before, after }), kit.wrapAction(sid, …) and kit.wrapScript(scriptName, …) run
 // code around the game's event sheet actions (every call site of an event function, one action, the script action
 // "EventGameplay_Event449_Act1" …); they are undone when the mod stops. An async action's after runs once it settled.
+// kit.salesMultiplier(fn) multiplies the popularity of the player's devices while the game computes the daily sales
+// (fn(salesArray, x, y) → factor; the mods' factors multiply).
 // A mod that does not fit this game version is not started; the BetterDT settings say why.
 //
 // Added for mods by others (all optional, the calls above stay as they are; MODDING.md has the details):
@@ -182,6 +184,57 @@
       return r;
     };
     return () => { act.Run = orig; };
+  }
+
+  // ── popularity multipliers of the daily sales (kit.salesMultiplier) ─────────────────────────────────────
+  // While the game's daily sales script runs, reading the popularity of a device (z = 2 of its sales array)
+  // gives it × the product of the mods' multipliers; the value written back keeps the game's own decay.
+  const POP = 2, salesMuls = new Set();
+  let salesHooked = false, popPatched = [];
+  const salesArrays = () => {
+    const D = globalThis.BDTReviewData;
+    return D ? [...new Set(Object.values(D.engines).map(e => e.device))].filter(n => n !== 'ArrayGamepads') : [];
+  };
+  function popFactor(name, x, y) {
+    let f = 1;
+    for (const s of salesMuls) {
+      const v = Number(s.fn(name, x, y));
+      if (Number.isFinite(v) && v >= 0) f *= v;
+    }
+    return f;
+  }
+  function popOn(names = salesArrays()) {
+    if (!salesMuls.size || popPatched.length) return;
+    for (const name of names) {
+      const a = rt && rt.objects[name] && rt.objects[name].getFirstInstance();
+      if (!a || Object.prototype.hasOwnProperty.call(a, 'getAt')) continue;
+      const get = a.getAt, set = a.setAt, read = new Map();
+      a.getAt = function (x, y, z) {
+        const v = get.apply(this, arguments);
+        if (z !== POP || !(v > 0)) return v;
+        const f = popFactor(name, x, y);
+        if (f === 1) return v;
+        read.set(x + ':' + y, { v, f });
+        return v * f;
+      };
+      a.setAt = function (v, x, y, z) {
+        const r = z === POP && read.get(x + ':' + y);
+        if (r) { v = Math.max(0, v - r.v * (r.f - 1)); read.delete(x + ':' + y); }
+        return set.apply(this, [v, x, y, z]);
+      };
+      popPatched.push(a);
+    }
+  }
+  function popOff() { for (const a of popPatched) { delete a.getAt; delete a.setAt; } popPatched = []; }
+  // the sales script is wrapped once for all mods and stays wrapped (it does nothing without multipliers)
+  function hookSales() {
+    if (salesHooked) return true;
+    const D = globalThis.BDTReviewData, acts = D ? scriptActs(D.salesScript) : [];
+    for (const a of acts) {
+      wrapRun(a, () => { try { popOn(); } catch (e) { console.error('[BetterDTKit] sales', e); } }, () => popOff());
+    }
+    salesHooked = acts.length > 0;
+    return salesHooked;
   }
 
   function check(spec) {
@@ -535,6 +588,16 @@
       },
       // undone when the mod stops, before its dispose
       onStop(fn) { m.undo.push(fn); },
+      // multiplies the popularity of the player's devices while the game computes the daily sales:
+      // fn(salesArray, x, y) → factor (1 = unchanged); returns off(), undone when the mod stops
+      salesMultiplier(fn) {
+        hookSales();
+        const s = { fn: kit.guard(fn) };
+        salesMuls.add(s);
+        const off = () => { salesMuls.delete(s); };
+        m.undo.push(off);
+        return off;
+      },
 
       // the value of one of this mod's options ('days' or 'my-mod.days')
       option(key) {
@@ -677,6 +740,10 @@
     options: (name) => optionsOf(name),
     localize: (v) => localize(v),
     eventSheets: () => eventSheets(),
+    // true once the game's daily sales script is wrapped for kit.salesMultiplier
+    salesReady: () => hookSales(),
+    // for tests: patch / unpatch the popularity reads by hand, the current factor of a device
+    _sales: { on: (names) => popOn(names), off: () => popOff(), factor: (n, x, y) => popFactor(n, x, y) },
     status: () => [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice() })),
     // cb runs once the game data is loaded and the mods have been checked
     whenReady(runtime, cb) { rt = rt || runtime; waitReady(() => setTimeout(cb, 0)); },
