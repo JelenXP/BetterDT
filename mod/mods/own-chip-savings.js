@@ -104,7 +104,84 @@ BetterDTKit.mod('own-chip-savings', {
   const costHook = (fn, y, c) => { const s = savingOf(fn, 0, y); return s && s.saving > 0 ? M.refCost(c, s.saving, share()) : undefined; };
   BDTReviewExt.cost.add(costHook);
 
-  // Task 9 adds the designer texts here
+  // ── the designer: the saving on the chip page, how much of it the price can take on the price page ──
+  const TXT = {
+    chip: OCS_L('Own chip: production ${own}, market price ${market} → saving ${saving} per unit',
+      'Собственный чип: производство ${own}, рыночная цена ${market} → экономия ${saving} за штуку',
+      'Eigener Chip: Herstellung ${own}, Marktpreis ${market} → Ersparnis ${saving} pro Stück',
+      'Puce maison : production ${own}, prix du marché ${market} → économie de ${saving} par unité',
+      'Chip proprio: produzione ${own}, prezzo di mercato ${market} → risparmio di ${saving} per unità',
+      'Chip propio: producción ${own}, precio de mercado ${market} → ahorro de ${saving} por unidad',
+      'अपनी चिप: उत्पादन ${own}, बाज़ार मूल्य ${market} → प्रति यूनिट ${saving} की बचत',
+      'Kendi çipin: üretim ${own}, piyasa fiyatı ${market} → birim başına ${saving} tasarruf',
+      'Chip próprio: produção ${own}, preço de mercado ${market} → economia de ${saving} por unidade',
+      'Власний чип: виробництво ${own}, ринкова ціна ${market} → економія ${saving} на штуці',
+      'Chip sendiri: produksi ${own}, harga pasar ${market} → hemat ${saving} per unit',
+      'Własny układ: produkcja ${own}, cena rynkowa ${market} → oszczędność ${saving} na sztuce',
+      '自研芯片：生产成本 ${own}，市场价 ${market} → 每台节省 ${saving}',
+      '자체 칩: 생산 ${own}, 시장가 ${market} → 대당 ${saving} 절감',
+      '自社チップ：製造 ${own}、市場価格 ${market} → 1台あたり ${saving} の節約'),
+    price: OCS_L('Your own chip saves ${saving} per unit. You can raise the price by up to ${raise} without buyers and reviewers taking it as overpriced.',
+      'Собственный чип экономит ${saving} на штуке. Цену можно поднять до ${raise}, и покупатели с обозревателями не сочтут её завышенной.',
+      'Dein eigener Chip spart ${saving} pro Stück. Du kannst den Preis um bis zu ${raise} anheben, ohne dass Käufer und Tester ihn als überteuert ansehen.',
+      'Votre puce maison économise ${saving} par unité. Vous pouvez augmenter le prix jusqu’à ${raise} sans que les acheteurs et les testeurs le jugent trop cher.',
+      'Il tuo chip fa risparmiare ${saving} per unità. Puoi alzare il prezzo fino a ${raise} senza che acquirenti e recensori lo considerino troppo caro.',
+      'Tu chip propio ahorra ${saving} por unidad. Puedes subir el precio hasta ${raise} sin que compradores ni críticos lo consideren caro.',
+      'आपकी अपनी चिप प्रति यूनिट ${saving} बचाती है। आप कीमत ${raise} तक बढ़ा सकते हैं, खरीदार और समीक्षक इसे महंगा नहीं मानेंगे।',
+      'Kendi çipin birim başına ${saving} tasarruf sağlıyor. Fiyatı ${raise} kadar artırabilirsin; alıcılar ve eleştirmenler pahalı bulmaz.',
+      'Seu chip próprio economiza ${saving} por unidade. Você pode aumentar o preço em até ${raise} sem que compradores e críticos o achem caro.',
+      'Власний чип заощаджує ${saving} на штуці. Ціну можна підняти до ${raise}, і покупці з оглядачами не вважатимуть її завищеною.',
+      'Chip buatanmu menghemat ${saving} per unit. Kamu bisa menaikkan harga hingga ${raise} tanpa pembeli dan pengulas menganggapnya kemahalan.',
+      'Własny układ oszczędza ${saving} na sztuce. Możesz podnieść cenę o maksymalnie ${raise}, a kupujący i recenzenci nie uznają jej za zawyżoną.',
+      '自研芯片每台节省 ${saving}。你可以把售价提高最多 ${raise}，买家和评测者不会觉得定价过高。',
+      '자체 칩으로 대당 ${saving}를 절감합니다. 가격을 최대 ${raise}까지 올려도 구매자와 리뷰어가 비싸다고 여기지 않습니다.',
+      '自社チップで1台あたり ${saving} 節約できます。価格を最大 ${raise} まで上げても、購入者やレビュアーに割高とは見なされません。'),
+  };
+  const money = (v) => Math.round(v).toLocaleString('en-US');
+  const say = (t, vars) => { let s = t[Object.keys(t)[lang()]] || t.en; for (const k in vars) s = s.replace('{' + k + '}', vars[k]); return s; };
+  const byType = new Map(Object.entries(R.engines).map(([fn, e]) => [e.costType, fn]));
+  const byUid = (uid) => { try { return uid ? rt.getInstanceByUid(uid) : null; } catch { return null; } };
+  const note = kit.ui.el('div', { className: 'bdt-chip-saving', style: { position: 'fixed', display: 'none', pointerEvents: 'none',
+    color: '#3ddc84', fontFamily: kit.ui.font, lineHeight: '1.2', textShadow: '0 0 .6vh #000', zIndex: 1 } });
+  // the designer computes the cost on every change; the saving only when the chip or the cost changed
+  let nowKey = '', nowVal = null;
+  function savingNowCached(fn) {
+    const c = P.engines[fn] && P.engines[fn].chip;
+    if (!c) return null;
+    const k = fn + ':' + today() + ':' + Object.values(c.cols).map(v => gv[v]).join(',') + ':' + gv.DeviceCostPrice;
+    if (k !== nowKey) { nowKey = k; nowVal = savingNow(fn); }
+    return nowVal;
+  }
+  let shownKey = '';
+  kit.on('tick', () => {
+    const fn = byType.get(String(gv.DeviceType));
+    let inst = null, kind = '';
+    if (fn) for (const [k, uid] of [['chip', P.uids.chip[fn]], ['chip', P.uids.gpu[fn]], ['price', P.uids.price]]) {
+      const i = byUid(uid);
+      if (i && i.isVisible && i.layer && i.layer.isVisible) { inst = i; kind = k; break; }
+    }
+    const s = inst ? savingNowCached(fn) : null;
+    if (!s || !(s.saving > 0)) { note.style.display = 'none'; return; }
+    const key = kind + ':' + lang() + ':' + Math.round(s.saving) + ':' + Math.round(s.chipOwn) + ':' + share();
+    if (key !== shownKey) {
+      shownKey = key;
+      note.textContent = kind === 'chip'
+        ? say(TXT.chip, { own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) })
+        : say(TXT.price, { saving: money(s.saving), raise: money(share() * s.saving) });
+    }
+    // the chip page: right of the selector box the series name is centred in (it reaches about 60 px past the text
+    // box), in the free column before the device picture; the price page: centred in the panel between the device
+    // name and the price slider (the production cost card is the first of three)
+    const b = inst.getBoundingBox(), L = inst.layer, k = (L.layerToCssPx(1000, 0)[0] - L.layerToCssPx(0, 0)[0]) / 1000;
+    const chip = kind === 'chip', [x, y] = chip ? L.layerToCssPx(b.right + 80, (b.top + b.bottom) / 2) : L.layerToCssPx(b.left + 536, b.bottom + 205);
+    note.style.left = x + 'px';
+    note.style.top = y + 'px';
+    note.style.transform = chip ? 'translateY(-50%)' : 'translate(-50%, -50%)';
+    note.style.textAlign = chip ? 'left' : 'center';
+    note.style.maxWidth = (chip ? 260 : 900) * k + 'px';
+    note.style.fontSize = 22 * k + 'px';
+    note.style.display = '';
+  });
 
   // off: the live test switches the sales factor off for a day
   const api = { off: false, savingNow, savingOf, factor, share, marketCost,
