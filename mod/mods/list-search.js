@@ -33,6 +33,7 @@ BetterDTKit.mod('list-search', {
     RESEARCH: {
       layers: ['RESEARCH UI (Top)', 'RESEARCH UI (Back)'],
       items: () => rt.objects['9patch3'].getAllInstances().filter(i => i.layer && i.layer.name === 'RESEARCH UI (Back)' && i.isVisible),
+      end: 950,   // the list ends above the ESC Back button of the global UI (970–1067)
     },
     'INVESTING STOCK': {
       layers: ['UI (Animations)', 'COMPANY UI (Top)', 'COMPANY UI (Back)'],
@@ -40,6 +41,7 @@ BetterDTKit.mod('list-search', {
     },
   };
   const BASE = 540, VIEW_H = 1080, PAD = 24;   // scrollY of a layer that is not scrolled; layout height
+  // end: where the visible part of a list ends (a list can stop above a button over its bottom)
   function geom(list) {
     const items = list.items();
     if (!items.length) return null;
@@ -47,8 +49,8 @@ BetterDTKit.mod('list-search', {
     for (const i of items) { const b = bbox(i); top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom); right = Math.max(right, b.right); }
     const layers = list.layers.map(n => rt.layout.getLayer(n)).filter(Boolean);
     if (!layers.length) return null;
-    const max = Math.max(0, bottom + PAD - VIEW_H);
-    return { items, top, bottom, right, layers, max, view: VIEW_H - top, content: bottom + PAD - top };
+    const end = list.end || VIEW_H - PAD, max = Math.max(0, bottom - end);
+    return { items, top, bottom, right, layers, max, end, view: end - top, content: bottom - top };
   }
   const offset = (g) => g.layers[0].scrollY - BASE;
   function scrollTo(g, off) {
@@ -147,7 +149,7 @@ BetterDTKit.mod('list-search', {
     if (!g || g.max <= 0 || String(gv.EditorNotification) === 'ON') { bar.remove(); return; }
     if (!bar.isConnected) document.body.appendChild(bar);
     const [x0, y0] = css(g, g.right + 14, g.top);
-    const [, y1] = css(g, g.right + 14, VIEW_H - PAD);
+    const [, y1] = css(g, g.right + 14, g.end);
     const h = Math.max(20, y1 - y0);
     bar.style.left = x0 + 'px';
     bar.style.top = y0 + 'px';
@@ -256,7 +258,7 @@ BetterDTKit.mod('list-search', {
     const tab = g && g.items.find(i => Number(i.instVars.CountryID) === e.page);
     if (tab) {
       const b = bbox(tab), off = offset(g);
-      if (b.top - off < g.top || b.bottom - off > VIEW_H - PAD) scrollTo(g, b.top - g.top - 2 * (b.bottom - b.top));
+      if (b.top - off < g.top || b.bottom - off > g.end) scrollTo(g, b.top - g.top - 2 * (b.bottom - b.top));
     }
     requestAnimationFrame(() => {
       const c = document.querySelector(`#research-grid .rc-card[data-rid="${e.id}"]`);
