@@ -25,8 +25,8 @@ test('paid OS: 5 for the cheapest licence, 9.5 for the dearest, logarithmic betw
   near(P.paidBase(500000, [500000]), 7.25);
   assert.equal(P.paidBase(0, prices), null);
 });
-test('own OS: 10 × ★ / (★ + H)', () => {
-  near(P.ownBase(P.OS.H), 5); near(P.ownBase(3 * P.OS.H), 7.5); assert.equal(P.ownBase(0), 0);
+test('own OS: 2 + 1.5 × log10(★ + 1), at most 9', () => {
+  near(P.ownBase(0), 2); near(P.ownBase(99), 5); near(P.ownBase(311), 5.74, 0.01); near(P.ownBase(35854), 8.83, 0.01); assert.equal(P.ownBase(1e9), 9);
 });
 test('own OS support ends 730 days after the last release', () => {
   assert.equal(P.ownSupported(100, 830), true); assert.equal(P.ownSupported(100, 831), false);

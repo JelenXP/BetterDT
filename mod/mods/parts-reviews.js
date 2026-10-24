@@ -2,8 +2,8 @@
 // other parts of a device (fair-reviews.js shows them as categories of the same weight).
 // OS (phones, tablets, laptops, watches, TV), 0–10:
 //   a free OS gets a fixed base of 2.5–4.5 per OS family and game, a paid one 5–9.5 by its licence price against the
-//   other paid licences on the market (log scale), an own OS 10 × ★ / (★ + H) from the rating its updates gave it;
-//   −0.5 for every year the chosen version is older than the newest OS version on the market (at most −3), −3 without
+//   other paid licences on the market (log scale), an own OS 2 + 1.5 × log10(★ + 1) (at most 9) from the rating its
+//   updates gave it; −0.5 for every year the chosen version is older than the newest OS version on the market (at most −3), −3 without
 //   support (a third-party version past its end of support, an own OS not updated for 2 years), +0.5 for an own OS,
 //   +1 for an own PRIVATE OS. The OS page of the device designer shows the rating next to the chosen OS.
 // Processor, 0–10: the designer's indicators of the chip (power, performance, gaming, energy) weighted by the device

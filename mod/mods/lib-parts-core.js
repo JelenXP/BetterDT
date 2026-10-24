@@ -6,7 +6,7 @@
   const YEAR = 365;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const round1 = (v) => Math.round(v * 10 + 1e-9) / 10;
-  const OS = { FREE: [2.5, 4.5], PAID: [5, 9.5], H: 1000, AGE_STEP: 0.5, AGE_MAX: 3, NO_SUPPORT: 3, OWN: 0.5,
+  const OS = { FREE: [2.5, 4.5], PAID: [5, 9.5], OWN: [2, 1.5, 9], AGE_STEP: 0.5, AGE_MAX: 3, NO_SUPPORT: 3, OWN_BONUS: 0.5,
     OWN_PRIVATE: 1, OWN_SUPPORT_DAYS: 730 };
   // the weights of the designer's indicators (1–100) by device group, and of the GPU bars (0–1)
   const WEIGHTS = {
@@ -37,12 +37,13 @@
     const t = clamp(Math.log(price / lo) / Math.log(hi / lo), 0, 1);
     return OS.PAID[0] + (OS.PAID[1] - OS.PAID[0]) * t;
   }
-  const ownBase = (stars) => (stars > 0 ? 10 * stars / (stars + OS.H) : 0);
+  // an own OS: from 2 with no rating, +1.5 for every tenfold ★ (its updates add up the rating), at most 9
+  const ownBase = (stars) => Math.min(OS.OWN[2], OS.OWN[0] + OS.OWN[1] * Math.log10(Math.max(0, stars) + 1));
   const ownSupported = (lastRelease, day) => day - lastRelease <= OS.OWN_SUPPORT_DAYS;
   function osRating(o) {
     const years = Math.max(0, Math.floor((o.newestDay - o.versionDay) / YEAR));
     let r = o.base - Math.min(OS.AGE_MAX, OS.AGE_STEP * years) - (o.supported ? 0 : OS.NO_SUPPORT);
-    if (o.own) r += o.private ? OS.OWN_PRIVATE : OS.OWN;
+    if (o.own) r += o.private ? OS.OWN_PRIVATE : OS.OWN_BONUS;
     return round1(clamp(r, 0, 10));
   }
   // the weighted mean of the values there are (null when there is none)
