@@ -384,7 +384,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
     innovative parts;
   - a missing feature (a yes/no aspect) is not counted for a budget device; other aspects keep the game's range;
   - two more categories: Value for money (quality of the parts against the price) and Innovation (parts born after
-    today).
+    today);
+  - a PRIVATE CPU (one you do not sell) has no price review and no Value for money, as in the game.
 - The aspects are grouped into categories (display, camera, performance, …). The 4 reviews are the two best and two
   worst categories, with the game's own review texts for that score and the game's closing sentence; an overpriced
   device always shows Price among the worst. The final rating is the mean of 4 reviewers, each weighing every
@@ -464,8 +465,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   price factor with the reference cost instead of the production cost (they get F(reference) / F(cost)), and the
   price review of Fair reviews judges the markup against it. The real production cost and the profit stay as they are.
 - The CPU and GPU pages of the designer show the production cost of your own CPU or GPU, its market price and the
-  saving per unit. The price page shows the saving and a green badge on the sell price card with about how much more
-  you can charge thanks to your CPU or GPU (with Fair reviews it follows the review's price formula, else it is the share of the saving).
+  saving per unit. The price page shows a green badge on the sell price card with about how much more you can
+  charge thanks to your CPU or GPU (with Fair reviews it follows the review's price formula, else it is the share
+  of the saving).
 - Tested in game 1.6 on a late save: own laptop CPUs saved $28–186 per unit; where the price allowed it, the sales
   grew 10–15 %.
 

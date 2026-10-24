@@ -186,8 +186,9 @@ of the screen. Returns `null` when not found.
 
 ### `kit.wrapCalls(eventFunction, { before, after })`
 
-Runs your code before and/or after every place in the event sheets that calls the event function `eventFunction`.
-Returns the number of call sites (0 = nothing wrapped). Example from `fair-reviews.js`: after the game computed a
+Runs your code before and/or after every place in the event sheets that calls the event function `eventFunction`,
+and around the calls of it with `runtime.callFunction` (the game's scripts call some event functions that way).
+Returns the number of event sheet call sites (0 = nothing wrapped). Example from `fair-reviews.js`: after the game computed a
 review, replace its results:
 
 ```js
@@ -196,8 +197,7 @@ kit.wrapCalls('ReviewsEngineResults', {
 });
 ```
 
-Calling the function yourself with `rt.callFunction('ReviewsEngineResults')` does **not** run your wrappers; only the
-game's own call sites are wrapped.
+Calling the function yourself with `rt.callFunction('ReviewsEngineResults')` runs your wrappers too.
 
 ### `kit.wrapAction(sid, { before, after })` and `kit.wrapScript(name, { before, after })`
 

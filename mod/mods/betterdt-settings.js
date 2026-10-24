@@ -28,8 +28,9 @@
 // init(rt, kit) returns a dispose function. kit.guard(fn) wraps timers and listeners: errors are counted and after
 // 20 of them the mod is stopped. kit.inst(uid), kit.text(index), kit.fail(problem), kit.warn(problem).
 // kit.wrapCalls(eventFunction, { before, after }), kit.wrapAction(sid, …) and kit.wrapScript(scriptName, …) run
-// code around the game's event sheet actions (every call site of an event function, one action, the script action
-// "EventGameplay_Event449_Act1" …); they are undone when the mod stops. An async action's after runs once it settled.
+// code around the game's event sheet actions (every call site of an event function and the game scripts' calls of
+// it, one action, the script action "EventGameplay_Event449_Act1" …); they are undone when the mod stops. An async
+// action's after runs once it settled.
 // kit.salesMultiplier(fn) multiplies the popularity of the player's devices while the game computes the daily sales
 // (fn(salesArray, x, y) → factor; the mods' factors multiply).
 // A mod that does not fit this game version is not started; the BetterDT settings say why.
@@ -184,6 +185,31 @@
       return r;
     };
     return () => { act.Run = orig; };
+  }
+  // The game's scripts call event functions with runtime.callFunction (the reviews screen calls ReviewsEngineResults
+  // again for a private CPU), which no call site sees: runtime.callFunction is patched once and runs the handlers of
+  // the name around the call. Returns the undo function.
+  const scriptCalls = new Map();   // function name -> Set of { before, after }
+  function wrapScriptCalls(fnName, before, after) {
+    if (!rt) return () => { };
+    if (!Object.prototype.hasOwnProperty.call(rt, 'callFunction')) {
+      const orig = rt.callFunction;
+      rt.callFunction = function (name) {
+        const hs = scriptCalls.get(name);
+        if (!hs || !hs.size) return orig.apply(this, arguments);
+        const list = [...hs];
+        for (const h of list) if (h.before) h.before();
+        const r = orig.apply(this, arguments);
+        const done = () => { for (const h of list) if (h.after) h.after(); };
+        if (r && typeof r.then === 'function') return r.then(v => { done(); return v; });
+        done();
+        return r;
+      };
+    }
+    const h = { before, after };
+    if (!scriptCalls.has(fnName)) scriptCalls.set(fnName, new Set());
+    scriptCalls.get(fnName).add(h);
+    return () => { const hs = scriptCalls.get(fnName); if (hs) hs.delete(h); };
   }
 
   // ── popularity multipliers of the daily sales (kit.salesMultiplier) ─────────────────────────────────────
@@ -571,8 +597,9 @@
       },
       fail(problem) { stop('incompatible', problem); },
       wrapCalls(fnName, h) {
-        const acts = callSites(fnName);
-        for (const a of acts) m.undo.push(wrapRun(a, h.before && kit.guard(h.before), h.after && kit.guard(h.after)));
+        const acts = callSites(fnName), before = h.before && kit.guard(h.before), after = h.after && kit.guard(h.after);
+        for (const a of acts) m.undo.push(wrapRun(a, before, after));
+        if (acts.length) m.undo.push(wrapScriptCalls(fnName, before, after));
         return acts.length;
       },
       wrapAction(sid, h) {

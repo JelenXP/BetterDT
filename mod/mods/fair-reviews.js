@@ -11,7 +11,8 @@
 //     number of innovative parts (parts not on the market yet, see research-breakthroughs.js);
 //   - a missing feature does not count against a budget device;
 //   - other aspects keep the game's score range;
-//   - two more categories: Value for money (quality of the parts against the price) and Innovation.
+//   - two more categories: Value for money (quality of the parts against the price) and Innovation;
+//   - a PRIVATE CPU (not sold) has no price review and no value for money, as in the game.
 // The price class is the device's price against the flagship price of its type in that year (simulateDeviceCost).
 // The rating the game stores and shows as the total is the mean of the 4 shown scores; while it does that, all 4
 // hold the final rating: the mean of 4 reviewers, each weighing every category a bit differently (the shown ones, the
@@ -44,6 +45,14 @@ BetterDTKit.mod('fair-reviews', {
   let last = null;
   const finals = new Map();   // fn + ':' + model -> final rating, for the stored rating
 
+  // a PRIVATE CPU is not sold, so it has no price to review: the game drops its price reviews (the licence is in
+  // the CPU editor array at y = 54) and so does this (no price, no value for money)
+  const CPU_ARRAYS = { 'CPU SMARTPHONES': 'ArrayMyCPU_Smartphones', 'CPU LAPTOPS': 'ArrayMyCPU_Laptops', 'CPU CONSOLES': 'ArrayMyCPU_Consoles', 'CPU VR': 'ArrayMyCPU_VR' };
+  const CPU_LICENSE_Y = 54;
+  function privateCpu(e) {
+    const a = CPU_ARRAYS[e.creating] && arr(CPU_ARRAYS[e.creating]);
+    try { return !!a && a.height > CPU_LICENSE_Y && String(a.getAt(0, CPU_LICENSE_Y, 0) ?? '').trim() === 'PRIVATE'; } catch { return false; }
+  }
   const generation = (gen, x, y, day) => C.generation(rt, gen, x, y, day);
   const partsOf = (designArray, x, y, day) => C.partsOf(rt, D, designArray, x, y, day);
 
@@ -61,6 +70,7 @@ BetterDTKit.mod('fair-reviews', {
     const parts = partsOf(e.device, x, y, day).count;
     const limits = C.priceLimits(cls, parts);
     const range = (i) => [num(db.getAt(0, i)), num(db.getAt(1, i))];
+    const priced = !privateCpu(e);
     // the entries the game pushed, one per aspect range
     const seen = new Set(), aspects = [], gensList = [];
     for (let i = 0; i < temp.width; i++) {
@@ -75,6 +85,7 @@ BetterDTKit.mod('fair-reviews', {
         gensList.push(g.gens);
         score = C.uniform(...C.genRange(cls, g.gens), rng);
       } else if (s.kind === 'price') {
+        if (!priced) continue;
         score = C.uniform(...C.priceRange(C.priceBand(markup, limits)), rng);
       } else {
         const [lo, hi] = range(idx);
@@ -87,12 +98,12 @@ BetterDTKit.mod('fair-reviews', {
     const kept = C.extraRules(aspects, extra.map(([, d]) => d.engines[fn]));
     const scores = C.categoryScores(kept);
     for (const [id, d] of extra) { const s = d.score(fn, x, y); if (Number.isFinite(s)) scores[id] = s; }
-    const hasPrice = e.aspects.some(a => a.kind === 'price');
+    const hasPrice = priced && e.aspects.some(a => a.kind === 'price');
     if (hasPrice) scores.value = C.valueScore(C.quality(gensList), share, rng);
     if (parts > 0) scores.innovation = C.innovationScore(parts, rng);
     const shown = C.pickShown(scores, hasPrice && 'price' in scores && C.overpriced(markup, limits));
     const final = C.finalRating(scores, shown, rng);
-    return { fn, y, cls, share, markup, parts, scores, shown, final, aspects: kept };
+    return { fn, y, cls, share, markup, parts, priced, scores, shown, final, aspects: kept };
   }
   // the review text of a scored aspect: a range of its group whose score band fits the score (a generational aspect
   // or the price has its own score, not the one of the range the game drew)

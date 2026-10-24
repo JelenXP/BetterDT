@@ -6,7 +6,7 @@
 // price review of the fair reviews judge the price against the reference cost: the production cost + the share of
 // the saving set in the settings (50, 70 or 85 %); the sales get factor F(reference) / F(cost) of the game's price
 // factor. The real production cost and the profit stay as they are.
-// The chip page of the designer shows the saving, the price page how much of it the price can take.
+// The CPU and GPU pages of the designer show the saving, the price page a badge with how much more the price can be.
 const OCS_L = (en, ru, de, fr, it, es, hi, tr, pt, uk, id, pl, zh, ko, ja) => ({ en, ru, de, fr, it, es, hi, tr, pt, uk, id, pl, zh, ko, ja });
 BetterDTKit.mod('own-chip-savings', {
   info: {
@@ -105,7 +105,7 @@ BetterDTKit.mod('own-chip-savings', {
   const costHook = (fn, y, c) => { const s = savingOf(fn, 0, y); return s && s.saving > 0 ? M.refCost(c, s.saving, share()) : undefined; };
   BDTReviewExt.cost.add(costHook);
 
-  // ── the designer: the saving on the chip page, how much of it the price can take on the price page ──
+  // ── the designer: the saving on the CPU and GPU pages, a badge with how much more the price can be on the price page ──
   const TXT = {
     chip: OCS_L('Own {part}: production ${own}, market price ${market} → saving ${saving} per unit',
       'Собственный {part}: производство ${own}, рыночная цена ${market} → экономия ${saving} за штуку',
@@ -122,21 +122,6 @@ BetterDTKit.mod('own-chip-savings', {
       '自研 {part}：生产成本 ${own}，市场价 ${market} → 每台节省 ${saving}',
       '자체 {part}: 생산 ${own}, 시장가 ${market} → 대당 ${saving} 절감',
       '自社 {part}：製造 ${own}、市場価格 ${market} → 1台あたり ${saving} の節約'),
-    price: OCS_L('Your own {part} saves ${saving} per unit.',
-      'Собственный {part} экономит ${saving} на штуке.',
-      'Deine eigene {part} spart ${saving} pro Stück.',
-      'Votre {part} maison économise ${saving} par unité.',
-      'La tua {part} fa risparmiare ${saving} per unità.',
-      'Tu {part} propia ahorra ${saving} por unidad.',
-      'आपका अपना {part} प्रति यूनिट ${saving} बचाता है।',
-      'Kendi {part} tasarımın birim başına ${saving} tasarruf sağlıyor.',
-      'Sua {part} própria economiza ${saving} por unidade.',
-      'Власний {part} заощаджує ${saving} на штуці.',
-      '{part} buatanmu menghemat ${saving} per unit.',
-      'Własny {part} oszczędza ${saving} na sztuce.',
-      '自研 {part} 每台节省 ${saving}。',
-      '자체 {part}로 대당 ${saving}를 절감합니다.',
-      '自社 {part} で1台あたり ${saving} 節約できます。'),
     // the badge: how much more the price can be thanks to the own CPU or GPU
     badge: OCS_L('more you can charge thanks to your {part}', 'можно поднять цену благодаря своему {part}', 'mehr Preis dank eigener {part}',
       'de prix en plus grâce à votre {part}', 'di prezzo in più grazie alla tua {part}', 'más de precio gracias a tu {part}',
@@ -191,26 +176,28 @@ BetterDTKit.mod('own-chip-savings', {
     const key = [kind, lang(), part, Math.round(s.saving), Math.round(s.chipOwn), share(), room].join(':');
     if (key !== shownKey) {
       shownKey = key;
-      note.textContent = kind === 'chip'
-        ? say(TXT.chip, { part, own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) })
-        : say(TXT.price, { part, saving: money(s.saving) });
+      note.textContent = say(TXT.chip, { part, own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) });
       badgeTop.textContent = '≈ +$' + money(room);
       badgeSub.textContent = say(TXT.badge, { part });
     }
-    // the chip page: right of the selector box the series name is centred in (it reaches about 60 px past the text
-    // box), in the free column before the device picture; the price page: centred in the panel between the device
-    // name and the price slider (the production cost card is the first of three)
     const b = inst.getBoundingBox(), L = inst.layer, k = (L.layerToCssPx(1000, 0)[0] - L.layerToCssPx(0, 0)[0]) / 1000;
-    const chip = kind === 'chip', [x, y] = chip ? L.layerToCssPx(b.right + 80, (b.top + b.bottom) / 2) : L.layerToCssPx(b.left + 536, b.bottom + 205);
-    note.style.left = x + 'px';
-    note.style.top = y + 'px';
-    note.style.transform = chip ? 'translateY(-50%)' : 'translate(-50%, -50%)';
-    note.style.textAlign = chip ? 'left' : 'center';
-    note.style.maxWidth = (chip ? 260 : 900) * k + 'px';
-    note.style.fontSize = 22 * k + 'px';
-    note.style.display = '';
-    // the sell price card is the second of the three cards, 350 px right of the production cost card
-    if (chip || !(room > 0)) { badge.style.display = 'none'; return; }
+    if (kind === 'chip') {
+      // right of the selector box the series name is centred in (it reaches about 60 px past the text box), in the
+      // free column before the device picture
+      badge.style.display = 'none';
+      const [x, y] = L.layerToCssPx(b.right + 80, (b.top + b.bottom) / 2);
+      note.style.left = x + 'px';
+      note.style.top = y + 'px';
+      note.style.transform = 'translateY(-50%)';
+      note.style.maxWidth = 260 * k + 'px';
+      note.style.fontSize = 22 * k + 'px';
+      note.style.display = '';
+      return;
+    }
+    // the price page: the badge on the sell price card, the second of the three cards, 350 px right of the production
+    // cost card
+    note.style.display = 'none';
+    if (!(room > 0)) { badge.style.display = 'none'; return; }
     const [bx, by] = L.layerToCssPx((b.left + b.right) / 2 + 350, b.top - 12);
     badge.style.left = bx + 'px';
     badge.style.top = by + 'px';
