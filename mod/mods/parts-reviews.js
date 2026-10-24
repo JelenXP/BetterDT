@@ -27,49 +27,8 @@ BetterDTKit.mod('parts-reviews', {
   const lang = () => { const l = Math.round(num(gv.LanguageChoose)); return l >= 0 && l < 15 ? l : 0; };
   const today = () => num(gv.DayTotal);
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
-  const releaseDay = (fn, x, y) => { const d = num(arr(R.engines[fn].device).getAt(x, y, R.releaseCol)); return d > 0 ? d : today(); };
-
-  // the designer's cursors of an own chip (the series and the chip in it) from its id
-  function cursorOf(find, id) {
-    const chips = arr(find.chips), series = arr(find.series);
-    if (!chips || !series) return null;
-    const list = [], ids = [];
-    for (let x = 0; x < chips.width; x++) list.push({ id: chips.getAt(x, 0), series: chips.getAt(x, 1) });
-    for (let s = 0; s < series.width; s++) ids.push(series.getAt(s, 0));
-    return M.ownCursor(list, ids, id);
-  }
-  // a phone's designer looks for an own chip in its chip list (Temp) while the list is filled, else by its id: the
-  // list is emptied while f runs and restored afterwards
-  function withoutTemp(name, f) {
-    const a = arr(name);
-    if (!a || a.height < 56) return f();
-    const w = a.width, h = a.height, d = a.depth, data = [];
-    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) for (let z = 0; z < d; z++) data.push(a.getAt(x, y, z));
-    a.setSize(w, 1, d);
-    try { return f(); } finally {
-      a.setSize(w, h, d);
-      let i = 0;
-      for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) for (let z = 0; z < d; z++) a.setAt(data[i++], x, y, z);
-    }
-  }
   // the designer's variables from a released model's columns while f runs (every variable restored afterwards)
-  function withModel(fn, x, y, f) {
-    const p = P.engines[fn], dev = arr(R.engines[fn].device);
-    const saved = {};
-    for (const k of Object.keys(gv)) saved[k] = gv[k];
-    try {
-      for (const part of [p.chip, p.os]) if (part) for (const [c, v] of Object.entries(part.cols)) gv[v] = dev.getAt(x, y, +c);
-      for (const k of ['cpu', 'gpu']) {
-        const c = p.chip && p.chip[k], find = c && c.find;
-        if (!find || !find.cursors || num(gv[p.chip.cols[c.typeCol]]) !== c.ownValue) continue;
-        const cur = cursorOf(find, gv[find.idVar]);
-        if (cur) { gv[find.cursors[0]] = cur.series; gv[find.cursors[1]] = cur.model; }
-      }
-      gv.DayTotal = releaseDay(fn, x, y);
-      const temp = p.chip && p.chip.cpu.find && p.chip.cpu.find.temp;
-      return temp ? withoutTemp(temp, f) : f();
-    } finally { for (const k of Object.keys(saved)) gv[k] = saved[k]; }
-  }
+  const withModel = (fn, x, y, f) => M.withModel(rt, fn, x, y, f);
 
   // ── OS ──
   const seedOf = () => String(gv.CompanyName ?? '') + ':' + Math.round(today() - num(globalThis.getCampaignDaysLived?.()));

@@ -1,7 +1,7 @@
 // Own parts – the math, without the game: the OS rating (free, paid and own OS, version age, support, own bonus),
 // the processor and graphics ratings, the game's price factor of the sales and the sales ratio of an own chip's
-// saving, and the designer cursors of an own chip. Used by parts-reviews.js, own-chip-savings.js and the node tests
-// (tests/parts-core.test.mjs).
+// saving, and the designer cursors of an own chip; in the game, a released model's designer variables. Used by
+// parts-reviews.js, own-chip-savings.js and the node tests (tests/parts-core.test.mjs).
 (() => {
   const YEAR = 365;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -89,6 +89,66 @@
   const shareOf = (option) => SHARES[String(option)] ?? DEFAULT_SHARE;
   const fmt1 = (v, lang) => { const s = (Math.round(v * 10) / 10).toFixed(1); return COMMA.has(lang) ? s.replace('.', ',') : s; };
 
+  // ── in the game (rt = the runtime, with BDTPartsData and BDTReviewData) ──
+  const inst = (rt, name) => rt.objects[name] && rt.objects[name].getFirstInstance();
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  // f runs with the global variables restored afterwards (the game's cost and score functions write some)
+  function withVars(rt, f) {
+    const gv = rt.globalVars, saved = {};
+    for (const k of Object.keys(gv)) saved[k] = gv[k];
+    try { return f(); } finally { for (const k of Object.keys(saved)) gv[k] = saved[k]; }
+  }
+  // which chips of the designer variables are own: { cpu, gpu }
+  function ownChips(rt, fn) {
+    const c = globalThis.BDTPartsData.engines[fn].chip, gv = rt.globalVars;
+    if (!c) return { cpu: false, gpu: false };
+    return { cpu: c.cpu.ownValue !== null && num(gv[c.cols[c.cpu.typeCol]]) === c.cpu.ownValue,
+      gpu: !!c.gpu && num(gv[c.cols[c.gpu.typeCol]]) === c.gpu.ownValue };
+  }
+  // the designer's cursors of an own chip (the series and the chip in it) from its id
+  function cursorOf(rt, find, id) {
+    const chips = inst(rt, find.chips), series = inst(rt, find.series);
+    if (!chips || !series) return null;
+    const list = [], ids = [];
+    for (let x = 0; x < chips.width; x++) list.push({ id: chips.getAt(x, 0), series: chips.getAt(x, 1) });
+    for (let s = 0; s < series.width; s++) ids.push(series.getAt(s, 0));
+    return ownCursor(list, ids, id);
+  }
+  // a phone's designer looks for an own chip in its chip list (Temp) while the list is filled, else by its id: the
+  // list is emptied while f runs and restored afterwards
+  function withoutTemp(rt, name, f) {
+    const a = inst(rt, name);
+    if (!a || a.height < 56) return f();
+    const w = a.width, h = a.height, d = a.depth, data = [];
+    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) for (let z = 0; z < d; z++) data.push(a.getAt(x, y, z));
+    a.setSize(w, 1, d);
+    try { return f(); } finally {
+      a.setSize(w, h, d);
+      let i = 0;
+      for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) for (let z = 0; z < d; z++) a.setAt(data[i++], x, y, z);
+    }
+  }
+  // the designer's variables from a released model's columns (its chip and OS, the cursors of an own chip, the day
+  // of its release) while f runs; every variable is restored afterwards
+  function withModel(rt, fn, x, y, f) {
+    const P = globalThis.BDTPartsData, R = globalThis.BDTReviewData, p = P.engines[fn], dev = inst(rt, R.engines[fn].device), gv = rt.globalVars;
+    return withVars(rt, () => {
+      for (const part of [p.chip, p.os]) if (part) for (const [c, v] of Object.entries(part.cols)) gv[v] = dev.getAt(x, y, +c);
+      const own = ownChips(rt, fn);
+      for (const k of ['cpu', 'gpu']) {
+        const find = own[k] && p.chip[k].find;
+        if (!find || !find.cursors) continue;
+        const cur = cursorOf(rt, find, gv[find.idVar]);
+        if (cur) { gv[find.cursors[0]] = cur.series; gv[find.cursors[1]] = cur.model; }
+      }
+      const d = num(dev.getAt(x, y, R.releaseCol));
+      if (d > 0) gv.DayTotal = d;
+      const temp = p.chip && p.chip.cpu.find && p.chip.cpu.find.temp;
+      return temp ? withoutTemp(rt, temp, f) : f();
+    });
+  }
+
   globalThis.BDTPartsCore = Object.freeze({ OS, WEIGHTS, GPU_WEIGHTS, seeded, freeBase, paidBase, ownBase, ownSupported,
-    osRating, chipRating, gpuRating, priceFactor, refCost, salesRatio, ownCursor, shareOf, fmt1 });
+    osRating, chipRating, gpuRating, priceFactor, refCost, salesRatio, ownCursor, shareOf, fmt1,
+    withVars, ownChips, withModel });
 })();
