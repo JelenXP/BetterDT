@@ -18,7 +18,8 @@ game file and does not touch your saves.
   recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
   research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
   click first asks with the price.
-- **Game speed ×2 and ×3:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3.
+- **Faster game speed:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3, and in the settings you
+  can add ×4, ×5, ×6, ×8 and ×10; every speed has its own colour.
 - **Adjustable autosave:** the game's Autosave setting (30 to 365 days) becomes a slider from 5 to 360 game days
   (default 90), so a crash costs you less progress.
 - **Low-end mode** for older computers: limit the game to 30 FPS and turn off the blur behind panels (both off
@@ -167,11 +168,15 @@ its own layer.
 - Tested in game 1.6: 5 professions, 81 employees, 178 upgrades in 10 s; with 2 research points the game's "not
   enough" message.
 
-### `game-speed.js`: game speed ×2 and ×3
+### `game-speed.js`: faster game speed
 - The game's speed button (`#sbx-speed`) cycles through a fixed list `[1, 1.25, 1.5]`. The mod catches its click
-  first (capture listener on the button) and goes to the next of `[1, 1.25, 1.5, 2, 3]` with the game's own
-  `setGameSpeed()`, which accepts any speed. So the time scale, the "×2" label and the game's rules (normal speed
-  outside gameplay) stay the game's; the mod only adds colours for ×2 and ×3.
+  first (capture listener on the button) and goes to the next of `[1, 1.25, 1.5, …]` plus the speeds turned on in
+  Settings > BetterDT (×2 and ×3 on by default; ×4, ×5, ×6, ×8 and ×10 off) with the game's own `setGameSpeed()`,
+  which accepts any speed. So the time scale, the "×4" label and the game's rules (normal speed outside gameplay)
+  stay the game's; the mod gives every speed its own colour (×2 red, ×3 magenta, ×4 yellow, ×5 green, ×6 turquoise,
+  ×8 blue, ×10 pink; the game's ×1.25 is light blue and ×1.5 orange).
+- Tested in game 1.6: at ×10 about 5 to 6 game days went by per second in the office, against 0.8 at ×1 (the game's
+  own events and dialogs stop the time in between).
 
 ### `low-end.js`: low-end mode
 - **Limit to 30 FPS:** the game draws at the monitor's refresh rate (vsync) by default, also on static menus where
