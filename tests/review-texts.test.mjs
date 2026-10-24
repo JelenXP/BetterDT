@@ -20,3 +20,10 @@ test('placeholders kept in all languages', () => {
 test('summaries in the game style', () => {
   for (const [, s] of [...T.value.flat(), ...T.innovation]) assert.match(s[0], /^The user /);
 });
+test('OS, processor and graphics texts', () => {
+  for (const c of ['os', 'cpu', 'gpu']) {
+    assert.ok(full(T.cat[c]), c);
+    assert.equal(T.parts[c].length, 3, c);
+    for (const band of T.parts[c]) { assert.ok(band.length >= 2); for (const [r, s] of band) { assert.ok(full(r)); assert.ok(full(s)); assert.match(s[0], /^The user /); } }
+  }
+});
