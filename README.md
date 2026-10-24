@@ -60,7 +60,8 @@ game file and does not touch your saves.
   of the device designer shows the rating next to the chosen OS. Needs Fair reviews.
 - **Own chip savings:** your own processor or graphics card makes a device cheaper to build than a custom chip from
   the market would. Part of the saving (50, 70 or 85 %) can go into the price without buyers and reviewers taking
-  the device as overpriced; the chip page and the price page of the designer show how much.
+  the device as overpriced; the designer shows the saving on the chip page and a badge with the extra price on the
+  price page.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -443,9 +444,10 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 ### `parts-reviews.js`: parts in reviews
 - **Operating system** (phones, tablets, laptops, watches, TV), 0–10: a free OS gets a fixed base of 2.5–4.5 (per OS
   family and game), a paid one 5–9.5 by its licence price against the other paid licences on the market, your own
-  OS 10 × ★ / (★ + 1000) from the rating its updates earned. A version loses 0.5 for every year it is older than the
-  newest OS version on the market (at most 3) and 3 without support (a version past its end of support, an own OS
-  not updated for two years). An own OS gets +0.5, a PRIVATE one +1.
+  OS 2 + 1.5 × log10(★ + 1), at most 9, from the rating its updates earned (about 5.7 after a couple of updates,
+  8.8 after fifteen). A version loses 0.5 for every year it is older than the newest OS version on the market (at
+  most 3) and 3 without support (a version past its end of support, an own OS not updated for two years). An own OS
+  gets +0.5, a PRIVATE one +1.
 - **Processor**, 0–10: the designer's indicators of the chip (power, performance, gaming, energy) weighted by the
   device type, +0.5 for your own chip. A laptop's graphics card is rated from the designer's graphics bars the same
   way. It replaces the phones' and tablets' CPU load review (the game never computes the load, so it always gave
@@ -461,8 +463,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - **Reference cost:** the production cost + 50, 70 (default) or 85 % of the saving. The daily sales use the game's
   price factor with the reference cost instead of the production cost (they get F(reference) / F(cost)), and the
   price review of Fair reviews judges the markup against it. The real production cost and the profit stay as they are.
-- The chip page of the designer shows the chip's production cost, its market price and the saving per unit; the
-  price page says how much you can raise the price.
+- The chip page of the designer shows the chip's production cost, its market price and the saving per unit. The
+  price page shows the saving and a green badge on the sell price card with about how much more you can charge
+  thanks to the chip (with Fair reviews it follows the review's price formula, else it is the share of the saving).
 - Tested in game 1.6 on a late save: own laptop CPUs saved $28–186 per unit; where the price allowed it, the sales
   grew 10–15 %.
 

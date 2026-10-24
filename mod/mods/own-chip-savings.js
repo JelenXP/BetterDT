@@ -121,21 +121,27 @@ BetterDTKit.mod('own-chip-savings', {
       '自研芯片：生产成本 ${own}，市场价 ${market} → 每台节省 ${saving}',
       '자체 칩: 생산 ${own}, 시장가 ${market} → 대당 ${saving} 절감',
       '自社チップ：製造 ${own}、市場価格 ${market} → 1台あたり ${saving} の節約'),
-    price: OCS_L('Your own chip saves ${saving} per unit. You can raise the price by up to ${raise} without buyers and reviewers taking it as overpriced.',
-      'Собственный чип экономит ${saving} на штуке. Цену можно поднять до ${raise}, и покупатели с обозревателями не сочтут её завышенной.',
-      'Dein eigener Chip spart ${saving} pro Stück. Du kannst den Preis um bis zu ${raise} anheben, ohne dass Käufer und Tester ihn als überteuert ansehen.',
-      'Votre puce maison économise ${saving} par unité. Vous pouvez augmenter le prix jusqu’à ${raise} sans que les acheteurs et les testeurs le jugent trop cher.',
-      'Il tuo chip fa risparmiare ${saving} per unità. Puoi alzare il prezzo fino a ${raise} senza che acquirenti e recensori lo considerino troppo caro.',
-      'Tu chip propio ahorra ${saving} por unidad. Puedes subir el precio hasta ${raise} sin que compradores ni críticos lo consideren caro.',
-      'आपकी अपनी चिप प्रति यूनिट ${saving} बचाती है। आप कीमत ${raise} तक बढ़ा सकते हैं, खरीदार और समीक्षक इसे महंगा नहीं मानेंगे।',
-      'Kendi çipin birim başına ${saving} tasarruf sağlıyor. Fiyatı ${raise} kadar artırabilirsin; alıcılar ve eleştirmenler pahalı bulmaz.',
-      'Seu chip próprio economiza ${saving} por unidade. Você pode aumentar o preço em até ${raise} sem que compradores e críticos o achem caro.',
-      'Власний чип заощаджує ${saving} на штуці. Ціну можна підняти до ${raise}, і покупці з оглядачами не вважатимуть її завищеною.',
-      'Chip buatanmu menghemat ${saving} per unit. Kamu bisa menaikkan harga hingga ${raise} tanpa pembeli dan pengulas menganggapnya kemahalan.',
-      'Własny układ oszczędza ${saving} na sztuce. Możesz podnieść cenę o maksymalnie ${raise}, a kupujący i recenzenci nie uznają jej za zawyżoną.',
-      '自研芯片每台节省 ${saving}。你可以把售价提高最多 ${raise}，买家和评测者不会觉得定价过高。',
-      '자체 칩으로 대당 ${saving}를 절감합니다. 가격을 최대 ${raise}까지 올려도 구매자와 리뷰어가 비싸다고 여기지 않습니다.',
-      '自社チップで1台あたり ${saving} 節約できます。価格を最大 ${raise} まで上げても、購入者やレビュアーに割高とは見なされません。'),
+    price: OCS_L('Your own chip saves ${saving} per unit.',
+      'Собственный чип экономит ${saving} на штуке.',
+      'Dein eigener Chip spart ${saving} pro Stück.',
+      'Votre puce maison économise ${saving} par unité.',
+      'Il tuo chip fa risparmiare ${saving} per unità.',
+      'Tu chip propio ahorra ${saving} por unidad.',
+      'आपकी अपनी चिप प्रति यूनिट ${saving} बचाती है।',
+      'Kendi çipin birim başına ${saving} tasarruf sağlıyor.',
+      'Seu chip próprio economiza ${saving} por unidade.',
+      'Власний чип заощаджує ${saving} на штуці.',
+      'Chip buatanmu menghemat ${saving} per unit.',
+      'Własny układ oszczędza ${saving} na sztuce.',
+      '自研芯片每台节省 ${saving}。',
+      '자체 칩으로 대당 ${saving}를 절감합니다.',
+      '自社チップで1台あたり ${saving} 節約できます。'),
+    // the badge: how much more the price can be thanks to the chip
+    badge: OCS_L('more you can charge thanks to your chip', 'можно поднять цену благодаря своему чипу', 'mehr Preis dank eigenem Chip',
+      'de prix en plus grâce à votre puce', 'di prezzo in più grazie al tuo chip', 'más de precio gracias a tu chip',
+      'आपकी चिप की बदौलत कीमत इतनी बढ़ा सकते हैं', 'çipin sayesinde fiyata eklenebilir', 'a mais no preço graças ao seu chip',
+      'можна підняти ціну завдяки власному чипу', 'tambahan harga berkat chip buatanmu', 'więcej w cenie dzięki własnemu układowi',
+      '得益于自研芯片可多定的价格', '자체 칩 덕분에 올릴 수 있는 가격', '自社チップのおかげで上乗せできる価格'),
   };
   const money = (v) => Math.round(v).toLocaleString('en-US');
   const say = (t, vars) => { let s = t[Object.keys(t)[lang()]] || t.en; for (const k in vars) s = s.replace('{' + k + '}', vars[k]); return s; };
@@ -152,6 +158,23 @@ BetterDTKit.mod('own-chip-savings', {
     if (k !== nowKey) { nowKey = k; nowVal = savingNow(fn); }
     return nowVal;
   }
+  // how much more the price can be thanks to the saving: how far the saving moves the price the fair reviews start
+  // to take as overpriced (innovative parts are not known before the release), else the share of the saving
+  function roomNow(fn, s) {
+    const C = globalThis.BDTReviewCore, sim = globalThis.simulateDeviceCost;
+    if (globalThis.__bdtFairReviews && C && C.overpricedFrom && typeof sim === 'function') {
+      const flagship = num(sim(R.engines[fn].costType, num(gv.Year), 'flagship', rt)) * 1.3, c = num(gv.DeviceCostPrice);
+      const a = C.overpricedFrom(M.refCost(c, s.saving, share()), flagship, 0), b = C.overpricedFrom(c, flagship, 0);
+      if (a && b) return Math.max(0, a - b);
+    }
+    return share() * s.saving;
+  }
+  // the badge on the top edge of the sell price card on the price page
+  const badge = kit.ui.el('div', { className: 'bdt-chip-room', style: { position: 'fixed', display: 'none', pointerEvents: 'none',
+    transform: 'translate(-50%, -100%)', textAlign: 'center', fontFamily: kit.ui.font, color: '#fff', background: 'linear-gradient(135deg, #1fbf5f, #12a37f)',
+    borderRadius: '0.6em', padding: '0.25em 0.8em', boxShadow: '0 0 1vh rgba(61, 220, 132, .6)', whiteSpace: 'nowrap', zIndex: 1 } });
+  const badgeTop = kit.ui.el('div', { style: { fontWeight: 'bold', fontSize: '1.6em', lineHeight: '1.1' } }, badge);
+  const badgeSub = kit.ui.el('div', { style: { fontSize: '0.9em', opacity: '.9' } }, badge);
   let shownKey = '';
   kit.on('tick', () => {
     const fn = byType.get(String(gv.DeviceType));
@@ -161,13 +184,16 @@ BetterDTKit.mod('own-chip-savings', {
       if (i && i.isVisible && i.layer && i.layer.isVisible) { inst = i; kind = k; break; }
     }
     const s = inst ? savingNowCached(fn) : null;
-    if (!s || !(s.saving > 0)) { note.style.display = 'none'; return; }
-    const key = kind + ':' + lang() + ':' + Math.round(s.saving) + ':' + Math.round(s.chipOwn) + ':' + share();
+    if (!s || !(s.saving > 0)) { note.style.display = 'none'; badge.style.display = 'none'; return; }
+    const room = kind === 'price' ? Math.round(roomNow(fn, s)) : 0;
+    const key = [kind, lang(), Math.round(s.saving), Math.round(s.chipOwn), share(), room].join(':');
     if (key !== shownKey) {
       shownKey = key;
       note.textContent = kind === 'chip'
         ? say(TXT.chip, { own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) })
-        : say(TXT.price, { saving: money(s.saving), raise: money(share() * s.saving) });
+        : say(TXT.price, { saving: money(s.saving) });
+      badgeTop.textContent = '≈ +$' + money(room);
+      badgeSub.textContent = say(TXT.badge, {});
     }
     // the chip page: right of the selector box the series name is centred in (it reaches about 60 px past the text
     // box), in the free column before the device picture; the price page: centred in the panel between the device
@@ -181,6 +207,13 @@ BetterDTKit.mod('own-chip-savings', {
     note.style.maxWidth = (chip ? 260 : 900) * k + 'px';
     note.style.fontSize = 22 * k + 'px';
     note.style.display = '';
+    // the sell price card is the second of the three cards, 350 px right of the production cost card
+    if (chip || !(room > 0)) { badge.style.display = 'none'; return; }
+    const [bx, by] = L.layerToCssPx((b.left + b.right) / 2 + 350, b.top - 12);
+    badge.style.left = bx + 'px';
+    badge.style.top = by + 'px';
+    badge.style.fontSize = 20 * k + 'px';
+    badge.style.display = '';
   });
 
   // off: the live test switches the sales factor off for a day

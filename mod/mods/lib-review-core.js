@@ -29,6 +29,23 @@
   const priceBand = (markup, limits) => limits.filter(l => markup >= l).length;
   const priceRange = (band) => PRICE_BANDS[band];
   const overpriced = (markup, limits) => markup >= limits[2];
+  // the lowest whole price the price review takes as overpriced, for a cost, the flagship price of the type and year and
+  // the number of innovative parts (the price class follows the price, so every class is tried in its price range)
+  function overpricedFrom(cost, flagship, n) {
+    if (!(cost > 0) || !(flagship > 0)) return null;
+    const ranges = { budget: [0, 0.40], mid: [0.40, 0.75], flagship: [0.75, Infinity] };
+    let best = null;
+    for (const [cls, [lo, hi]] of Object.entries(ranges)) {
+      // the markup as the review computes it: (price / cost − 1) × 100
+      const limit = priceLimits(cls, n)[2], over = (q) => overpriced((q / cost - 1) * 100, [0, 0, limit]);
+      let p = Math.max(Math.floor(cost * (1 + limit / 100)) - 1, Math.floor(lo * flagship) + 1);
+      while (p / flagship <= lo) p++;
+      while (!over(p)) p++;
+      if (p / flagship > hi || priceClass(p / flagship) !== cls) continue;
+      if (best === null || p < best) best = p;
+    }
+    return best;
+  }
   const quality = (gens) => gens.length ? mean(gens.map(g => Math.max(0, 1 - Math.max(0, g) / 6))) : 0.5;
   function valueScore(q, share, rng) {
     const r = q / share;
@@ -132,7 +149,7 @@
   globalThis.BDTReviewExt = globalThis.BDTReviewExt || { categories: new Map(), cost: new Set() };
 
   globalThis.BDTReviewCore = Object.freeze({
-    priceClass, genRange, uniform, innovationShift, priceLimits, priceBand, priceRange, overpriced, quality,
+    priceClass, genRange, uniform, innovationShift, priceLimits, priceBand, priceRange, overpriced, overpricedFrom, quality,
     valueScore, innovationBase, innovationScore, categoryScores, pickShown, finalRating, reviewBand, salesBonus,
     effectiveParts, generation, partsOf, extraRules, PRICE_WEIGHT, SHOWN_MUL,
   });

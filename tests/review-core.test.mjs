@@ -107,3 +107,14 @@ test('the extension registry exists', () => {
   assert.ok(globalThis.BDTReviewExt.categories instanceof Map);
   assert.ok(globalThis.BDTReviewExt.cost instanceof Set);
 });
+
+test('the lowest overpriced price follows the price class', () => {
+  assert.equal(C.overpricedFrom(100, 1000, 0), 130);   // budget (share 0.13): overpriced from a 30 % markup
+  assert.equal(C.overpricedFrom(600, 1000, 0), 871);   // mid ends at 750; a flagship from 45 % (870 gives 44.999…)
+  assert.equal(C.overpricedFrom(0, 1000, 0), null);
+  for (const [c, f, n] of [[100, 1000, 0], [300, 1000, 2], [330, 1000, 0], [600, 1000, 0], [900, 1000, 5]]) {
+    const p = C.overpricedFrom(c, f, n), mk = (q) => (q / c - 1) * 100, lim = (q) => C.priceLimits(C.priceClass(q / f), n);
+    assert.ok(C.overpriced(mk(p), lim(p)), 'overpriced at ' + p);
+    for (let q = Math.ceil(c); q < p; q++) assert.ok(!C.overpriced(mk(q), lim(q)), c + ': not at ' + q);
+  }
+});
