@@ -4,5 +4,8 @@ param([string]$Dir = "$env:LOCALAPPDATA\Temp\claude\C--Programov-n--chess--claud
 $src = Join-Path $PSScriptRoot "..\mod\mods"
 Copy-Item (Join-Path $src "*.js"), (Join-Path $src "mods.json") (Join-Path $Dir "mods") -Force
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1"
+# its own WebView2 profile: a running copy of the game holds the shared one, and a second browser with other
+# arguments cannot open it
+$env:WEBVIEW2_USER_DATA_FOLDER = Join-Path $Dir "webview2-test"
 $p = Start-Process -FilePath (Join-Path $Dir "Devices Tycoon.exe") -WorkingDirectory $Dir -PassThru
 $p.Id
