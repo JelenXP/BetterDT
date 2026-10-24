@@ -9,7 +9,7 @@
   const RAMP_LOW = 0.20, RAMP_HIGH = 0.60, RAMP_MIN = 0.25, GRACE_DAYS = 730;
   const LEVELS = { mild: 0.5, normal: 1, hard: 1.5 };
   // K: customers per unit of the game's market base × era (tuned on a late-game save)
-  const CFG = { K: 1000 };
+  const CFG = { K: 300000 };
   // sales arrays → category codes of the game's ratings (_PLAYER_ARRAYS) and market bases (DEVICE_ARRAYS, game 1.6)
   const TYPES = {
     ArraySmartphones: 'SMARTPHONES', ArrayTablets: 'TABLETS', ArrayLaptops: 'LAPTOPS', ArrayWatches: 'SMARTWATCHES',

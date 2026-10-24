@@ -2,8 +2,10 @@
 //
 // While the game computes the daily sales, the popularity of each of the player's devices is multiplied by
 // F = max(0.2, 1 − strength × (1 − T × S)) (kit.salesMultiplier):
-// T – technology: how many years the device's parts are behind the newest parts on the market (half the worst part,
-//     half the average); no loss up to a year, −20 % at 2 years, −45 % at 4, −80 % at 8 and more.
+// T – technology: how far the market moved on since the device came out: for every kind of part, the newest part on
+//     the market now against the newest one on its release day, in years (half the most moved part, half the
+//     average; a cheap model and the flagship of the same release age alike); no loss up to a year, −20 % at
+//     2 years, −45 % at 4, −80 % at 8 and more.
 // S – saturation: the player's customers who own a model of the category that this one does not beat (a year newer
 //     technology or a rating 2 points higher) do not buy it; S = max(0.3, 1 / (1 + blocked / market size)).
 // strength – grows with the player's share of the category (0.25 below 20 %, full above 60 %; the share is the
@@ -63,12 +65,12 @@ BetterDTKit.mod('living-market', {
     const a = arr(name), out = [];
     if (!a) return out;
     for (let x = 0; x < a.width; x++) for (let y = 0; y < Math.min(3, a.height); y++) {
-      const id = Number(a.getAt(x, y, 0));
-      if (id === -1 || !Number.isFinite(id) || !(num(a.getAt(x, y, REL)) >= 0)) continue;
+      const id = Number(a.getAt(x, y, 0)), rel = num(a.getAt(x, y, REL));
+      if (id === -1 || !Number.isFinite(id) || !(rel >= 0)) continue;
       const lags = [];
       for (const g of parts.get(name) || []) {
-        const p = C.generation(rt, g, x, y, day);
-        if (p) lags.push(M.partLag(p.born, p.newest));
+        const now = C.generation(rt, g, x, y, day), then = now && C.generation(rt, g, x, y, rel);
+        if (then) lags.push(M.partLag(then.newest, now.newest));
       }
       const sold = num(a.getAt(x, y, SOLD));
       out.push({ x, y, lag: M.deviceLag(lags), rating: num(a.getAt(x, y, RATING)), sold, revenue: sold * num(a.getAt(x, y, SELL)) });
@@ -94,7 +96,7 @@ BetterDTKit.mod('living-market', {
     const out = {};
     for (const n of ARRAYS) {
       const type = M.TYPES[n], cat = rivals.filter(r => r.types.includes(type)).map(r => ({ earn: r.earn, types: r.types.length }));
-      out[n] = M.share(player, total > 0 ? snap[n].revenue / total : 0, cat);
+      out[n] = api.testShare !== null ? api.testShare : M.share(player, total > 0 ? snap[n].revenue / total : 0, cat);
     }
     return out;
   }
@@ -120,7 +122,7 @@ BetterDTKit.mod('living-market', {
   }
 
   const api = {
-    last: null, off: false, testLived: null, M, rebuild,
+    last: null, off: false, testLived: null, testShare: null, M, rebuild,
     stop() { kit.fail('stopped by a test'); },
     dispose() { delete globalThis.__bdtLivingMarket; },
   };
