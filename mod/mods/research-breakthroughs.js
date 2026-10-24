@@ -185,7 +185,6 @@ BetterDTKit.mod('research-breakthroughs', {
   }
 
   // ── innovative devices sell more ──────────────────────────────────────────────────────────────────────────────────
-  const POP = 2, sales = [...new Set(Object.values(D.engines).map(e => e.device))].filter(n => n !== 'ArrayGamepads');
   let bonusDay = -1, bonusCache = new Map();
   function bonus(name, x, y) {
     if (api.testBonus) return api.testBonus(name, x, y);
@@ -199,31 +198,8 @@ BetterDTKit.mod('research-breakthroughs', {
     }
     return b;
   }
-  let patched = [];
-  function salesOn() {
-    if (api.salesOff) return;
-    for (const name of sales) {
-      const a = arr(name);
-      if (!a || Object.prototype.hasOwnProperty.call(a, 'getAt')) continue;
-      const get = a.getAt, set = a.setAt, nat = new Map();
-      a.getAt = function (x, y, z) {
-        const v = get.apply(this, arguments);
-        if (z !== POP || !(v > 0)) return v;
-        const b = bonus(name, x, y);
-        if (!b) return v;
-        nat.set(x + ':' + y, v);
-        return v * (1 + b);
-      };
-      a.setAt = function (v, x, y, z) {
-        if (z === POP && nat.has(x + ':' + y)) { v = Math.max(0, v - nat.get(x + ':' + y) * bonus(name, x, y)); nat.delete(x + ':' + y); }
-        return set.apply(this, [v, x, y, z]);
-      };
-      patched.push(a);
-    }
-  }
-  function salesOff() { for (const a of patched) { delete a.getAt; delete a.setAt; } patched = []; }
-  if (!kit.wrapScript(D.salesScript, { before: salesOn, after: salesOff })) kit.warn('daily sales script not found, no sales bonus');
-  kit.onStop(salesOff);
+  kit.salesMultiplier((name, x, y) => (api.salesOff ? 1 : 1 + bonus(name, x, y)));
+  if (!BetterDTKit.salesReady()) kit.warn('daily sales script not found, no sales bonus');
 
   // ── the research investing screen: what a project would give ─────────────────────────────────────────────────────
   // The screen is drawn on the game's canvas (class RESEARCH INVEST). Under its window a panel shows the points a
@@ -313,8 +289,8 @@ BetterDTKit.mod('research-breakthroughs', {
 
   const api = {
     salesOff: false, testBonus: null, lastProject: null, projects: [], get lab() { return lab; }, finish, announce, candidates, extra, bonus,
-    salesOn, salesOffNow: salesOff, projectYield,
-    dispose() { clearInterval(retry); clearInterval(labTimer); labHide(); salesOff(); delete globalThis.__bdtBreakthroughs; },
+    projectYield,
+    dispose() { clearInterval(retry); clearInterval(labTimer); labHide(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
   return () => api.dispose();

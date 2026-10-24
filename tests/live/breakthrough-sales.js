@@ -9,8 +9,8 @@ const reset = () => { keep.forEach((v, z) => a.setAt(v, 0, 0, z)); a.setAt(keep[
 const day = (bonus) => {
   reset();
   B.testBonus = bonus ? (n, x, y) => n === 'ArrayLaptops' && x === 0 && y === 0 ? bonus : 0 : null;
-  if (bonus) B.salesOn();
-  try { tickDeviceSales(gv.DayTotal, rt); } finally { B.salesOffNow(); B.testBonus = null; }
+  BetterDTKit._sales.on();
+  try { tickDeviceSales(gv.DayTotal, rt); } finally { BetterDTKit._sales.off(); B.testBonus = null; }
   return { sold: a.getAt(0, 0, 1) - keep[1], pop: a.getAt(0, 0, 2), own: Object.prototype.hasOwnProperty.call(a, 'getAt') };
 };
 try {
