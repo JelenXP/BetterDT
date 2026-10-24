@@ -63,3 +63,10 @@ test('relevance', () => {
   assert.equal(B.relevance(new Set(['TABLETS']), ['SMARTPHONES', 'TABLETS']), 3);
   assert.equal(B.relevance(new Set(['TV']), ['SMARTPHONES']), 1);
 });
+test('research ahead of the market', () => {
+  const b = [0, 100, 200, 400, 900];
+  assert.equal(B.ahead(b, 3, 250), null);                          // all unlocked parts on the market
+  assert.deepEqual(B.ahead(b, 4, 250), { count: 1, days: 150 });
+  assert.deepEqual(B.ahead(b, 5, 250), { count: 2, days: 150 });
+  assert.equal(B.ahead(b, 9, 1000), null);                         // a level past the list
+});

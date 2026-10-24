@@ -406,6 +406,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   part), fading out within 60 days after the part reached the market; the popularity it keeps is the game's own.
 - Tested in game 1.6: a project with 732 points gave one breakthrough and the dialog; the laptop designer offered
   the future screen resolution; with a 30 % bonus a device sold 1.30× the units with the same popularity left.
+- RESEARCH: a category researched ahead of the parts on the market gets a gold "Innovation" badge on its card (next
+  to the game's "Recommended" one); its tooltip says when the part comes to the market. The badge goes once it is
+  there.
 - A part counts as innovative only when the game itself would not list it yet. The game has the 6K UHD front camera
   (smartphones, tablets, laptops) on the market from 2018 instead of 2055, a typo that made the designer offer one
   camera from the future, which showed as an innovative part; the mod fixes that day in memory while it runs.

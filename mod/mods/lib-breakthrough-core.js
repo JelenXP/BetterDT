@@ -41,8 +41,15 @@
     }
     return out;
   }
+  // a research level ahead of the parts on the market (only breakthroughs get there): the unlocked parts not on the
+  // market yet and the days until the next of them comes out; null when there is none
+  function ahead(borns, level, today) {
+    let count = 0, next = Infinity;
+    for (let i = 0; i < Math.min(level, borns.length); i++) if (borns[i] > today) { count++; next = Math.min(next, borns[i]); }
+    return count ? { count, days: Math.ceil(next - today) } : null;
+  }
   const leadWeight = (lead) => Math.min(Math.max(lead, 0), FULL_AHEAD) / FULL_AHEAD;
   const relevance = (released, creatingOf) => released.size && creatingOf.some(c => released.has(c)) ? 3 : 1;
-  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, dateFixes, target, pick, leadWeight, relevance,
+  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, dateFixes, ahead, target, pick, leadWeight, relevance,
     AHEAD_DAYS, MIN_AHEAD, FULL_AHEAD });
 })();

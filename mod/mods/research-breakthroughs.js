@@ -8,6 +8,9 @@
 // The parts come as the game's own news in the office (the game waits while it is open, Auto continue closes it).
 // The device designer lists a category's parts up to the number of parts on the market; for a category researched
 // ahead that number is raised to the research level, so the future parts are offered.
+// RESEARCH: a category researched ahead of the parts on the market (only breakthroughs get there) gets an
+// "Innovation" badge on its card, like the game's "Recommended" one; its tooltip says when the part comes to the market.
+// The badge goes when the part is on the market.
 // The game's typos in the born days of parts (the 6K UHD front camera came to the market in 2018 instead of 2055, so
 // the designer listed one camera from the future) are fixed in memory while the mod runs.
 // A device with innovative parts (born after its release) sells more: its popularity counts 10 % more per part while
@@ -310,10 +313,64 @@ BetterDTKit.mod('research-breakthroughs', {
   }), 150);
   kit.onStop(() => { clearInterval(labTimer); labHide(); });
 
+  // ── RESEARCH: the Innovation badge on cards researched ahead of the market ───────────────────────────────────────
+  const badgeCss = document.createElement('style');
+  badgeCss.textContent = `
+.bdt-innov { position: absolute; top: calc(var(--rs, 1) * 9px); left: calc(var(--rs, 1) * 10px); z-index: 2;
+  display: flex; align-items: center; height: calc(var(--rs, 1) * 23px); padding: 0 calc(var(--rs, 1) * 9px);
+  border-radius: calc(var(--rs, 1) * 8px); background: linear-gradient(0deg, #b07a10 0%, #d9a21f 55%, #f2c64e 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.38), inset 0 calc(var(--rs, 1) * -2px) 0 rgba(0,0,0,0.14),
+    0 calc(var(--rs, 1) * 2px) calc(var(--rs, 1) * 6px) rgba(80,50,0,0.30);
+  font-family: "SofiaSansExtraCondensed-Bold", "Oswald", sans-serif; font-size: calc(var(--rs, 1) * 16px);
+  letter-spacing: calc(var(--rs, 1) * 0.6px); line-height: 1; white-space: nowrap; color: #fff; cursor: help; }
+#bdt-innov-tip { position: fixed; z-index: 2147483000; pointer-events: none; max-width: 340px; padding: 10px 14px;
+  border-radius: 10px; background: linear-gradient(135deg, rgba(26,34,62,0.95), rgba(14,20,44,0.93));
+  box-shadow: inset 0 0 0 1px rgba(242,198,78,0.55), 0 10px 30px rgba(0,0,0,0.45); color: #fff;
+  font: 15px/1.35 "SofiaSansExtraCondensed-Medium", "Oswald", "Segoe UI", sans-serif; letter-spacing: 0.3px; }`;
+  document.head.appendChild(badgeCss);
+  let tip = null;
+  const tipAt = (e) => { if (tip) { tip.style.left = Math.min(e.clientX + 16, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = Math.min(e.clientY + 18, innerHeight - tip.offsetHeight - 8) + 'px'; } };
+  const tipHide = () => { if (tip) tip.remove(); tip = null; };
+  function aheadOf(id) {
+    const r = D.research[id];
+    if (!r || !D.counters[r.array]) return null;
+    return B.ahead(borns(r.array, r.bornCol), level(id), today());
+  }
+  function badges() {
+    const grid = document.querySelector('#research-grid');
+    if (!grid) { tipHide(); return; }
+    for (const card of grid.querySelectorAll('.rc-card[data-rid]')) {
+      const a = aheadOf(card.dataset.rid), had = card.querySelector(':scope > .bdt-innov');
+      if (!a) { if (had) had.remove(); continue; }
+      const text = (a.count > 1 ? T.t(T.aheadMany, lang()).replace('{n}', a.count) : T.t(T.aheadOne, lang())).replace('{d}', a.days);
+      let b = had;
+      if (!b) {
+        b = Object.assign(document.createElement('div'), { className: 'bdt-innov' });
+        b.addEventListener('mouseenter', (e) => { tipHide(); tip = Object.assign(document.createElement('div'), { id: 'bdt-innov-tip', textContent: b.dataset.tip }); document.body.appendChild(tip); tipAt(e); });
+        b.addEventListener('mousemove', tipAt);
+        b.addEventListener('mouseleave', tipHide);
+        card.appendChild(b);
+      }
+      b.textContent = T.t(T.aheadBadge, lang());
+      b.dataset.tip = text;
+      // next to the game's Recommended badge
+      const rec = card.querySelector(':scope > .rc-rec-badge');
+      b.style.left = rec ? (rec.offsetLeft + rec.offsetWidth + 6) + 'px' : '';
+    }
+  }
+  const badgeTimer = setInterval(kit.guard(badges), 250);
+  function badgesOff() {
+    clearInterval(badgeTimer); tipHide();
+    for (const b of document.querySelectorAll('.bdt-innov')) b.remove();
+    badgeCss.remove();
+  }
+  kit.onStop(badgesOff);
+
   const api = {
     salesOff: false, testBonus: null, lastProject: null, projects: [], get lab() { return lab; }, finish, announce, candidates, extra, bonus,
     projectYield, fixed,
-    dispose() { unfixDates(); clearInterval(retry); clearInterval(labTimer); labHide(); delete globalThis.__bdtBreakthroughs; },
+    aheadOf,
+    dispose() { unfixDates(); badgesOff(); clearInterval(retry); clearInterval(labTimer); labHide(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
   return () => api.dispose();
