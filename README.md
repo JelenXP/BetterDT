@@ -52,6 +52,8 @@ game file and does not touch your saves.
 - **Research breakthroughs:** a finished research lab project can research parts before the market has them (up to
   a year early). The device designer then offers the future part, and a device with innovative parts gets better
   reviews and sells more (+10 % per part while the part is new).
+- **Living market:** old and much-sold devices sell less, most of all in the categories you dominate; new models
+  with current parts win the customers back. Gentle in the first two years and for small companies.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -406,6 +408,20 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   the future screen resolution; with a 30 % bonus a device sold 1.30× the units with the same popularity left.
 - Turned off: no new breakthroughs and no sales bonus; levels already researched stay, but the designer offers only
   the parts on the market again.
+
+### `living-market.js`: living market
+- **Technology:** the further the market has moved on since a device came out, the less it sells: for every kind of
+  part, the newest part on the market today against the newest one on the release day (half the most moved part,
+  half the average). Nothing up to a year, −20 % at two years, −45 % at four, −80 % at eight and more.
+- **Saturation:** customers who own one of your devices of the same category buy a new one only if it is a year
+  newer in technology or rated 2 points higher. A model that sold a lot runs out of buyers; a better successor
+  opens the market again.
+- **Who it hits:** the effect grows with your share of the category (a quarter below 20 %, full above 60 %; your
+  revenue split by category against the rivals' revenue) and is at most a quarter in the first two years. A device
+  never drops below 20 % of its sales. Settings: mild, normal (default), hard.
+- Computed from the save once a game day; nothing is saved, so turning it off restores the game's own sales.
+- Tested in game 1.6 on a late save: with a dominated category a four-year-old laptop sold 0.44× the units, very old
+  models 0.2×; with the save's small market share 0.77× to 0.89×. The daily sales took no measurable extra time.
 
 ### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
 - **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in
