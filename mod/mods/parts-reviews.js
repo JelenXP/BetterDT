@@ -78,7 +78,8 @@ BetterDTKit.mod('parts-reviews', {
     if (a) for (let x = 0; x < a.width; x++) {
       const start = num(a.getAt(x, f.start));
       if (start > day || a.getAt(x, f.id) === '') continue;
-      list.push({ id: num(a.getAt(x, f.id)), version: String(a.getAt(x, f.version)), start, end: num(a.getAt(x, f.end)) });
+      list.push({ id: num(a.getAt(x, f.id)), row: num(a.getAt(x, f.row)), version: String(a.getAt(x, f.version)),
+        name: String(a.getAt(x, f.name)), start, end: num(a.getAt(x, f.end)) });
     }
     return list;
   }
@@ -114,10 +115,11 @@ BetterDTKit.mod('parts-reviews', {
       return M.osRating({ base: M.ownBase(v.stars), versionDay: known ? Math.min(v.release, day) : newest, newestDay: newest,
         supported: last ? M.ownSupported(last.release, day) : true, own: true, private: v.private });
     }
-    const id = num(gv.OperationSystemID);
-    const row = list.find(o => o.id === id && o.version === version) || list.filter(o => o.id === id).pop();
+    // OperationSystemID is the id of the chosen entry (a version), not of its family
+    const row = list.find(o => o.row === num(gv.OperationSystemID) && o.version === version)
+      || list.find(o => o.version === version && o.name.startsWith(name));
     if (!row) return null;
-    const price = licencePrice(id), paid = M.paidBase(price, [...new Set(list.map(o => o.id))].map(licencePrice));
+    const id = row.id, price = licencePrice(id), paid = M.paidBase(price, [...new Set(list.map(o => o.id))].map(licencePrice));
     const base = paid ?? M.freeBase(seedOf() + ':' + e.os.family + ':' + id);
     return M.osRating({ base, versionDay: row.start, newestDay: newest, supported: !(row.end > 0 && row.end < day), own: false, private: false });
   }
@@ -162,7 +164,33 @@ BetterDTKit.mod('parts-reviews', {
   for (const [id, d] of Object.entries(defs)) X.categories.set(id, d);
   const unregister = () => { for (const [id, d] of Object.entries(defs)) if (X.categories.get(id) === d) X.categories.delete(id); };
 
-  // Task 7 adds the OS rating in the designer here
+  // ── the OS page of the designer: "★ 7.4 / 10" right of the chosen OS name ──
+  const label = kit.ui.el('div', { className: 'bdt-os-rating', style: { position: 'fixed', display: 'none', pointerEvents: 'none',
+    color: '#f5c518', fontFamily: kit.ui.font, whiteSpace: 'nowrap', textShadow: '0 0 .6vh #000', transform: 'translateY(-50%)', zIndex: 1 } });
+  const byUid = (uid) => { try { return rt.getInstanceByUid(uid); } catch { return null; } };
+  let shownKey = '';
+  kit.on('tick', () => {
+    let fn = null, inst = null;
+    for (const [f, uid] of Object.entries(P.uids.os)) { const i = byUid(uid); if (i && i.isVisible && i.layer && i.layer.isVisible) { fn = f; inst = i; break; } }
+    // only while the OS name text is on screen and shows the chosen OS
+    if (!inst || !String(gv.OperationSystem_Text) || !String(inst.text).includes(String(gv.OperationSystem_Text))) {
+      label.style.display = 'none';
+      return;
+    }
+    const key = [fn, gv.OperationSystemID, gv.OperationSystem_Text, gv.OperationSystemVersion_Text, today(), lang()].join(':');
+    if (key !== shownKey) {
+      shownKey = key;
+      const r = osNow(fn, today());
+      label.textContent = r === null ? '' : '★ ' + M.fmt1(r, lang()) + ' / 10';
+    }
+    // right of the selector box the name text is centred in (the box reaches about 60 px past the text box)
+    const b = inst.getBoundingBox(), L = inst.layer;
+    const [x, y] = L.layerToCssPx(b.right + 80, (b.top + b.bottom) / 2), k = (L.layerToCssPx(1000, 0)[0] - L.layerToCssPx(0, 0)[0]) / 1000;
+    label.style.left = x + 'px';
+    label.style.top = y + 'px';
+    label.style.fontSize = Math.max(8, (inst.fontSize || 26) * k) + 'px';
+    label.style.display = label.textContent ? '' : 'none';
+  });
 
   const api = { osOf, chipOf, osNow, withModel, ratings, dispose() { unregister(); memo.clear(); delete globalThis.__bdtPartsReviews; } };
   globalThis.__bdtPartsReviews = api;

@@ -40,7 +40,7 @@ test('own chips: cost arrays and how the designer finds them', () => {
   assert.deepEqual(l.cpu.find, { chips: 'ArrayMyCPU_Laptops', series: 'ArrayMyCPU_LaptopsSeries', cursors: ['ProcessorSeries', 'ProcessorModel'], idVar: 'ProcessorSeriesID' });
 });
 test('OS lists: the fields of each family', () => {
-  for (const o of Object.values(P.osArrays)) for (const k of ['id', 'version', 'start', 'end', 'name']) assert.equal(typeof o.fields[k], 'number');
+  for (const o of Object.values(P.osArrays)) for (const k of ['id', 'version', 'start', 'end', 'row', 'name']) assert.equal(typeof o.fields[k], 'number');
   assert.equal(P.osArrays.laptop.fields.name, 7);
   assert.equal(P.ownOs.privateValue, 'PRIVATE');
 });

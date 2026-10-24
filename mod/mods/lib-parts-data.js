@@ -78,8 +78,8 @@
     },
   };
   // the OS lists of the market (x = entry, fields on y): family id (also the licence key), version, release day, last
-  // day of support, name; own: the player's OS of that family (x = released version, the newest first)
-  const OS = (name) => ({ id: 0, version: 1, start: 2, end: 3, name });
+  // day of support, the entry's id (what OperationSystemID holds), name; own: the player's OS of that family (x = released version, the newest first)
+  const OS = (name) => ({ id: 0, version: 1, start: 2, end: 3, row: 4, name });
   const osArrays = {
     mobile: { array: 'ArrayOperationSystem_Smartphone', own: 'ArrayMyOS_SmartphonesEarnings', fields: OS(5) },
     laptop: { array: 'ArrayOperationSystem_Laptop', own: 'ArrayMyOS_LaptopsEarnings', fields: OS(7) },

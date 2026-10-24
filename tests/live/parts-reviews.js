@@ -22,7 +22,7 @@ for (const [fn, e] of Object.entries(P.engines)) {
     try {
       for (let x = 0; x < a.width; x++) {
         if (Number(a.getAt(x, o.fields.start)) > gv.DayTotal) continue;
-        gv.OperationSystemID = a.getAt(x, o.fields.id);
+        gv.OperationSystemID = a.getAt(x, o.fields.row);
         gv.OperationSystem_Text = a.getAt(x, o.fields.name); gv.OperationSystemVersion_Text = a.getAt(x, o.fields.version);
         rows.push([String(a.getAt(x, o.fields.name)), String(a.getAt(x, o.fields.version)), A.osOf(fn, 'editor')]);
       }
