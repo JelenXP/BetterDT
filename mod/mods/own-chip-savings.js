@@ -67,14 +67,15 @@ BetterDTKit.mod('own-chip-savings', {
     return t;
   }
   // the saving of the chips the designer variables hold now (null without an own chip): the device's production cost
-  // with the own chips (own) and with them at their market price (market), and the cost of the own chips (chipOwn)
+  // with the own chips (own) and with them at their market price (market), the cost of the own chips (chipOwn) and
+  // which of them are own (cpu, gpu)
   function savingNow(fn) {
     const type = R.engines[fn] && R.engines[fn].costType;
     if (!P.engines[fn] || !P.engines[fn].chip || !P.ownChipEarnings[type]) return null;
     const own = M.ownChips(rt, fn);
     if (!own.cpu && !own.gpu) return null;
     const o = cost(type), m = marketCost(type);
-    return { own: o, market: m, saving: Math.max(0, m - o), chipOwn: recordedOwnCost(fn, own) };
+    return { own: o, market: m, saving: Math.max(0, m - o), chipOwn: recordedOwnCost(fn, own), cpu: !!own.cpu, gpu: !!own.gpu };
   }
   const cache = new Map();   // fn:x:y:release:cost -> saving (a model's chips and release day do not change)
   function savingOf(fn, x, y) {
@@ -106,42 +107,42 @@ BetterDTKit.mod('own-chip-savings', {
 
   // ── the designer: the saving on the chip page, how much of it the price can take on the price page ──
   const TXT = {
-    chip: OCS_L('Own chip: production ${own}, market price ${market} → saving ${saving} per unit',
-      'Собственный чип: производство ${own}, рыночная цена ${market} → экономия ${saving} за штуку',
-      'Eigener Chip: Herstellung ${own}, Marktpreis ${market} → Ersparnis ${saving} pro Stück',
-      'Puce maison : production ${own}, prix du marché ${market} → économie de ${saving} par unité',
-      'Chip proprio: produzione ${own}, prezzo di mercato ${market} → risparmio di ${saving} per unità',
-      'Chip propio: producción ${own}, precio de mercado ${market} → ahorro de ${saving} por unidad',
-      'अपनी चिप: उत्पादन ${own}, बाज़ार मूल्य ${market} → प्रति यूनिट ${saving} की बचत',
-      'Kendi çipin: üretim ${own}, piyasa fiyatı ${market} → birim başına ${saving} tasarruf',
-      'Chip próprio: produção ${own}, preço de mercado ${market} → economia de ${saving} por unidade',
-      'Власний чип: виробництво ${own}, ринкова ціна ${market} → економія ${saving} на штуці',
-      'Chip sendiri: produksi ${own}, harga pasar ${market} → hemat ${saving} per unit',
-      'Własny układ: produkcja ${own}, cena rynkowa ${market} → oszczędność ${saving} na sztuce',
-      '自研芯片：生产成本 ${own}，市场价 ${market} → 每台节省 ${saving}',
-      '자체 칩: 생산 ${own}, 시장가 ${market} → 대당 ${saving} 절감',
-      '自社チップ：製造 ${own}、市場価格 ${market} → 1台あたり ${saving} の節約'),
-    price: OCS_L('Your own chip saves ${saving} per unit.',
-      'Собственный чип экономит ${saving} на штуке.',
-      'Dein eigener Chip spart ${saving} pro Stück.',
-      'Votre puce maison économise ${saving} par unité.',
-      'Il tuo chip fa risparmiare ${saving} per unità.',
-      'Tu chip propio ahorra ${saving} por unidad.',
-      'आपकी अपनी चिप प्रति यूनिट ${saving} बचाती है।',
-      'Kendi çipin birim başına ${saving} tasarruf sağlıyor.',
-      'Seu chip próprio economiza ${saving} por unidade.',
-      'Власний чип заощаджує ${saving} на штуці.',
-      'Chip buatanmu menghemat ${saving} per unit.',
-      'Własny układ oszczędza ${saving} na sztuce.',
-      '自研芯片每台节省 ${saving}。',
-      '자체 칩으로 대당 ${saving}를 절감합니다.',
-      '自社チップで1台あたり ${saving} 節約できます。'),
-    // the badge: how much more the price can be thanks to the chip
-    badge: OCS_L('more you can charge thanks to your chip', 'можно поднять цену благодаря своему чипу', 'mehr Preis dank eigenem Chip',
-      'de prix en plus grâce à votre puce', 'di prezzo in più grazie al tuo chip', 'más de precio gracias a tu chip',
-      'आपकी चिप की बदौलत कीमत इतनी बढ़ा सकते हैं', 'çipin sayesinde fiyata eklenebilir', 'a mais no preço graças ao seu chip',
-      'можна підняти ціну завдяки власному чипу', 'tambahan harga berkat chip buatanmu', 'więcej w cenie dzięki własnemu układowi',
-      '得益于自研芯片可多定的价格', '자체 칩 덕분에 올릴 수 있는 가격', '自社チップのおかげで上乗せできる価格'),
+    chip: OCS_L('Own {part}: production ${own}, market price ${market} → saving ${saving} per unit',
+      'Собственный {part}: производство ${own}, рыночная цена ${market} → экономия ${saving} за штуку',
+      'Eigene {part}: Herstellung ${own}, Marktpreis ${market} → Ersparnis ${saving} pro Stück',
+      '{part} maison : production ${own}, prix du marché ${market} → économie de ${saving} par unité',
+      '{part} propria: produzione ${own}, prezzo di mercato ${market} → risparmio di ${saving} per unità',
+      '{part} propia: producción ${own}, precio de mercado ${market} → ahorro de ${saving} por unidad',
+      'अपना {part}: उत्पादन ${own}, बाज़ार मूल्य ${market} → प्रति यूनिट ${saving} की बचत',
+      'Kendi {part} tasarımın: üretim ${own}, piyasa fiyatı ${market} → birim başına ${saving} tasarruf',
+      '{part} própria: produção ${own}, preço de mercado ${market} → economia de ${saving} por unidade',
+      'Власний {part}: виробництво ${own}, ринкова ціна ${market} → економія ${saving} на штуці',
+      '{part} buatanmu: produksi ${own}, harga pasar ${market} → hemat ${saving} per unit',
+      'Własny {part}: produkcja ${own}, cena rynkowa ${market} → oszczędność ${saving} na sztuce',
+      '自研 {part}：生产成本 ${own}，市场价 ${market} → 每台节省 ${saving}',
+      '자체 {part}: 생산 ${own}, 시장가 ${market} → 대당 ${saving} 절감',
+      '自社 {part}：製造 ${own}、市場価格 ${market} → 1台あたり ${saving} の節約'),
+    price: OCS_L('Your own {part} saves ${saving} per unit.',
+      'Собственный {part} экономит ${saving} на штуке.',
+      'Deine eigene {part} spart ${saving} pro Stück.',
+      'Votre {part} maison économise ${saving} par unité.',
+      'La tua {part} fa risparmiare ${saving} per unità.',
+      'Tu {part} propia ahorra ${saving} por unidad.',
+      'आपका अपना {part} प्रति यूनिट ${saving} बचाता है।',
+      'Kendi {part} tasarımın birim başına ${saving} tasarruf sağlıyor.',
+      'Sua {part} própria economiza ${saving} por unidade.',
+      'Власний {part} заощаджує ${saving} на штуці.',
+      '{part} buatanmu menghemat ${saving} per unit.',
+      'Własny {part} oszczędza ${saving} na sztuce.',
+      '自研 {part} 每台节省 ${saving}。',
+      '자체 {part}로 대당 ${saving}를 절감합니다.',
+      '自社 {part} で1台あたり ${saving} 節約できます。'),
+    // the badge: how much more the price can be thanks to the own CPU or GPU
+    badge: OCS_L('more you can charge thanks to your {part}', 'можно поднять цену благодаря своему {part}', 'mehr Preis dank eigener {part}',
+      'de prix en plus grâce à votre {part}', 'di prezzo in più grazie alla tua {part}', 'más de precio gracias a tu {part}',
+      'आपके {part} की बदौलत कीमत इतनी बढ़ा सकते हैं', '{part} tasarımın sayesinde fiyata eklenebilir', 'a mais no preço graças à sua {part}',
+      'можна підняти ціну завдяки власному {part}', 'tambahan harga berkat {part} buatanmu', 'więcej w cenie dzięki własnemu {part}',
+      '得益于自研 {part} 可多定的价格', '자체 {part} 덕분에 올릴 수 있는 가격', '自社 {part} のおかげで上乗せできる価格'),
   };
   const money = (v) => Math.round(v).toLocaleString('en-US');
   const say = (t, vars) => { let s = t[Object.keys(t)[lang()]] || t.en; for (const k in vars) s = s.replace('{' + k + '}', vars[k]); return s; };
@@ -186,14 +187,15 @@ BetterDTKit.mod('own-chip-savings', {
     const s = inst ? savingNowCached(fn) : null;
     if (!s || !(s.saving > 0)) { note.style.display = 'none'; badge.style.display = 'none'; return; }
     const room = kind === 'price' ? Math.round(roomNow(fn, s)) : 0;
-    const key = [kind, lang(), Math.round(s.saving), Math.round(s.chipOwn), share(), room].join(':');
+    const part = s.cpu && s.gpu ? 'CPU + GPU' : s.gpu ? 'GPU' : 'CPU';
+    const key = [kind, lang(), part, Math.round(s.saving), Math.round(s.chipOwn), share(), room].join(':');
     if (key !== shownKey) {
       shownKey = key;
       note.textContent = kind === 'chip'
-        ? say(TXT.chip, { own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) })
-        : say(TXT.price, { saving: money(s.saving) });
+        ? say(TXT.chip, { part, own: money(s.chipOwn), market: money(s.chipOwn + s.saving), saving: money(s.saving) })
+        : say(TXT.price, { part, saving: money(s.saving) });
       badgeTop.textContent = '≈ +$' + money(room);
-      badgeSub.textContent = say(TXT.badge, {});
+      badgeSub.textContent = say(TXT.badge, { part });
     }
     // the chip page: right of the selector box the series name is centred in (it reaches about 60 px past the text
     // box), in the free column before the device picture; the price page: centred in the panel between the device

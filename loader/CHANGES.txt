@@ -1,7 +1,7 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
-0.4.0 Parts in reviews: reviewers rate the operating system and the processor, own OS and chips get a bonus
-0.4.0 Own chip savings: part of what an own chip saves can go into the price without hurting sales or reviews
+0.4.0 Parts in reviews: reviewers rate the operating system, the CPU and a laptop GPU, own OS, CPU and GPU get a bonus
+0.4.0 Own CPU/GPU savings: part of what an own CPU or GPU saves can go into the price without hurting sales or reviews
 0.4.0 Mods by others: a mod can be a folder with mod.json; its title, description and options show in Settings > BetterDT
 0.4.0 Research lab and investing: a search field finds a project or a company, the long lists get a scroll bar
 0.4.0 Research: the top bar is one row of the same height on every tab, the search field narrows to make room
