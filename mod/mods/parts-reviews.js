@@ -42,10 +42,16 @@ BetterDTKit.mod('parts-reviews', {
     }
     return list;
   }
-  function licencePrice(id) {
+  function licence(id) {
     const a = arr(P.license.array), f = P.license.fields;
-    if (a) for (let x = 0; x < a.width; x++) if (num(a.getAt(x, f.id)) === id) return num(a.getAt(x, f.price));
-    return 0;
+    if (a) for (let x = 0; x < a.width; x++) if (num(a.getAt(x, f.id)) === id) return { price: num(a.getAt(x, f.price)), until: num(a.getAt(x, f.expiry)) };
+    return { price: 0, until: 0 };
+  }
+  // a third-party OS version of the market
+  function rateEntry(family, row, list, newest, day) {
+    const paid = M.paidBase(licence(row.id).price, [...new Set(list.map(o => o.id))].map(id => licence(id).price));
+    const base = paid ?? M.freeBase(seedOf() + ':' + family + ':' + row.id);
+    return M.osRating({ base, versionDay: row.start, newestDay: newest, supported: !(row.end > 0 && row.end < day), own: false, private: false });
   }
   // the player's OS of a family: its released versions (the newest first) with rating ★, licence and release day
   function ownOs(family) {
@@ -59,8 +65,9 @@ BetterDTKit.mod('parts-reviews', {
     return list;
   }
   // the rating of the OS the designer variables hold now (an own OS is known by its name, its version by the name of
-  // the version)
-  function osNow(fn, day) {
+  // the version); best: { now, best } with the best version of the family too (the designer offers only the oldest
+  // version of a paid OS until its licence is bought)
+  function osNow(fn, day, best) {
     const e = P.engines[fn];
     if (!e || !e.os) return null;
     const list = market(e.os.family, day), own = ownOs(e.os.family);
@@ -78,9 +85,10 @@ BetterDTKit.mod('parts-reviews', {
     const row = list.find(o => o.row === num(gv.OperationSystemID) && o.version === version)
       || list.find(o => o.version === version && o.name.startsWith(name));
     if (!row) return null;
-    const id = row.id, price = licencePrice(id), paid = M.paidBase(price, [...new Set(list.map(o => o.id))].map(licencePrice));
-    const base = paid ?? M.freeBase(seedOf() + ':' + e.os.family + ':' + id);
-    return M.osRating({ base, versionDay: row.start, newestDay: newest, supported: !(row.end > 0 && row.end < day), own: false, private: false });
+    const r = rateEntry(e.os.family, row, list, newest, day), lic = licence(row.id);
+    if (!best) return r;
+    const top = lic.price > 0 && lic.until < day ? Math.max(r, ...list.filter(o => o.id === row.id).map(o => rateEntry(e.os.family, o, list, newest, day))) : r;
+    return { now: r, best: top };
   }
   const osOf = (fn, src) => (src === 'editor' ? osNow(fn, today()) : withModel(fn, src.x, src.y, () => osNow(fn, today())));
 
@@ -139,8 +147,10 @@ BetterDTKit.mod('parts-reviews', {
     const key = [fn, gv.OperationSystemID, gv.OperationSystem_Text, gv.OperationSystemVersion_Text, today(), lang()].join(':');
     if (key !== shownKey) {
       shownKey = key;
-      const r = osNow(fn, today());
-      label.textContent = r === null ? '' : '★ ' + M.fmt1(r, lang()) + ' / 10';
+      // a paid OS without its licence: from the offered version to the best one the licence unlocks
+      const r = osNow(fn, today(), true), L = lang();
+      label.textContent = r === null ? '' : typeof r === 'number' ? '★ ' + M.fmt1(r, L) + ' / 10'
+        : '★ ' + M.fmt1(r.now, L) + (r.best > r.now ? '–' + M.fmt1(r.best, L) : '') + ' / 10';
     }
     // right of the selector box the name text is centred in (the box reaches about 60 px past the text box)
     const b = inst.getBoundingBox(), L = inst.layer;
