@@ -7,6 +7,7 @@
 0.4.0 Fair reviews: the rating comes from all parts of a device, the two best and two worst are shown
 0.4.0 Research breakthroughs: lab projects can research parts early, innovative devices sell more
 0.4.0 Living market: old and much-sold devices sell less in categories you dominate, new models win buyers back
+0.4.0 Research breakthroughs: devices no longer show a false innovative part (a front camera from the future)
 0.3.9 New game: country cards show tax, research and effects; sort the countries, the best three get a star
 0.3.9 Country: low cost of production = lower salaries, more international trade = more sales
 0.3.9 New game: "Custom start" starts in any month and year, research and rivals match the date

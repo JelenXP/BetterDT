@@ -18,6 +18,15 @@ test('attempts are sequential', () => {
   assert.equal(B.attempts(5000, () => seq[i++]), 1);
 });
 test('dated count', () => assert.equal(B.datedCount([0, 10, 20, 400, 900], 20), 3));
+test('date typos: a born day that copies the row value and breaks the order', () => {
+  // the front camera list: 3520 born 15930, 3840 born 3840 (typo), 4000 born 18349
+  assert.deepEqual(B.dateFixes([3400, 3520, 3840], [14337, 15930, 3840]), []);   // the last row: no day to fit between
+  assert.deepEqual(B.dateFixes([3520, 3840, 4000], [15930, 3840, 18349]), [{ row: 1, born: 17140 }]);
+  // out of order but not a copy (USB 3.2 Type-C of the gamepads): left as it is
+  assert.deepEqual(B.dateFixes(['USB 3.2 Type-B', 'USB 3.2 Type-C', 'USB 4 Type-C'], [3815, 3596, 4217]), []);
+});
+// like the game: every row born by today counts, also one out of order
+test('dated count of an unsorted list', () => assert.equal(B.datedCount([0, 900, 20, 400], 20), 2));
 const borns = [0, 100, 200, 300, 400, 500, 600, 700];
 test('target at the newest level', () => {
   assert.deepEqual(B.target(4, borns, 350, 50), { row: 4, level: 5 });   // A = 4, row 4 born 400 ≤ 810

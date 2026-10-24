@@ -94,8 +94,10 @@
     const newest = n > 0 ? num(c.a.getAt(n - 1, c.bornCol)) : 0;
     return { gens: n - 1 - row, born: num(c.a.getAt(row, c.bornCol)), newest, array: c.array };
   }
-  // the innovative parts of a device: every distinct generational part born after `day`, from a list the designer
-  // limits by date (D.counters); some lists offer every researched part whatever its date, those are ordinary research
+  // the innovative parts of a device: every distinct generational part born after `day` that the game itself would not
+  // list yet (a row beyond the parts it counts on the market; a list with dates out of order can offer a future part),
+  // from a list the designer limits by date (D.counters); some lists offer every researched part whatever its date,
+  // those are ordinary research
   function partsOf(rt, D, designArray, x, y, day) {
     const borns = [], seen = new Set();
     for (const e of Object.values(D.engines)) {
@@ -106,7 +108,7 @@
         if (seen.has(k)) continue;
         seen.add(k);
         const g = generation(rt, s.gen, x, y, day);
-        if (g && g.born > day && D.counters[g.array]) borns.push(g.born);
+        if (g && g.gens < 0 && g.born > day && D.counters[g.array]) borns.push(g.born);
       }
     }
     return { count: borns.length, borns };

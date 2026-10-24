@@ -7,7 +7,8 @@
   const MIN_AHEAD = 10, FULL_AHEAD = 190;
   const chance = (Y, k) => Y > 0 ? Y ** EXP / (Y ** EXP + k ** EXP) : 0;
   function attempts(Y, rng) { let n = 0; for (const k of K) { if (rng() < chance(Y, k)) n++; else break; } return n; }
-  function datedCount(borns, today) { let n = 0; while (n < borns.length && borns[n] <= today) n++; return n; }
+  // the parts on the market as the game counts them for the designer: every row born by today (also one out of order)
+  const datedCount = (borns, today) => borns.filter(b => b <= today).length;
   // L = the player's level (unlocked rows); the new level unlocks one row ahead of what the game offers today
   function target(L, borns, today, cost) {
     const A = datedCount(borns, today);
@@ -30,8 +31,18 @@
     }
     return out;
   }
+  // the game's typos in born days: a row whose born day is a copy of its own value (column 0) and earlier than the row
+  // before it (the 6K UHD front camera: 3840) gets the day halfway between its neighbours
+  function dateFixes(values, borns) {
+    const out = [];
+    for (let i = 1; i < borns.length - 1; i++) {
+      const prev = borns[i - 1], next = borns[i + 1];
+      if (borns[i] < prev && next > prev && String(values[i]) === String(borns[i])) out.push({ row: i, born: Math.round((prev + next) / 2) });
+    }
+    return out;
+  }
   const leadWeight = (lead) => Math.min(Math.max(lead, 0), FULL_AHEAD) / FULL_AHEAD;
   const relevance = (released, creatingOf) => released.size && creatingOf.some(c => released.has(c)) ? 3 : 1;
-  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, target, pick, leadWeight, relevance,
+  globalThis.BDTBreakthroughCore = Object.freeze({ K, chance, attempts, datedCount, dateFixes, target, pick, leadWeight, relevance,
     AHEAD_DAYS, MIN_AHEAD, FULL_AHEAD });
 })();

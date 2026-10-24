@@ -8,6 +8,8 @@
 // The parts come as the game's own news in the office (the game waits while it is open, Auto continue closes it).
 // The device designer lists a category's parts up to the number of parts on the market; for a category researched
 // ahead that number is raised to the research level, so the future parts are offered.
+// The game's typos in the born days of parts (the 6K UHD front camera came to the market in 2018 instead of 2055, so
+// the designer listed one camera from the future) are fixed in memory while the mod runs.
 // A device with innovative parts (born after its release) sells more: its popularity counts 10 % more per part while
 // the sales are computed, fading out within 60 days after the part reached the market. Fair reviews also scores
 // innovation (fair-reviews.js).
@@ -167,6 +169,26 @@ BetterDTKit.mod('research-breakthroughs', {
     },
   });
 
+  // ── the game's typos in born days, fixed in memory (restored when the mod stops) ──────────────────────────────────
+  const fixed = [];
+  function fixDates(array) {
+    const r = D.research[(idsOf[array] || [])[0]], a = arr(array);
+    if (!r || !a || r.bornCol === 0) return;
+    const values = [], b = [];
+    for (let i = 0; i < a.width; i++) { values.push(a.getAt(i, 0)); b.push(num(a.getAt(i, r.bornCol))); }
+    for (const f of B.dateFixes(values, b)) {
+      fixed.push({ a, row: f.row, col: r.bornCol, was: a.getAt(f.row, r.bornCol), born: f.born });
+      a.setAt(f.born, f.row, r.bornCol);
+      bornCache.delete(array);
+    }
+  }
+  // the arrays fill after the mod starts and a loaded save could bring them back: again every game day (sales)
+  const fixAll = () => { for (const array of Object.keys(D.counters)) fixDates(array); };
+  fixAll();
+  function unfixDates() {
+    for (const f of fixed.splice(0)) if (num(f.a.getAt(f.row, f.col)) === f.born) f.a.setAt(f.was, f.row, f.col);
+  }
+
   // ── the designer lists the parts up to the research level ─────────────────────────────────────────────────────────
   // the list counts the parts on the market into ArrayFunctionsOpened, starting from the value set here
   function extra(array) {
@@ -181,14 +203,15 @@ BetterDTKit.mod('research-breakthroughs', {
     return n - A;
   }
   for (const [array, sids] of Object.entries(D.counters)) {
-    for (const sid of sids) kit.wrapAction(sid, { after() { const n = extra(array); if (n > 0) gv.ArrayFunctionsOpened = n; } });
+    // before the list counts its parts (a loaded save could bring the game's arrays back)
+    for (const sid of sids) kit.wrapAction(sid, { after() { fixDates(array); const n = extra(array); if (n > 0) gv.ArrayFunctionsOpened = n; } });
   }
 
   // ── innovative devices sell more ──────────────────────────────────────────────────────────────────────────────────
   let bonusDay = -1, bonusCache = new Map();
   function bonus(name, x, y) {
     if (api.testBonus) return api.testBonus(name, x, y);
-    if (bonusDay !== today()) { bonusDay = today(); bonusCache = new Map(); }
+    if (bonusDay !== today()) { bonusDay = today(); bonusCache = new Map(); fixAll(); }
     const k = name + ':' + x + ':' + y;
     let b = bonusCache.get(k);
     if (b === undefined) {
@@ -289,8 +312,8 @@ BetterDTKit.mod('research-breakthroughs', {
 
   const api = {
     salesOff: false, testBonus: null, lastProject: null, projects: [], get lab() { return lab; }, finish, announce, candidates, extra, bonus,
-    projectYield,
-    dispose() { clearInterval(retry); clearInterval(labTimer); labHide(); delete globalThis.__bdtBreakthroughs; },
+    projectYield, fixed,
+    dispose() { unfixDates(); clearInterval(retry); clearInterval(labTimer); labHide(); delete globalThis.__bdtBreakthroughs; },
   };
   globalThis.__bdtBreakthroughs = api;
   return () => api.dispose();
