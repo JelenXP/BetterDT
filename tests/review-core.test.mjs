@@ -80,3 +80,11 @@ test('innovative parts: only from lists the designer limits by date', () => {
   assert.deepEqual(C.partsOf(rt, D, 'Dev', 0, 0, 500), { count: 1, borns: [900] });
   assert.equal(C.generation(rt, gen('Free', 11), 0, 0, 500).gens, -1);
 });
+test('generation: born day of the newest part on the market', () => {
+  const comp = { width: 4, getAt: (x, y) => (y === 1 ? [100, 200, 300, 400][x] : 0) };
+  const dev = { getAt: () => 1 };   // the device uses row 1 (born 200)
+  const rt = { objects: { Comp: { getFirstInstance: () => comp }, Dev: { getFirstInstance: () => dev } } };
+  const gen = { arrays: [{ array: 'Comp', bornCol: 1 }], src: 'Dev', model: true, col: 9 };
+  const g = C.generation(rt, gen, 0, 0, 350);
+  assert.deepEqual({ gens: g.gens, born: g.born, newest: g.newest }, { gens: 1, born: 200, newest: 300 });
+});
