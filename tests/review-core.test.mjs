@@ -95,3 +95,15 @@ test('generation: born day of the newest part on the market', () => {
   const g = C.generation(rt, gen, 0, 0, 350);
   assert.deepEqual({ gens: g.gens, born: g.born, newest: g.newest }, { gens: 1, born: 200, newest: 300 });
 });
+test('extra rules: replaced categories go, moved ones change category', () => {
+  const a = [{ a: 1, cat: 'cpu', score: 9 }, { a: 2, cat: 'display', score: 5 }, { a: 3, cat: 'cpu', score: 8 }];
+  assert.deepEqual(C.extraRules(a, [{ replaces: ['cpu'] }]).map(x => x.a), [2]);
+  const moved = C.extraRules(a, [{ moves: { cpu: 'memory' } }]);
+  assert.deepEqual(moved.map(x => x.cat), ['memory', 'display', 'memory']);
+  assert.equal(a[0].cat, 'cpu');
+  assert.deepEqual(C.extraRules(a, [{}]), a);
+});
+test('the extension registry exists', () => {
+  assert.ok(globalThis.BDTReviewExt.categories instanceof Map);
+  assert.ok(globalThis.BDTReviewExt.cost instanceof Set);
+});

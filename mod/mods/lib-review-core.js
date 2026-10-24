@@ -1,5 +1,6 @@
 // Fair reviews – the math, without the game: price class, generations, price, value for money, innovation,
-// the shown categories, the final rating, the innovation sales bonus and the innovative parts of a device. Used by fair-reviews.js and
+// the shown categories, the final rating, the innovation sales bonus, the innovative parts of a device and the rules
+// and registry of the categories other mods add. Used by fair-reviews.js and
 // research-breakthroughs.js, and by the node tests (tests/review-core.test.mjs).
 (() => {
   const round1 = (v) => Math.round(v * 10) / 10;
@@ -114,9 +115,25 @@
     return { count: borns.length, borns };
   }
 
+  // other mods' rules for the game's aspects of a type: a replaced category is left out, a moved one counts in
+  // another category (parts-reviews.js: the phones' CPU load review, the laptops' storage reviews)
+  function extraRules(aspects, rules) {
+    let out = aspects;
+    for (const r of rules) {
+      if (r.replaces) out = out.filter(x => !r.replaces.includes(x.cat));
+      if (r.moves) out = out.map(x => (r.moves[x.cat] ? { ...x, cat: r.moves[x.cat] } : x));
+    }
+    return out;
+  }
+  // categories and production cost hooks other mods add to the fair reviews while they run:
+  // categories: id -> { engines: { reviewFn: { replaces, moves } }, score(fn, x, y) -> 0–10 or null,
+  //                     text(score, lang) -> [review, summary] }
+  // cost: hooks (fn, y, cost) -> the cost the price review judges the markup against, or undefined
+  globalThis.BDTReviewExt = globalThis.BDTReviewExt || { categories: new Map(), cost: new Set() };
+
   globalThis.BDTReviewCore = Object.freeze({
     priceClass, genRange, uniform, innovationShift, priceLimits, priceBand, priceRange, overpriced, quality,
     valueScore, innovationBase, innovationScore, categoryScores, pickShown, finalRating, reviewBand, salesBonus,
-    effectiveParts, generation, partsOf, PRICE_WEIGHT, SHOWN_MUL,
+    effectiveParts, generation, partsOf, extraRules, PRICE_WEIGHT, SHOWN_MUL,
   });
 })();

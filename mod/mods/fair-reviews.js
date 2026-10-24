@@ -18,6 +18,9 @@
 // price and the strong ones more). The average badges of the review screen show the final rating too.
 // The upper row of reviews is headed "Best ratings", the lower one "Worst ratings". Under the reviews a strip shows
 // every category with its score once all 4 reviews are in; the 2 best are framed green, the 2 worst red.
+// Other mods can add categories and the cost the price review judges the markup against (BDTReviewExt,
+// lib-review-core.js): parts-reviews.js adds the operating system, the processor and the graphics card,
+// own-chip-savings.js the cost.
 BetterDTKit.mod('fair-reviews', {
   needs: {
     functions: ['simulateDeviceCost'],
@@ -47,7 +50,11 @@ BetterDTKit.mod('fair-reviews', {
   function compute(fn) {
     const e = D.engines[fn], dev = arr(e.device), temp = arr('ArrayReviews_Temp'), db = arr('ArrayReviews_DB');
     const x = 0, y = Math.round(num(gv.ReviewDeviceNowID)), day = num(gv.DayTotal), rng = Math.random;
-    const price = num(dev.getAt(x, y, e.priceCol)), cost = num(dev.getAt(x, y, e.costCol));
+    const X = globalThis.BDTReviewExt, extra = [...X.categories].filter(([, d]) => d.engines[fn]);
+    const price = num(dev.getAt(x, y, e.priceCol));
+    // the cost the markup is judged against: the production cost, or another mod's reference cost
+    let cost = num(dev.getAt(x, y, e.costCol));
+    for (const hook of X.cost) { const v = hook(fn, y, cost); if (Number.isFinite(v) && v > 0) cost = v; }
     const markup = cost > 0 ? (price / cost - 1) * 100 : 0;
     const flagship = num(simulateDeviceCost(e.costType, num(gv.Year), 'flagship', rt)) * 1.3;
     const share = flagship > 0 ? price / flagship : 0.5, cls = C.priceClass(share);
@@ -77,13 +84,15 @@ BetterDTKit.mod('fair-reviews', {
       }
       aspects.push({ a: s.a, group: s.group, kind: s.kind, cat: s.cat, score, idx: band ?? textFor(e, s, score, range) });
     }
-    const scores = C.categoryScores(aspects);
+    const kept = C.extraRules(aspects, extra.map(([, d]) => d.engines[fn]));
+    const scores = C.categoryScores(kept);
+    for (const [id, d] of extra) { const s = d.score(fn, x, y); if (Number.isFinite(s)) scores[id] = s; }
     const hasPrice = e.aspects.some(a => a.kind === 'price');
     if (hasPrice) scores.value = C.valueScore(C.quality(gensList), share, rng);
     if (parts > 0) scores.innovation = C.innovationScore(parts, rng);
     const shown = C.pickShown(scores, hasPrice && 'price' in scores && C.overpriced(markup, limits));
     const final = C.finalRating(scores, shown, rng);
-    return { fn, y, cls, share, markup, parts, scores, shown, final, aspects };
+    return { fn, y, cls, share, markup, parts, scores, shown, final, aspects: kept };
   }
   // the review text of a scored aspect: a range of its group whose score band fits the score (a generational aspect
   // or the price has its own score, not the one of the range the game drew)
@@ -100,7 +109,10 @@ BetterDTKit.mod('fair-reviews', {
     l.shown.forEach((c, k) => {
       const score = l.scores[c], closing = rev.getAt(0, randInt(...D.closing[C.reviewBand(score)]));
       let review, summary;
-      if (c === 'value' || c === 'innovation') {
+      const ext = globalThis.BDTReviewExt.categories.get(c);
+      if (ext) {
+        [review, summary] = ext.text(score, L);
+      } else if (c === 'value' || c === 'innovation') {
         const [r, s] = c === 'value' ? pick(T.value[C.reviewBand(score)]) : pick(T.innovation);
         review = T.t(r, L); summary = T.t(s, L);
       } else {
@@ -153,8 +165,9 @@ BetterDTKit.mod('fair-reviews', {
   const BEST = '#3ddc84', WORST = '#ff4f6d';
   const STAR = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z';
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  // the type's categories in display order, then price, value for money and innovation
-  const order = (l) => [...D.engines[l.fn].categories, 'price', 'value', 'innovation'].filter(c => c in l.scores).map(c => [c, l.scores[c]]);
+  // the type's categories in display order, the ones other mods add, then price, value for money and innovation
+  const order = (l) => [...D.engines[l.fn].categories, ...globalThis.BDTReviewExt.categories.keys(), 'price', 'value', 'innovation']
+    .filter((c, i, a) => a.indexOf(c) === i && c in l.scores).map(c => [c, l.scores[c]]);
   // the animations: the strip rises, its items come in one by one, the stars fill up, then the frames light up
   const CSS = `
 @keyframes bdt-rise { from { opacity: 0; transform: translateY(2.5vh); } }
