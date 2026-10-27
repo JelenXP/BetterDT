@@ -557,22 +557,33 @@ What it shows the player:
 
 ### Writing your own mod
 
-**[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, the BetterDTKit API, the game's runtime, how to
-find variables, tables, texts and functions of the game without its source code, recipes, and a development setup.
-In short, put a `.js` file into `mods` and add it to `mods\mods.json`:
+**[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, `mod.json`, the BetterDTKit API (events, game
+data, UI in the game's look), the game's runtime, how to find variables, tables, texts and functions of the game
+without its source code, recipes, and a development setup. In short, a mod is a folder in `mods` (BetterDT 0.4.0+):
+
+`mods\hello\mod.json`
+
+```json
+{ "title": "Hello", "description": "A message every month.", "version": "1.0.0",
+  "options": [{ "key": "loud", "type": "bool", "default": false, "label": "Also show a dialog" }] }
+```
+
+`mods\hello\mod.js`
 
 ```js
-BetterDTKit.mod('my-mod', {
-  needs: { functions: ['setGameSpeed'], vars: ['Budget'] },
-}, (runtime, kit) => {
-  const tick = kit.guard(() => { /* every frame */ });
-  runtime.addEventListener('tick', tick);
-  return () => runtime.removeEventListener('tick', tick);   // dispose
+BetterDTKit.mod('hello', { needs: { vars: ['Budget'] } }, (rt, kit) => {
+  kit.on('month', (d) => {
+    kit.ui.toast(`${d.month}/${d.year}: $${Math.round(kit.game.money)}`);
+    if (kit.option('loud')) kit.ui.dialog({ title: 'Hello', text: 'A new month' });
+  });
 });
 ```
 
-`examples/mods` has a complete example (`money-goal.js`) and two development helpers: `example.js` and `probe.js`
-(with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
+The title, description and options appear in Settings → BetterDT → Mods. Single-file mods listed in
+`mods\mods.json` work as before.
+
+`examples/mods` has two complete examples (`monthly-report/`, a folder mod, and `money-goal.js`) and two development
+helpers: `example.js` and `probe.js` (with `probe-server.mjs` it sends the runtime state to `http://127.0.0.1:9334`).
 
 ## How the loader works (`loader/`)
 
