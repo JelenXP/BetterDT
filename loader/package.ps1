@@ -6,21 +6,25 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $out = Join-Path $root 'dist'
-$version = [regex]::Match((Get-Content -Raw (Join-Path $root 'betterdt.cpp')), '#define BETTERDT_VERSION "([0-9.]+)"').Groups[1].Value
+$version = [regex]::Match((Get-Content -Raw (Join-Path $root 'betterdt.cpp')), '#define BETTERDT_VERSION "(\d+\.\d+\.\d+(-beta\.\d+)?)"').Groups[1].Value
 if (-not $version) { throw 'BETTERDT_VERSION not found' }
+# a beta ("0.4.1-beta.1") is published as a GitHub pre-release: only players with channel=beta get it
+$beta = $version.Contains('-beta.')
 
 $modsDir = Join-Path $root '..\mod\mods'
 $mods = Get-Content -Raw (Join-Path $modsDir 'mods.json') | ConvertFrom-Json
 $utf8 = New-Object Text.UTF8Encoding($false)
 
 # CHANGES.txt: "<version> <note>", newest first
-$changes = @(Get-Content -Encoding UTF8 (Join-Path $root 'CHANGES.txt') | Where-Object { $_ -match '^\d+\.\d+\.\d+ \S' })
+# (or "<version>-beta.<n> <note>"; an official release leaves the beta lines out, its own lines say it all)
+$changes = @(Get-Content -Encoding UTF8 (Join-Path $root 'CHANGES.txt') | Where-Object { $_ -match '^\d+\.\d+\.\d+(-beta\.\d+)? \S' } |
+  Where-Object { $beta -or -not $_.Contains('-beta.') })
 if (-not ($changes | Where-Object { $_.StartsWith("$version ") })) { throw "CHANGES.txt has no notes for $version" }
 $manifest = @('betterdt-manifest 2', "version $version")
 # "change": the whole history; BetterDT 0.3.2+ shows the versions newer than the installed one
 foreach ($c in $changes) { $manifest += "change $c" }
 # "note": what older versions (up to 0.3.1) show, which cannot pick by version: everything since 0.3.0
-$old = @($changes | Where-Object { [version]($_ -split ' ')[0] -ge [version]'0.3.0' })
+$old = @($changes | Where-Object { -not $_.Contains('-beta.') -and [version]($_ -split ' ')[0] -ge [version]'0.3.0' })
 $multi = @($old | ForEach-Object { ($_ -split ' ')[0] } | Select-Object -Unique).Count -gt 1
 foreach ($c in $old) { $v, $n = $c -split ' ', 2; $manifest += 'note ' + $(if ($multi) { "$v`: $n" } else { $n }) }
 $manifest += 'mods ' + ($mods -join ' ')
@@ -94,3 +98,4 @@ $zip = Join-Path $out 'BetterDT.zip'
 # the updater downloads this copy (BetterDT.zip stays for manual downloads): both go into the release
 [IO.File]::WriteAllBytes((Join-Path $out 'BetterDT-update.zip'), $ms.ToArray())
 Write-Output "BetterDT $version -> $zip ($((Get-Item $zip).Length) bytes, $($entries.Count) files)"
+if ($beta) { Write-Output "Beta: publish the release v$version as a pre-release (Set as a pre-release), never as the latest" }

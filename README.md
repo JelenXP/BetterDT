@@ -89,6 +89,11 @@ game file and does not touch your saves.
 in the main menu. Click **Restart now** to use it right away, or **Keep playing** and it starts the next time
 you launch the game. You can turn automatic updates off in Settings → BetterDT.
 
+**Beta versions** (for testers): add the line `channel=beta` to `modsetterdt.ini` while the game is closed.
+BetterDT then also installs betas (GitHub pre-releases such as `0.4.1-beta.1`) before the official release, and
+moves on to the official version once it is out. To leave, turn **Beta versions** off in Settings → BetterDT;
+**Back to official** installs the latest official version right away.
+
 **White screen?** If the game screen ever turns white with a small sad face, BetterDT reloads the game by itself
 (you are back in the main menu; load your last save). The main menu then offers **Report problem**, which opens
 a prefilled bug report and copies it, so you can also paste it into the Steam discussion.

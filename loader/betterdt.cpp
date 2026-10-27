@@ -16,6 +16,7 @@
 //
 // Settings: mods\betterdt.ini (key=value lines, written by the BetterDT section in the game settings):
 //   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 or mod.<folder>=0 disables a mod,
+//   channel=beta also installs betas (GitHub pre-releases, versions like 0.4.1-beta.1; only set by hand),
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
 // Updates: BetterDT-update.zip (a copy of BetterDT.zip) from the latest GitHub release (every file checked by its CRC-32).
 // Crashes: a crashed game page is reloaded automatically (see OnProcessFailed).
@@ -30,6 +31,7 @@
 #include <wrl.h>
 #include <algorithm>
 #include <atomic>
+#include <climits>
 #include <map>
 #include <mutex>
 #include <string>
@@ -372,11 +374,30 @@ static bool HttpGet(const std::string &url, std::string &out, size_t maxSize, st
   return ok;
 }
 
-static bool NewerThan(const std::string &a, const std::string &b) {   // a > b ("1.2.3")
-  int x[3] = {}, y[3] = {};
+// Versions are "1.2.3" or a beta "1.2.3-beta.4", which is older than the release 1.2.3.
+static bool IsBeta(const std::string &v) { return v.find("-beta.") != std::string::npos; }
+static bool ValidVersion(const std::string &v) {
+  int dots = 0;
+  size_t i = 0;
+  for (bool digit = false; i < v.size() && v[i] != '-'; i++) {
+    if (v[i] == '.') { if (!digit) return false; dots++; digit = false; }
+    else if (isdigit((unsigned char)v[i])) digit = true;
+    else return false;
+  }
+  if (dots != 2 || !i || v[i - 1] == '.') return false;
+  if (i == v.size()) return true;
+  std::string n = v.substr(i);
+  if (n.compare(0, 6, "-beta.") != 0 || n.size() == 6) return false;
+  return n.find_first_not_of("0123456789", 6) == std::string::npos;
+}
+static bool NewerThan(const std::string &a, const std::string &b) {   // a > b
+  int x[4] = {}, y[4] = {};
   sscanf(a.c_str(), "%d.%d.%d", &x[0], &x[1], &x[2]);
   sscanf(b.c_str(), "%d.%d.%d", &y[0], &y[1], &y[2]);
-  for (int i = 0; i < 3; i++) if (x[i] != y[i]) return x[i] > y[i];
+  size_t pa = a.find("-beta."), pb = b.find("-beta.");
+  x[3] = pa == std::string::npos ? INT_MAX : atoi(a.c_str() + pa + 6);
+  y[3] = pb == std::string::npos ? INT_MAX : atoi(b.c_str() + pb + 6);
+  for (int i = 0; i < 4; i++) if (x[i] != y[i]) return x[i] > y[i];
   return false;
 }
 
@@ -568,18 +589,43 @@ static bool InstallRelease(const Manifest &m, const std::vector<ZipEntry> &zip) 
   return true;
 }
 
+// The newest version in the release feed (github.com/…/releases.atom lists pre-releases too, newest
+// first, with links to …/releases/tag/v<version>); empty when the feed cannot be read.
+static std::string NewestInFeed() {
+  std::string feed, err;
+#ifdef BETTERDT_TEST_BASE
+  const std::string url = BETTERDT_TEST_BASE "releases.atom";
+#else
+  const std::string url = std::string("https://github.com/") + kRepo + "/releases.atom";
+#endif
+  if (!HttpGet(url, feed, 2 * 1024 * 1024, err)) { Log("update: cannot read the release feed (%s)", err.c_str()); return ""; }
+  std::string best;
+  for (size_t p = feed.find("/releases/tag/v"); p != std::string::npos; p = feed.find("/releases/tag/v", p + 1)) {
+    size_t s = p + 15, e = feed.find_first_of("\"<&/ ", s);
+    std::string v = feed.substr(s, e == std::string::npos ? std::string::npos : e - s);
+    if (ValidVersion(v) && (best.empty() || NewerThan(v, best))) best = v;
+  }
+  return best;
+}
+
 // Checks the latest release (github.com/…/releases/latest redirects to …/releases/tag/v<version>);
 // when it is newer, downloads the zip and installs it (it takes effect after a restart).
-static void RunUpdate() {
-  std::string body, loc, err;
-  if (!HttpGet(ReleaseUrl("latest"), body, 1024 * 1024, err, &loc)) {
-    Log("update: cannot check the latest release (%s)", err.c_str());
-    SetUpd("error", err);
-    return;
+// Beta channel (channel=beta in betterdt.ini): the newest release including pre-releases (betas).
+// toStable: the player left the beta channel and asked for the latest official version, even an older one.
+static void RunUpdate(bool toStable) {
+  std::string body, loc, err, latest;
+  const bool beta = !toStable && IniGet("channel", "") == "beta";
+  if (beta && (latest = NewestInFeed()).empty()) Log("update: beta channel, falling back to the latest release");
+  if (latest.empty()) {
+    if (!HttpGet(ReleaseUrl("latest"), body, 1024 * 1024, err, &loc)) {
+      Log("update: cannot check the latest release (%s)", err.c_str());
+      SetUpd("error", err);
+      return;
+    }
+    size_t t = loc.rfind("/tag/v");
+    latest = t == std::string::npos ? "" : loc.substr(t + 6);
   }
-  size_t t = loc.rfind("/tag/v");
-  std::string latest = t == std::string::npos ? "" : loc.substr(t + 6);
-  if (latest.empty() || latest.find_first_not_of("0123456789.") != std::string::npos) {
+  if (!ValidVersion(latest)) {
     Log("update: no release found (%s)", loc.c_str());
     SetUpd("error", "no public release");
     return;
@@ -589,7 +635,8 @@ static void RunUpdate() {
     g_upd.latest = latest;
     g_upd.checkedAt = (long long)time(nullptr);
   }
-  if (!NewerThan(latest, BETTERDT_VERSION)) {
+  const bool back = toStable && IsBeta(BETTERDT_VERSION) && !IsBeta(latest);
+  if (!NewerThan(latest, BETTERDT_VERSION) && !back) {
     SetUpd("uptodate");
     Log("update: up to date (%s)", latest.c_str());
     return;
@@ -626,12 +673,12 @@ static void RunUpdate() {
 }
 
 static DWORD WINAPI UpdateThread(LPVOID p) {
-  RunUpdate();
+  RunUpdate(p != nullptr);
   std::lock_guard<std::mutex> lk(g_mx);
   g_upd.busy = false;
   return 0;
 }
-static void StartUpdate() {
+static void StartUpdate(bool toStable = false) {
   {
     std::lock_guard<std::mutex> lk(g_mx);
     if (g_upd.busy || g_upd.state == "installed") return;   // running, or waiting for a restart
@@ -639,7 +686,7 @@ static void StartUpdate() {
     g_upd.state = "checking";
     g_upd.error.clear();
   }
-  HANDLE t = CreateThread(nullptr, 0, UpdateThread, nullptr, 0, nullptr);
+  HANDLE t = CreateThread(nullptr, 0, UpdateThread, toStable ? (LPVOID)1 : nullptr, 0, nullptr);
   if (t) CloseHandle(t);
   else { std::lock_guard<std::mutex> lk(g_mx); g_upd.busy = false; g_upd.state = "error"; g_upd.error = "thread"; }
 }
@@ -947,7 +994,8 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
     return StateJson();
   }
   // "Check now" installs a newer version right away, like the check at start; "install" is the same (older menus)
-  if (cmd == "check" || cmd == "install") { StartUpdate(); return StateJson(); }
+  // stable=1: back from a beta to the latest official version
+  if (cmd == "check" || cmd == "install") { StartUpdate(QueryParam(query, "stable") == "1"); return StateJson(); }
   if (cmd == "update-ack") { { std::lock_guard<std::mutex> lk(g_mx); g_upd.acked = true; } return StateJson(); }
   if (cmd == "restart") return RestartGame() ? "{\"ok\":true}" : "{\"ok\":false}";
   if (cmd == "beat") {   // what the game is doing, for crash reports
