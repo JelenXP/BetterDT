@@ -53,6 +53,8 @@ game file and does not touch your saves.
 - **Research breakthroughs:** a finished research lab project can research parts before the market has them (up to
   a year early). The device designer then offers the future part, and a device with innovative parts gets better
   reviews and sells more (+10 % per part while the part is new).
+- **Bigger lab investments:** a research lab project can take up to $1B instead of $25M. Over $25M every doubling
+  gives 25 % more points ($100M: 1.5×, $1B: about 2.3× the points of $25M). Two more buttons: $100M and MAX.
 - **Living market:** old and much-sold devices sell less, most of all in the categories you dominate; new models
   with current parts win the customers back. Gentle in the first two years and for small companies.
 - **Parts in reviews:** reviewers rate the operating system and the CPU (and a laptop's GPU) like the other parts: a
@@ -432,6 +434,23 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   camera from the future, which showed as an innovative part; the mod fixes that day in memory while it runs.
 - Turned off: no new breakthroughs and no sales bonus; levels already researched stay, but the designer offers only
   the parts on the market again.
+
+### `lab-invest.js`: bigger lab investments
+- The game lets a lab project take $1M to $25M (`ResearchMenu_ButtonsOpacity` sets a higher amount back to $25M).
+  With the mod the amount goes up to $1B; the + button greys out at $1B.
+- The points a day grow with the amount in the game (1.25 + research level / 1000 × (1 + millions) for every
+  research employee). Over $25M the mod keeps that from growing with all the money: every doubling adds 25 % of the
+  points at $25M ($50M: 1.25×, $100M: 1.5×, $400M: 2×, $1B: about 2.33×; `lib-lab-invest-core.js`). The game computes
+  the points as at $25M and the mod multiplies what its action added, for the average income on the screen and for
+  the points the lab makes every day, so the game's capacity limit and rounding stay.
+- Under the $1M / $5M / $10M steps: **$100M** (a step for + and −) and **MAX** (the most your money pays for, up to
+  $1B). When a project would fill the lab before it ends, a line under the average income says in how many days:
+  collect the points, the rest is lost.
+- The game still checks the money and takes it. A running project over $25M keeps its amount in the game's table as
+  $25M + the millions as dollars (900M is 25 000 900), so without the mod it gives the points of $25M.
+- Tested in game 1.6: MAX set $1B (the + button grey), the average income was 1.25×, 1.5×, 2× and 2.33× the one at
+  $25M for $50M, $100M, $400M and $1B; a $999M project was paid, kept as 25 000 999 and made 151.21 points a day
+  against 64.89 at $25M.
 
 ### `living-market.js`: living market
 - **Technology:** the further the market has moved on since a device came out, the less it sells: for every kind of

@@ -1,5 +1,6 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.4.0 Bigger lab investments: a research lab project can take up to $1B, every doubling over $25M gives 25 % more points
 0.4.0 Beta versions: a switch in Settings > BetterDT installs test versions before the official release
 0.4.0 Parts in reviews: reviewers rate the operating system, the CPU and a laptop GPU, own OS, CPU and GPU get a bonus
 0.4.0 Fair reviews: a private CPU gets no price review, and its 4 reviews match the categories shown under them
