@@ -812,11 +812,13 @@ BetterDT.register('betterdt-settings', (rt) => {
       '游戏启动时检查 GitHub 并安装新版本', '게임 시작 시 GitHub를 확인하고 새 버전을 설치합니다', '起動時に GitHub を確認し、新しいバージョンを入れます'],
     beta: ['Beta versions', 'Бета-версии', 'Beta-Versionen', 'Versions bêta', 'Versioni beta', 'Versiones beta', 'बीटा संस्करण', 'Beta sürümler', 'Versões beta',
       'Бета-версії', 'Versi beta', 'Wersje beta', '测试版', '베타 버전', 'ベータ版'],
-    betaHint: ['Test versions before the official release', 'Тестовые версии до официального выпуска', 'Testversionen vor der offiziellen Veröffentlichung',
-      'Versions de test avant la sortie officielle', 'Versioni di prova prima dell’uscita ufficiale', 'Versiones de prueba antes del lanzamiento oficial',
-      'आधिकारिक रिलीज़ से पहले परीक्षण संस्करण', 'Resmî sürümden önce test sürümleri', 'Versões de teste antes do lançamento oficial',
-      'Тестові версії до офіційного випуску', 'Versi uji sebelum rilis resmi', 'Wersje testowe przed oficjalnym wydaniem', '正式发布前的测试版本',
-      '정식 출시 전 테스트 버전', '正式リリース前のテスト版'],
+    betaHint: ['Test versions before the official release – they may have bugs', 'Тестовые версии до официального выпуска – возможны ошибки',
+      'Testversionen vor der offiziellen Veröffentlichung – können Fehler haben', 'Versions de test avant la sortie officielle – elles peuvent avoir des bugs',
+      'Versioni di prova prima dell’uscita ufficiale – possono avere bug', 'Versiones de prueba antes del lanzamiento oficial: pueden tener errores',
+      'आधिकारिक रिलीज़ से पहले परीक्षण संस्करण – इनमें बग हो सकते हैं', 'Resmî sürümden önce test sürümleri – hata içerebilir',
+      'Versões de teste antes do lançamento oficial – podem ter bugs', 'Тестові версії до офіційного випуску – можливі помилки',
+      'Versi uji sebelum rilis resmi – mungkin ada bug', 'Wersje testowe przed oficjalnym wydaniem – mogą mieć błędy', '正式发布前的测试版本，可能有错误',
+      '정식 출시 전 테스트 버전 – 버그가 있을 수 있습니다', '正式リリース前のテスト版（不具合がある場合があります）'],
     betaBack: ['Back to official', 'Вернуть официальную', 'Zurück zur offiziellen', 'Revenir à l’officielle', 'Torna all’ufficiale', 'Volver a la oficial',
       'आधिकारिक पर लौटें', 'Resmî sürüme dön', 'Voltar à oficial', 'Повернути офіційну', 'Kembali ke resmi', 'Wróć do oficjalnej', '恢复正式版', '정식 버전으로', '正式版に戻す'],
     check: ['Check now', 'Проверить', 'Jetzt prüfen', 'Vérifier', 'Controlla ora', 'Comprobar', 'अभी जाँचें', 'Şimdi kontrol et', 'Verificar', 'Перевірити', 'Periksa', 'Sprawdź', '立即检查', '지금 확인', '今すぐ確認'],
@@ -1721,17 +1723,20 @@ BetterDT.register('betterdt-settings', (rt) => {
     const isBeta = String(B.version).includes('-beta.');
     el('div', 'gs-row-hint bdt-val', vctl).textContent = 'v' + B.version + (isBeta ? ' (beta)' : '');
     btn(vctl, t('releases'), () => B.api('open', { what: 'github' }));
-    // the beta channel is only set by hand (channel=beta in betterdt.ini): its row shows for testers only
-    if (isBeta || S.get('channel', '') === 'beta') {
-      const bctl = row(c1, t('beta'), t('betaHint'));
-      const paintBeta = (on) => {
-        bctl.innerHTML = '';
-        // out of the channel on a beta: go back to the latest official version (also an older one)
-        if (!on && isBeta) btn(bctl, t('betaBack'), () => { B.api('check', { stable: 1 }).then(startPoll); });
-        sw(bctl, on, (v) => { save('channel', v ? 'beta' : 'stable'); paintBeta(v); });
-      };
-      paintBeta(S.get('channel', '') === 'beta');
-    }
+    // beta channel (channel=beta in betterdt.ini): updates also install betas (GitHub pre-releases)
+    const bctl = row(c1, t('beta'), t('betaHint'));
+    const paintBeta = (on) => {
+      bctl.innerHTML = '';
+      // out of the channel on a beta: go back to the latest official version (also an older one)
+      if (!on && isBeta) btn(bctl, t('betaBack'), () => { B.api('check', { stable: 1 }).then(startPoll); });
+      sw(bctl, on, (v) => {
+        const saved = save('channel', v ? 'beta' : 'stable');
+        paintBeta(v);
+        // turned on: look for a beta right away, like "Check now" (after the setting is stored)
+        if (v && S.bool('autoupdate', true)) saved.then(() => B.api('check')).then(startPoll);
+      });
+    };
+    paintBeta(S.get('channel', '') === 'beta');
     el('div', 'gs-row-hint bdt-val', row(c1, t('gameVer'))).textContent = KIT ? KIT.gameVersion || '?' : '?';
     btn(row(c1, t('community'), t('communityHint')), 'Discord', () => B.api('open', { what: 'discord' }));
 

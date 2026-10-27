@@ -16,7 +16,7 @@
 //
 // Settings: mods\betterdt.ini (key=value lines, written by the BetterDT section in the game settings):
 //   gpu=0 disables the GPU switch, autoupdate=0 disables updates, mod.<file>=0 or mod.<folder>=0 disables a mod,
-//   channel=beta also installs betas (GitHub pre-releases, versions like 0.4.1-beta.1; only set by hand),
+//   channel=beta also installs betas (GitHub pre-releases, versions like 0.4.1-beta.1; the Beta versions switch),
 //   other keys belong to mods (e.g. hire-tools.autoHire=1).
 // Updates: BetterDT-update.zip (a copy of BetterDT.zip) from the latest GitHub release (every file checked by its CRC-32).
 // Crashes: a crashed game page is reloaded automatically (see OnProcessFailed).
