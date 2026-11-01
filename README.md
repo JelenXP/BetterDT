@@ -55,6 +55,9 @@ game file and does not touch your saves.
   reviews and sells more (+10 % per part while the part is new).
 - **Bigger lab investments:** a research lab project can take up to $1B instead of $25M. Over $25M every doubling
   gives 25 % more points ($100M: 1.5×, $1B: about 2.3× the points of $25M). Two more buttons: $100M and MAX.
+- **Stores sell your devices:** your stores earn a little on their own and a lot while you sell new, good devices:
+  a new 9/10 device makes their profit 4×, and it fades with the device's popularity. More devices released in the
+  whole game add up to 20 %. Fixes two store exploits of the game (selling stores, the stores menu).
 - **Living market:** old and much-sold devices sell less, most of all in the categories you dominate; new models
   with current parts win the customers back. Gentle in the first two years and for small companies.
 - **Parts in reviews:** reviewers rate the operating system and the CPU (and a laptop's GPU) like the other parts: a
@@ -434,6 +437,27 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   camera from the future, which showed as an innovative part; the mod fixes that day in memory while it runs.
 - Turned off: no new breakthroughs and no sales bonus; levels already researched stay, but the designer offers only
   the parts on the market again.
+
+### `store-sales.js`: stores sell your devices (MY STORES)
+- In the game the stores' revenue grows almost with the square of their level, so upgraded stores were the best
+  investment of the late game and earned on their own. With the mod the game still computes the customers, revenue
+  and costs of every country (`MyShopsEngine`), and the mod sets the revenue so that the profit is:
+  - **20 % of the game's profit** (or of its loss) when nothing new is on sale,
+  - **+20 % for every unit of boost** from your devices on sale (device types sold in stores, not CPUs and GPUs):
+    a device gives nothing up to a rating of 5, 1.06 at 7, 3 at 9 and 3.7 at 10, times its popularity (100 % on
+    release day). The best device counts fully, the second half, the third a quarter… A new 9/10 device makes the
+    profit 4× (2.5× at 50 % popularity, 1.3× at 10 %). A store without profit gets at least 15 % of its revenue × the boost.
+  - **Experience:** more devices released in the whole game add to a profit: +12 % for 10, +20 % from 50.
+- The MY STORES screen shows a card under the four buttons: the store profit multiplier, the best device (rating,
+  popularity) and the experience bonus.
+- Fixes of the game: a sold store brings 35 % of its price and of what its upgrades cost (the game paid 35 % of the
+  price × the number of stores in the country for each store sold, so 100 stores sold for about 35× what they
+  cost), and opening the stores menu no longer adds one more day of profit (the menu runs `MyShopsEngine` too; the
+  mod adds the profit only in the daily run, before `MyShopsEngine_AddDemand`).
+- Nothing is saved; without the mod the game computes the next day its own way. The upgrade prices are the game's.
+- Tested in game 1.6 on a late save (stores in all 135 countries): the profit was 23 % of the game's (20 % + 15 %
+  experience), a 9/10 device at 100 %, 50 % and 10 % popularity made it 4.0×, 2.5× and 1.3×; running the stores menu
+  added nothing to the month, the daily run added the day's profit once.
 
 ### `lab-invest.js`: bigger lab investments
 - The game lets a lab project take $1M to $25M (`ResearchMenu_ButtonsOpacity` sets a higher amount back to $25M).
