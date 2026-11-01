@@ -305,6 +305,6 @@ BetterDTKit.mod('research-all', {
   domObs.observe(document.body, { childList: true, subtree: true });
 
   const dispose = () => { clearInterval(timer); domObs.disconnect(); teardown(); document.getElementById('bdt-research-all-css')?.remove(); };
-  globalThis.__dtResearchAll = { dispose };
+  globalThis.__dtResearchAll = { dispose, get running() { return running; } };   // running: auto-research.js waits
   return dispose;
 });

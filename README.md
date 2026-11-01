@@ -18,6 +18,10 @@ game file and does not touch your saves.
   recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
   research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
   click first asks with the price.
+- **Auto research (RESEARCH LAB):** tick **Auto** on a research card (or **Auto: whole tab** in the top bar) and its
+  new levels are researched by themselves once a game day, as soon as the game offers them and you have the research
+  points and the money. Not enough: tried again 5 days later, then given up with a message until the game offers
+  the next level. In the settings: a money reserve the mod never goes below (default $0) and the messages.
 - **Faster game speed:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3, and in the settings you
   can add ×4, ×5, ×6, ×8 and ×10; every speed has its own colour.
 - **Adjustable autosave:** the game's Autosave setting (30 to 365 days) becomes a slider from 5 to 360 game days
@@ -382,6 +386,29 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   comes back at the end. Sounds are muted during the batch (one plays at the end); if the game rejects a click,
   the mod stops. Functions that only become available after others are researched are left for the next click.
 
+
+### `auto-research.js`: Auto research
+- **Ticking:** an **Auto** box in the top right corner of every research card (researched ones too: the game offers
+  more levels when new parts come to the market) and **Auto: whole tab** in the top bar for all cards of the tab
+  shown. Ticked cards get a green outline; the ticked cards are kept per company in `betterdt.ini`
+  (`auto-research.c<hash of the company name>.<n>`, values of at most 200 characters, so split over several keys).
+- **When it buys:** once a game day, after a save is loaded and right when a card is ticked. It buys the levels the
+  game offers now (`debugResearchAllTargets()`, the list of the game's own buttons), never a level researched ahead
+  by a lab breakthrough. Recommended cards first (`debugResearchCategoryFlags()`), then the cheaper ones, one level
+  of each card per round, while the research points and the money are enough and the money left stays above the
+  reserve (settings: $0 to $1T, default $0). In sandbox mode the levels are free, like the game's own button.
+- **Not enough:** the level waits 5 game days, then it is given up with a message saying what was missing (research
+  points, money or the reserve). The card stays ticked; when the game offers a higher level, everything missing is
+  tried again the same way. One message for each day with automatic research (can be turned off).
+- **How it researches:** the game's own function `ResearchEngine` with `ResearchEngineID`, the same as after a click on
+  a card, and it works on every screen. Several levels of one card go the way the game's paid Research tab buys them:
+  all but the last level set and paid by the mod, the last one by the game. The price is deducted from the month's
+  taxable profit like after a click (`ArrayTaxes` profit cell, then the game's `reloadTaxesFromArray()`). If the game
+  takes a different price than `ArrayResearch` says, the mod stops (`kit.fail`).
+- Tested on a copy with file writes blocked: ticking a card bought it at once on the research screen (190 RP and
+  $3.25M taken, the month's taxable profit $3.25M lower); a whole tab (549 levels of 22 cards) took 41 ms and the
+  exact price; after a save was loaded the ticked cards were bought by themselves; with a reserve above the money the
+  level waited, was given up the next try with a message, and was bought when one more level was offered.
 ### `fair-reviews.js`: fair reviews
 - The game's review function for the device type (`ReviewsEngine_<Type>`, 16 of them) pushes one entry per aspect
   (camera, screen, price, …) into `ArrayReviews_Temp`, then `ReviewsEngineResults` picks 4 of them at random,
