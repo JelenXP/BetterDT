@@ -399,7 +399,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   reserve (settings: $0 to $1T, default $0). In sandbox mode the levels are free, like the game's own button.
 - **Not enough:** the level waits 5 game days, then it is given up with a message saying what was missing (research
   points, money or the reserve). The card stays ticked; when the game offers a higher level, everything missing is
-  tried again the same way. One message for each day with automatic research (can be turned off).
+  tried again the same way. The messages go to the game's own message stack in the bottom right corner
+  (`showOfficeNotification`): one for each day with automatic research, one for each level given up (can be turned off).
 - **How it researches:** the game's own function `ResearchEngine` with `ResearchEngineID`, the same as after a click on
   a card, and it works on every screen. Several levels of one card go the way the game's paid Research tab buys them:
   all but the last level set and paid by the mod, the last one by the game. The price is deducted from the month's

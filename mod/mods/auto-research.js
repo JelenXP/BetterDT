@@ -234,13 +234,22 @@ BetterDTKit.mod('auto-research', {
     if (mismatch) return kit.fail(mismatch);
     if (stop) kit.warn(stop);
     if (S.bool('auto-research.notify', true)) {
-      if (done) kit.ui.toast(tr('bought', { n: done, rp: num(paidRp), usd: usd(paidUsd) }), { type: 'good' });
+      if (done) notify(tr('bought', { n: hi(done), rp: hi(num(paidRp)), usd: hi(usd(paidUsd)) }));
       for (const g of r.gaveUp) {
         const what = [g.rp > 0 && tr('rp', { n: num(g.rp) }), g.usd > 0 && usd(g.usd), g.reserve && tr('reserve')].filter(Boolean).join(' + ');
-        kit.ui.toast(tr('gave', { name: nameOf(g.id), lvl: g.level, what }), { type: 'bad', ms: 7000 });
+        notify(tr('gave', { name: hi(nameOf(g.id)), lvl: hi(g.level), what: `[color=${RED}]${bb(what)}[/color]` }));
       }
     }
     return '';
+  }
+  // the messages go to the game's own message stack in the bottom right corner (its BBCode colours: yellow for the
+  // values like the game's news, red for what was missing like its losses)
+  const YELLOW = '#FFD800', RED = '#FF7768';
+  const bb = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\[/g, '(').replace(/\]/g, ')');
+  const hi = (v) => `[color=${YELLOW}]${bb(v)}[/color]`;
+  function notify(text) {
+    if (typeof globalThis.showOfficeNotification === 'function') globalThis.showOfficeNotification(text);
+    else kit.ui.toast(text.replace(/\[\/?color[^\]]*\]/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
   }
   // the price is taxable profit no more, the same as the game's taxAccrueOther(0, price) after a click
   function deductTax(paid) {
