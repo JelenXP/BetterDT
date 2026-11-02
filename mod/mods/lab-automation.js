@@ -186,7 +186,16 @@ BetterDTKit.mod('lab-automation', {
 .bdt-lab-lock { padding: 10px 0 14px; border-top: 1px solid rgba(255,255,255,0.16); font-size: 18px; color: rgba(255,255,255,0.62); }
 .bdt-lab-ico { width: 30px; height: 30px; }`;
   const ICON = '<svg class="bdt-lab-ico" viewBox="0 0 24 24" fill="#fff"><path d="M9 2h6v2h-1v5.2l5.6 9.3A2 2 0 0 1 17.9 21H6.1a2 2 0 0 1-1.7-2.5L10 9.2V4H9V2zm3 9.1L8.3 17h7.4L12 11.1z"/></svg>';
-  let btn = null, screen = null;
+  let btn = null, screen = null, shade = null;
+  // the game's message over the screen ("You have already invested…") darkens it with a black tile; the button
+  // darkens with it and cannot be clicked under it
+  function shadeOpacity() {
+    if (!shade || !alive(shade)) {
+      shade = null;
+      try { shade = rt.objects.TiledBackground3.getAllInstances().find(i => i.layer && i.layer.name === 'EDITOR NOTIFICATION') || null; } catch { }
+    }
+    return shade && shade.layer.isVisible && shade.isVisible ? Math.max(0, Math.min(1, num(shade.opacity))) : 0;
+  }
   const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
   // the investing window: the biggest frame on its back layer (as research-breakthroughs.js finds it)
   function findWindow() {
@@ -225,7 +234,9 @@ BetterDTKit.mod('lab-automation', {
     const label = tr('button');
     if (btn.lastChild.textContent !== label) btn.lastChild.textContent = label;
     btn.classList.toggle('bdt-lab-is-on', C.FUNCS.some(on));
-    Object.assign(btn.style, { display: 'flex', left: x + 'px', top: y + 'px', fontSize: 22 * k + 'px', opacity: String(screen ? screen.opacity : 1) });
+    const dark = shadeOpacity();
+    Object.assign(btn.style, { display: 'flex', left: x + 'px', top: y + 'px', fontSize: 22 * k + 'px', opacity: String(screen ? screen.opacity : 1),
+      filter: dark > 0.01 ? `brightness(${1 - dark})` : '', pointerEvents: dark > 0.01 ? 'none' : '' });
   }
   const SHIELD = ['mousedown', 'mouseup', 'click', 'dblclick', 'pointerdown', 'pointerup', 'pointermove', 'mousemove',
     'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu'];
