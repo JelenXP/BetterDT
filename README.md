@@ -21,6 +21,8 @@ game file and does not touch your saves.
 - **Lab automation (RESEARCH LAB):** an **AUTOMATION** button on the investing window and in the lab: buy automatic collecting of
   the lab's points, automatic renewal of a project with the last amount (+10 % fee) and a breakthrough focus on a
   device and its area (3× as often, its area 2× more).
+- **Devicesgram auto posting:** buy **Auto posting** on Devicesgram's "Create new post" (500 RP + $5M) and every day
+  everything you can post goes out with the game's default design of the topic, for 15 % fewer likes and followers.
 - **Auto research (RESEARCH LAB):** tick **Auto** on a research card (or **Auto: whole tab** in the top bar) and its
   new levels are researched by themselves once a game day, as soon as the game offers them and you have the research
   points and the money. Not enough: tried again 5 days later, then given up with a message until the game offers
@@ -532,6 +534,26 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   113 points a day went to the research points; at the end of a project the
   breakthroughs came, with a reserve above the money it was not renewed (one message), a day later it was; with the
   focus on smartphones and their display, smartphone parts went from 11.6 % to 38.6 % of the breakthrough draw.
+### `devicesgram-auto.js`: Devicesgram auto posting
+- **Where:** a panel under the step dots of Devicesgram's "Create new post" (first step), in Devicesgram's own look
+  (`smv2-panel`, `smv2-toggle`): bought once for 500 RP + $5M, then an on/off switch and the totals.
+- **What:** once a day, after the game's day of Devicesgram (`account.lastSim` is today), every topic the game offers
+  is posted: announcements (only while a device is designed in the designer office), releases, achievements, news.
+  Each post is the one the game's Publish makes when nothing is changed: the first caption of the topic (with the
+  device and company names), its first image, headline and subtitle (`_newDesignForTheme`).
+- **How:** the game's Publish is inside its Devicesgram module, so `lib-devicesgram-core.js` adds the post the way
+  `_publishPost` does (id, targets, comments target, the instant followers, the topic marked as posted) and the state
+  goes back through `loadSocialMediaV2SaveData` and `ArraySocialMedia (0, 0)`. Before that the game's unlock queue
+  (`ArraySocialMedia (0, 1)`) and the device in design are handed to the game, as when Devicesgram opens. While
+  Devicesgram is open nothing is posted (giving the state back sends the window to its log in page); the posts go
+  out when it is closed.
+- **The cut:** automatic posts (`bdtAuto: 1`) get 15 % fewer likes (their target) and followers: at once, and every
+  day 15 % of the activity bonus they make in the game's daily growth (`_growFollowersOneDay`) is taken back.
+- **Saved with the game:** what was bought, the switch and the totals in `ArraySocialMedia (0, 7)`.
+- Tested on a copy with file writes blocked: buying took 500 RP and $5M; three unlocked topics (research, new team
+  members, 10K followers) were posted at once after Devicesgram was closed, with the game's captions, images and
+  headlines; the topics left "Create new post"; the posts show in Devicesgram like ones posted by hand.
+
 ### `living-market.js`: living market
 - **Technology:** the further the market has moved on since a device came out, the less it sells: for every kind of
   part, the newest part on the market today against the newest one on the release day (half the most moved part,
