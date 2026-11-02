@@ -18,7 +18,7 @@ game file and does not touch your saves.
   recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
   research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
   click first asks with the price.
-- **Lab automation (RESEARCH LAB):** an **AUTOMATION** button on the investing window: buy automatic collecting of
+- **Lab automation (RESEARCH LAB):** an **AUTOMATION** button on the investing window and in the lab: buy automatic collecting of
   the lab's points, automatic renewal of a project with the last amount (+10 % fee) and a breakthrough focus on a
   device and its area (3× as often, its area 2× more).
 - **Auto research (RESEARCH LAB):** tick **Auto** on a research card (or **Auto: whole tab** in the top bar) and its
@@ -510,7 +510,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 
 
 ### `lab-automation.js`: lab automation
-- **Where:** an **AUTOMATION** button in the top left corner of the "Investing in research" window opens a panel in the
+- **Where:** an **AUTOMATION** button in the top left corner of the "Investing in research" window, and in the lab
+  left of COLLECT (while a project runs the game does not open the investing window), opens a panel in the
   look of the game's own Automatic marketing window (the game's `#amk-css` is copied at runtime with the classes
   renamed). Each function is bought once for research points and money and then has an on/off box.
 - **Automatic collecting** (300 RP + $2M): after every day of the lab (`ResearchInvestEngine`, once the other mods'

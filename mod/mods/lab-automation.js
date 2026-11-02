@@ -62,6 +62,9 @@ BetterDTKit.mod('lab-automation', {
   const C = BDTLabAutomationCore, D = BDTReviewData, T = BDTReviewTexts, gv = rt.globalVars, S = BetterDT.settings;
   const LIC = globalThis.BDTLabInvestCore;   // lab-invest.js: amounts over $25M are kept in its form
   const SCREEN = 'RESEARCH INVEST', BACK = 'RESEARCH INVEST (Back)';
+  // the lab itself: while a project runs the game does not open the investing window, so the button is there too
+  const LAB = 'RESEARCH MENU', LAB_UI = 'UI (Top)';
+  const here = () => { const c = String(gv.class); return c === SCREEN || c === LAB; };
   const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const lang = () => { const l = Math.round(num(gv.LanguageChoose)); return l >= 0 && l < 15 ? l : 0; };
   const tr = (key, v = {}) => String(LAB_TXT[key][lang()] || LAB_TXT[key][0]).replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
@@ -163,6 +166,7 @@ BetterDTKit.mod('lab-automation', {
   background: linear-gradient(165deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.14) 55%, rgba(255,255,255,0.10) 100%);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.26), inset 0 1px 0 rgba(255,255,255,0.30);
   transition: filter .15s ease, box-shadow .15s ease; user-select: none; }
+#bdt-lab-btn.bdt-lab-at-lab { transform: translate(-100%, -50%); }
 #bdt-lab-btn:hover { filter: brightness(1.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.35); }
 #bdt-lab-btn .bdt-lab-bdot { width: .55em; height: .55em; border-radius: 50%; background: rgba(255,255,255,.35); }
 #bdt-lab-btn.bdt-lab-is-on .bdt-lab-bdot { background: linear-gradient(135deg, #2fae4d, #a8d43c); box-shadow: 0 0 0 2px rgba(255,255,255,.85); }
@@ -197,10 +201,13 @@ BetterDTKit.mod('lab-automation', {
     return win;
   }
   function placeButton() {
-    const open = String(gv.class) === SCREEN && !dlg;
-    if (!open) { if (btn) btn.style.display = 'none'; screen = null; return; }
-    if (!screen || !alive(screen)) screen = findWindow();
-    if (!screen) return;
+    const cls = String(gv.class);
+    if (cls !== SCREEN) screen = null;
+    if (!here() || dlg) { if (btn) btn.style.display = 'none'; return; }
+    if (cls === SCREEN && (!screen || !alive(screen))) screen = findWindow();
+    if (cls === SCREEN && !screen) return;
+    let L = null;
+    if (cls === LAB) { try { L = rt.layout.getLayer(LAB_UI); } catch { L = null; } if (!L) return; }
     if (!btn) {
       css.textContent = OWN_CSS;
       btn = document.createElement('div');
@@ -210,12 +217,15 @@ BetterDTKit.mod('lab-automation', {
       btn.addEventListener('click', kit.guard(() => { globalThis.tapMain?.(); openPanel(); }));
       document.body.appendChild(btn);
     }
-    const L = screen.layer, k = (L.layerToCssPx(1920, 0)[0] - L.layerToCssPx(0, 0)[0]) / 1920;
-    const [x, y] = L.layerToCssPx(screen.x - screen.width / 2 + 28, screen.y - screen.height / 2 + 26);
+    // the investing window: its top left corner; the lab: left of the game's COLLECT button (960, 1000, 400 wide)
+    if (screen) L = screen.layer;
+    const k = (L.layerToCssPx(1920, 0)[0] - L.layerToCssPx(0, 0)[0]) / 1920;
+    const [x, y] = screen ? L.layerToCssPx(screen.x - screen.width / 2 + 28, screen.y - screen.height / 2 + 26) : L.layerToCssPx(740, 1000);
+    btn.classList.toggle('bdt-lab-at-lab', !screen);
     const label = tr('button');
     if (btn.lastChild.textContent !== label) btn.lastChild.textContent = label;
     btn.classList.toggle('bdt-lab-is-on', C.FUNCS.some(on));
-    Object.assign(btn.style, { display: 'flex', left: x + 'px', top: y + 'px', fontSize: 22 * k + 'px', opacity: String(screen.opacity) });
+    Object.assign(btn.style, { display: 'flex', left: x + 'px', top: y + 'px', fontSize: 22 * k + 'px', opacity: String(screen ? screen.opacity : 1) });
   }
   const SHIELD = ['mousedown', 'mouseup', 'click', 'dblclick', 'pointerdown', 'pointerup', 'pointermove', 'mousemove',
     'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu'];
@@ -334,15 +344,15 @@ BetterDTKit.mod('lab-automation', {
   }
 
   // ── lifecycle ──────────────────────────────────────────────────────────────────────────────────────────────────────
-  // the button follows the window every frame while the investing screen is open (it fades and moves in)
+  // the button follows the window every frame while the investing screen or the lab is open (it fades and moves in)
   let raf = 0;
   const frame = kit.guard(() => {
     raf = 0;
     placeButton();
-    if (String(gv.class) === SCREEN) raf = requestAnimationFrame(frame);
+    if (here()) raf = requestAnimationFrame(frame);
   });
   const timer = setInterval(kit.guard(() => {
-    if (String(gv.class) === SCREEN) { if (!raf) frame(); }
+    if (here()) { if (!raf) frame(); }
     else { placeButton(); if (dlg) closePanel(); }
   }), 150);
   const dispose = () => {
