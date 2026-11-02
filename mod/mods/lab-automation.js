@@ -284,7 +284,7 @@ BetterDTKit.mod('lab-automation', {
       ? `<div class="bdt-lab-status bdt-lab-st-ok">${esc(tr('running', { d: days, usd: usd(amountOf(get(2))) }))}</div>`
       : `<div class="bdt-lab-status">${esc(tr('idle'))}</div>`;
     const tile = (label, value) => `<div class="bdt-lab-tile"><i>${esc(label)}</i><b>${esc(value)}</b></div>`;
-    dlg.stage.innerHTML = `<div id="bdt-lab-box">
+    const html = `
   <div id="bdt-lab-head"><div class="bdt-lab-hico">${ICON}</div>
     <div class="bdt-lab-htxt"><div id="bdt-lab-title">${esc(tr('title'))}</div>${status}</div><div id="bdt-lab-x">×</div></div>
   <div id="bdt-lab-cards">
@@ -299,7 +299,11 @@ BetterDTKit.mod('lab-automation', {
     <div class="bdt-lab-tiles">${tile(tr('collected'), fmt(get(C.ROW.collected)))}${tile(tr('renewed'), fmt(get(C.ROW.renewed)))}${tile(tr('fees'), usd(get(C.ROW.fees)))}</div>
     <div class="bdt-lab-fee">${esc(tr('feeNote'))}</div></div></div>
   <div id="bdt-lab-foot"><div id="bdt-lab-done">${esc(tr('done'))}</div></div>
-</div>`;
+`;
+    // the window stays, only what is in it is drawn again (a new window would play its opening animation)
+    let box = dlg.stage.querySelector('#bdt-lab-box');
+    if (!box) { box = document.createElement('div'); box.id = 'bdt-lab-box'; dlg.stage.appendChild(box); }
+    box.innerHTML = html;
   }
   function onClick(e) {
     const t = e.target.closest('[data-buy],[data-tog],[data-step],#bdt-lab-x,#bdt-lab-done');
