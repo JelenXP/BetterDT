@@ -1,11 +1,13 @@
 // Auto research – the rules, without the game: which levels of the ticked research cards are bought now, which wait
-// for a second try and which are given up, and how the ticked cards are kept in BetterDT settings. Used by
-// auto-research.js and the node tests.
+// for a second try, which are short (bought quietly as soon as the points and the money are there) and which are given
+// up, and how the ticked cards are kept in BetterDT settings. Used by auto-research.js and the node tests.
 (() => {
   const RETRY_DAYS = 5;
 
   // One pass of the rules for one game day (or right after a card is ticked).
-  // cards: Map id -> state { wait?: { day, max }, gave?: max } (changed in place: the states of the ticked cards)
+  // cards: Map id -> state { wait?: { day, max }, short?: max, gave?: max } (changed in place: the states of the ticked
+  // cards). short: still not enough after the second try, so it is tried every day without a message; gave: the game
+  // did not research it (auto-research.js sets it), so it waits for a new level of the game.
   // ctx: { today, targets: Map id -> level the game offers now, level(id), cost(id) -> { rp, usd },
   //        rp, money, reserve, free (sandbox: research costs nothing), recommended: Set of ids, only?: Set of ids }
   // Returns { buys: [id, …] (one entry per level, in buying order), rp, usd (the price of all of them),
@@ -17,8 +19,9 @@
       const to = ctx.targets.get(id) || 0, lvl = ctx.level(id);
       // a new level of the game: everything starts again (a given up level is tried once more)
       if (s.gave !== undefined && to > s.gave) delete s.gave;
+      if (s.short !== undefined && to > s.short) delete s.short;
       if (s.wait && to > s.wait.max) delete s.wait;
-      if (lvl >= to) { delete s.wait; continue; }
+      if (lvl >= to) { delete s.wait; delete s.short; continue; }
       if (s.gave !== undefined) continue;
       if (s.wait && ctx.today < s.wait.day) continue;
       want.push(id);
@@ -44,10 +47,11 @@
     }
     for (const id of want) {
       const s = cards.get(id), to = ctx.targets.get(id);
-      if (lvl.get(id) >= to) { delete s.wait; continue; }
+      if (lvl.get(id) >= to) { delete s.wait; delete s.short; continue; }
+      if (s.short !== undefined) continue;   // told once already
       if (!s.wait) { s.wait = { day: ctx.today + RETRY_DAYS, max: to }; continue; }
       delete s.wait;
-      s.gave = to;
+      s.short = to;
       out.gaveUp.push({
         id, level: lvl.get(id) + 1,
         rp: Math.max(0, c(id).rp - rp),
@@ -60,13 +64,15 @@
 
   // ── keeping the ticked cards ─────────────────────────────────────────────────────────────────────
   // BetterDT settings hold short values (200 characters, no line breaks): the cards are written as a list in base 36,
-  // "id", "id-day.max" (waits) or "id_max" (given up), split over the keys <prefix>.0, <prefix>.1, …
+  // "id", "id-day.max" (waits), "id_max" (short; the given up state of older versions, which was the same) or
+  // "id~max" (given up), split over the keys <prefix>.0, <prefix>.1, …
   const CHUNK = 190;
   function encode(cards) {
     const parts = [];
     for (const id of [...cards.keys()].sort((a, b) => a - b)) {
       const s = cards.get(id), b = (n) => Math.max(0, Math.round(n)).toString(36);
-      parts.push(b(id) + (s.gave !== undefined ? '_' + b(s.gave) : s.wait ? '-' + b(s.wait.day) + '.' + b(s.wait.max) : ''));
+      parts.push(b(id) + (s.gave !== undefined ? '~' + b(s.gave) : s.short !== undefined ? '_' + b(s.short)
+        : s.wait ? '-' + b(s.wait.day) + '.' + b(s.wait.max) : ''));
     }
     const text = parts.join(','), chunks = [];
     for (let i = 0; i < text.length; i += CHUNK) chunks.push(text.slice(i, i + CHUNK));
@@ -75,11 +81,12 @@
   function decode(chunks) {
     const cards = new Map();
     for (const p of chunks.join('').split(',')) {
-      const m = /^([0-9a-z]+)(?:_([0-9a-z]+)|-([0-9a-z]+)\.([0-9a-z]+))?$/.exec(p);
+      const m = /^([0-9a-z]+)(?:_([0-9a-z]+)|-([0-9a-z]+)\.([0-9a-z]+)|~([0-9a-z]+))?$/.exec(p);
       if (!m) continue;
       const n = (v) => parseInt(v, 36), s = {};
-      if (m[2]) s.gave = n(m[2]);
+      if (m[2]) s.short = n(m[2]);
       if (m[3]) s.wait = { day: n(m[3]), max: n(m[4]) };
+      if (m[5]) s.gave = n(m[5]);
       cards.set(n(m[1]), s);
     }
     return cards;

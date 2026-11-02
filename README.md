@@ -25,8 +25,8 @@ game file and does not touch your saves.
   everything you can post goes out with the game's default design of the topic, for 15 % fewer likes and followers.
 - **Auto research (RESEARCH LAB):** tick **Auto** on a research card (or **Auto: whole tab** in the top bar) and its
   new levels are researched by themselves once a game day, as soon as the game offers them and you have the research
-  points and the money. Not enough: tried again 5 days later, then given up with a message until the game offers
-  the next level. In the settings: a money reserve the mod never goes below (default $0) and the messages.
+  points and the money. Not enough: tried again 5 days later, then one message, and it is bought on the first day
+  there is enough. In the settings: a money reserve the mod never goes below (default $0) and the messages.
 - **Faster game speed:** the speed button in the corner goes ×1 → ×1.25 → ×1.5 → ×2 → ×3, and in the settings you
   can add ×4, ×5, ×6, ×8 and ×10; every speed has its own colour.
 - **Adjustable autosave:** the game's Autosave setting (30 to 365 days) becomes a slider from 5 to 360 game days
@@ -403,10 +403,11 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   its `ResearchEngine` takes). Recommended cards first (`debugResearchCategoryFlags()`), then the cheaper ones, one level
   of each card per round, while the research points and the money are enough and the money left stays above the
   reserve (settings: $0 to $1T, default $0). In sandbox mode the levels are free, like the game's own button.
-- **Not enough:** the level waits 5 game days, then it is given up with a message saying what was missing (research
-  points, money or the reserve). The card stays ticked; when the game offers a higher level, everything missing is
-  tried again the same way. The messages go to the game's own message stack in the bottom right corner
-  (`showOfficeNotification`): one for each day with automatic research, one for each level given up (can be turned off).
+- **Not enough:** the level waits 5 game days, then a message says what was missing (research points, money or the
+  reserve) and the level is bought quietly on the first day there is enough (orange box). A level the game itself
+  does not research waits for a higher level of the game. Ticked cards that older versions gave up for want of
+  points or money are bought again this way. The messages go to the game's own message stack in the bottom right corner
+  (`showOfficeNotification`): one for each day with automatic research, one for each level still not affordable (can be turned off).
 - **How it researches:** the game's own function `ResearchEngine` with `ResearchEngineID`, the same as after a click on
   a card, and it works on every screen. Several levels of one card go the way the game's paid Research tab buys them:
   all but the last level set and paid by the mod, the last one by the game. The price is deducted from the month's
@@ -415,7 +416,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - Tested on a copy with file writes blocked: ticking a card bought it at once on the research screen (190 RP and
   $3.25M taken, the month's taxable profit $3.25M lower); a whole tab (549 levels of 22 cards) took 41 ms and the
   exact price; after a save was loaded the ticked cards were bought by themselves; with a reserve above the money the
-  level waited, was given up the next try with a message, and was bought when one more level was offered.
+  level waited, was given up the next try with a message, and was bought when one more level was offered. Later:
+  13 cards an older version had given up were bought again as soon as the save was loaded (2 325 RP spent).
 ### `fair-reviews.js`: fair reviews
 - The game's review function for the device type (`ReviewsEngine_<Type>`, 16 of them) pushes one entry per aspect
   (camera, screen, price, …) into `ArrayReviews_Temp`, then `ReviewsEngineResults` picks 4 of them at random,

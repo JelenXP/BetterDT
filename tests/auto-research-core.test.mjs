@@ -29,7 +29,7 @@ test('one level of each card per round, recommended cards first, then the cheape
   assert.deepEqual(r.buys, [3, 2, 1, 2, 1]);
 });
 
-test('not enough: a second try after 5 days, then given up with what was missing', () => {
+test('not enough: a second try after 5 days, then short with what was missing, bought as soon as it fits', () => {
   const cards = ticked(1);
   const g = game(cards, { targets: { 1: 2 }, levels: { 1: 1 }, rp: 5 });
   assert.deepEqual(g.run().buys, []);
@@ -39,9 +39,27 @@ test('not enough: a second try after 5 days, then given up with what was missing
   g.ctx.today = 105;
   const r = g.run();
   assert.deepEqual(r.gaveUp, [{ id: 1, level: 2, rp: 5, usd: 0, reserve: false }]);
+  assert.deepEqual(cards.get(1), { short: 2 });
+  g.ctx.today = 106;
+  assert.deepEqual(g.run(), { buys: [], rp: 0, usd: 0, gaveUp: [] }, 'no second message');
+  assert.deepEqual(cards.get(1), { short: 2 });
+  g.ctx.today = 107; g.ctx.rp = 1000;
+  assert.deepEqual(g.run().buys, [1], 'bought the day there is enough');
+  assert.deepEqual(cards.get(1), {});
+});
+
+test('given up by the game: it waits for a new level', () => {
+  const cards = new Map([[1, { gave: 2 }]]);
+  const g = game(cards, { targets: { 1: 2 }, levels: { 1: 1 }, rp: 1000 });
+  assert.deepEqual(g.run().buys, []);
   assert.deepEqual(cards.get(1), { gave: 2 });
-  g.ctx.today = 200; g.ctx.rp = 1000;
-  assert.deepEqual(g.run().buys, [], 'a given up level waits for a new one');
+});
+
+test('short and a new level of the game: everything starts again', () => {
+  const cards = new Map([[1, { short: 2 }]]);
+  const g = game(cards, { targets: { 1: 3 }, levels: { 1: 1 }, rp: 5 });
+  g.run();
+  assert.deepEqual(cards.get(1), { wait: { day: 105, max: 3 } });
 });
 
 test('a new level of the game: the given up level is tried again together with it', () => {
@@ -95,11 +113,12 @@ test('a card at the top of what the game offers forgets its wait', () => {
 
 test('kept in settings: short values, the same cards back', () => {
   const cards = new Map();
-  for (let id = 0; id < 700; id += 3) cards.set(id, id % 2 ? { wait: { day: 7804 + id, max: 12 } } : id % 5 ? {} : { gave: 38 });
+  for (let id = 0; id < 700; id += 3) cards.set(id, id % 2 ? { wait: { day: 7804 + id, max: 12 } } : id % 5 ? {} : id % 3 ? { gave: 38 } : { short: 40 });
   const chunks = C.encode(cards);
   assert.ok(chunks.length > 1 && chunks.every(c => c.length <= 190 && !/[\r\n]/.test(c)));
   assert.deepEqual(C.decode(chunks), cards);
   assert.deepEqual(C.encode(new Map()), []);
+  assert.deepEqual(C.decode(['1a_h']), new Map([[46, { short: 17 }]]), 'the given up state of older versions is short');
   assert.deepEqual(C.decode([]), new Map());
 });
 

@@ -8,10 +8,10 @@
 // comes to the market (the same levels as the game's own buttons research), never one researched ahead by a lab
 // breakthrough. Recommended cards are bought first, then the cheaper ones, one level of each card per round.
 // When the points or the money are not enough, the level is tried again 5 game days later; when it is still not
-// enough, the mod gives it up with a message saying what was missing. The card stays ticked, and when the game
-// offers a new level of it, everything missing is tried again the same way.
+// enough, a message says what was missing and the level is bought quietly on the first day there is enough. A level
+// the game does not research waits until the game offers a new level of the card.
 // BetterDT settings: a money reserve (the mod buys nothing that would leave less money; default $0) and the messages
-// (one for each day with automatic research, one for each level given up).
+// (one for each day with automatic research, one for each level that was still not affordable).
 // In sandbox mode (research is free) the ticked cards get every level at once, at no cost, like the game's own button.
 //
 // The research itself is the game's: the game's function ResearchEngine researches the card in ResearchEngineID
@@ -74,21 +74,36 @@ BetterDTKit.mod('auto-research', {
       '为本页所有卡片开启或关闭自动研究',
       '이 탭의 모든 카드에 대해 자동 연구를 켜거나 끕니다',
       'このタブのすべてのカードの自動研究をオン／オフ'],
-    gaveTip: ['Given up for now: not enough research points or money. Tried again when the game offers a new level.',
-      'Пока отложено: не хватило очков исследований или денег. Новая попытка, когда игра предложит новый уровень.',
-      'Vorerst aufgegeben: zu wenig Forschungspunkte oder Geld. Neuer Versuch, wenn das Spiel eine neue Stufe anbietet.',
-      'Abandonné pour l’instant : pas assez de points de recherche ou d’argent. Nouvel essai quand le jeu propose un nouveau niveau.',
-      'Rinunciato per ora: punti ricerca o denaro insufficienti. Nuovo tentativo quando il gioco offre un nuovo livello.',
-      'Abandonado por ahora: no hay suficientes puntos de investigación o dinero. Se reintenta cuando el juego ofrezca un nivel nuevo.',
-      'अभी के लिए छोड़ा: रिसर्च पॉइंट्स या पैसे कम थे। गेम के नया स्तर देने पर फिर कोशिश होगी।',
-      'Şimdilik bırakıldı: araştırma puanı veya para yetmedi. Oyun yeni seviye sunduğunda tekrar denenir.',
-      'Desistido por enquanto: pontos de pesquisa ou dinheiro insuficientes. Nova tentativa quando o jogo oferecer um novo nível.',
-      'Поки відкладено: не вистачило очок досліджень або грошей. Нова спроба, коли гра запропонує новий рівень.',
-      'Ditunda dulu: poin riset atau uang tidak cukup. Dicoba lagi saat game menawarkan level baru.',
-      'Na razie odpuszczone: za mało punktów badań lub pieniędzy. Ponowna próba, gdy gra zaoferuje nowy poziom.',
-      '暂时放弃：研究点数或资金不足。游戏提供新等级时再试。',
-      '일단 포기: 연구 포인트나 돈이 부족했습니다. 게임이 새 레벨을 제공하면 다시 시도합니다.',
-      'いったん見送り：研究ポイントかお金が足りませんでした。新しいレベルが出たら再挑戦します。'],
+    shortTip: ['Not enough research points or money: bought by itself as soon as there is enough.',
+      'Не хватает очков исследований или денег: купится само, как только хватит.',
+      'Zu wenig Forschungspunkte oder Geld: wird von selbst gekauft, sobald es reicht.',
+      'Pas assez de points de recherche ou d’argent : acheté tout seul dès qu’il y en a assez.',
+      'Punti ricerca o denaro insufficienti: acquistato da solo appena bastano.',
+      'No hay suficientes puntos de investigación o dinero: se compra solo en cuanto alcance.',
+      'रिसर्च पॉइंट्स या पैसे कम हैं: पर्याप्त होते ही अपने-आप खरीदा जाएगा।',
+      'Araştırma puanı veya para yetmiyor: yeterli olunca kendiliğinden alınır.',
+      'Pontos de pesquisa ou dinheiro insuficientes: comprado sozinho assim que houver o bastante.',
+      'Не вистачає очок досліджень або грошей: купиться само, щойно вистачить.',
+      'Poin riset atau uang kurang: dibeli sendiri begitu cukup.',
+      'Za mało punktów badań lub pieniędzy: kupi się samo, gdy tylko wystarczy.',
+      '研究点数或资金不足：一旦足够就会自动购买。',
+      '연구 포인트나 돈이 부족합니다: 충분해지면 저절로 구매됩니다.',
+      '研究ポイントかお金が足りません：足りしだい自動で購入されます。'],
+    gaveTip: ['The game did not research it: tried again when the game offers a new level.',
+      'Игра не исследовала его: новая попытка, когда игра предложит новый уровень.',
+      'Das Spiel hat es nicht erforscht: neuer Versuch, wenn das Spiel eine neue Stufe anbietet.',
+      'Le jeu ne l’a pas recherché : nouvel essai quand le jeu propose un nouveau niveau.',
+      'Il gioco non l’ha ricercato: nuovo tentativo quando il gioco offre un nuovo livello.',
+      'El juego no lo investigó: se reintenta cuando el juego ofrezca un nivel nuevo.',
+      'गेम ने इसे शोध नहीं किया: गेम के नया स्तर देने पर फिर कोशिश होगी।',
+      'Oyun bunu araştırmadı: oyun yeni seviye sunduğunda tekrar denenir.',
+      'O jogo não o pesquisou: nova tentativa quando o jogo oferecer um novo nível.',
+      'Гра не дослідила його: нова спроба, коли гра запропонує новий рівень.',
+      'Game tidak merisetnya: dicoba lagi saat game menawarkan level baru.',
+      'Gra tego nie zbadała: ponowna próba, gdy gra zaoferuje nowy poziom.',
+      '游戏没有研究它：游戏提供新等级时再试。',
+      '게임이 연구하지 않았습니다: 게임이 새 레벨을 제공하면 다시 시도합니다.',
+      'ゲームが研究しませんでした：新しいレベルが出たら再挑戦します。'],
     bought: ['Auto research, levels bought: {n} ({rp} research points, {usd})', 'Автоисследование: уровней {n} ({rp} очков исследований, {usd})',
       'Auto-Forschung, gekaufte Stufen: {n} ({rp} Forschungspunkte, {usd})', 'Recherche auto, niveaux achetés : {n} ({rp} points de recherche, {usd})',
       'Ricerca automatica, livelli acquistati: {n} ({rp} punti ricerca, {usd})', 'Investigación automática, niveles comprados: {n} ({rp} puntos de investigación, {usd})',
@@ -96,13 +111,21 @@ BetterDTKit.mod('auto-research', {
       'Pesquisa automática, níveis comprados: {n} ({rp} pontos de pesquisa, {usd})', 'Автодослідження: рівнів {n} ({rp} очок досліджень, {usd})',
       'Riset otomatis: {n} level ({rp} poin riset, {usd})', 'Automatyczne badania: poziomów {n} ({rp} punktów badań, {usd})',
       '自动研究：{n} 个等级（{rp} 研究点数，{usd}）', '자동 연구: {n}개 레벨 (연구 포인트 {rp}, {usd})', '自動研究：{n} レベル（研究ポイント {rp}、{usd}）'],
-    gave: ['Auto research gave up {name} level {lvl}: missing {what}', 'Автоисследование отложило {name}, уровень {lvl}: не хватает {what}',
-      'Auto-Forschung gibt {name} Stufe {lvl} auf: es fehlen {what}', 'La recherche auto abandonne {name} niveau {lvl} : il manque {what}',
-      'La ricerca automatica rinuncia a {name} livello {lvl}: mancano {what}', 'La investigación automática abandona {name} nivel {lvl}: faltan {what}',
-      'ऑटो शोध ने {name} स्तर {lvl} छोड़ा: कमी {what}', 'Otomatik araştırma {name} seviye {lvl} bıraktı: eksik {what}',
-      'A pesquisa automática desistiu de {name} nível {lvl}: faltam {what}', 'Автодослідження відклало {name}, рівень {lvl}: бракує {what}',
-      'Riset otomatis menunda {name} level {lvl}: kurang {what}', 'Automatyczne badania odpuściły {name} poziom {lvl}: brakuje {what}',
-      '自动研究放弃了 {name} 第 {lvl} 级：缺少 {what}', '자동 연구가 {name} 레벨 {lvl}을(를) 포기: 부족 {what}', '自動研究が {name} レベル {lvl} を見送り：不足 {what}'],
+    gave: ['Auto research: not enough for {name} level {lvl}, missing {what}; bought as soon as there is enough',
+      'Автоисследование: не хватает на {name}, уровень {lvl}, нужно ещё {what}; купится, как только хватит',
+      'Auto-Forschung: zu wenig für {name} Stufe {lvl}, es fehlen {what}; wird gekauft, sobald es reicht',
+      'Recherche auto : pas assez pour {name} niveau {lvl}, il manque {what} ; acheté dès qu’il y en a assez',
+      'Ricerca automatica: non basta per {name} livello {lvl}, mancano {what}; acquistato appena basta',
+      'Investigación automática: no alcanza para {name} nivel {lvl}, faltan {what}; se compra en cuanto alcance',
+      'ऑटो शोध: {name} स्तर {lvl} के लिए कम, कमी {what}; पर्याप्त होते ही खरीदा जाएगा',
+      'Otomatik araştırma: {name} seviye {lvl} için yetmiyor, eksik {what}; yetince alınır',
+      'Pesquisa automática: não basta para {name} nível {lvl}, faltam {what}; comprado assim que houver o bastante',
+      'Автодослідження: не вистачає на {name}, рівень {lvl}, бракує {what}; купиться, щойно вистачить',
+      'Riset otomatis: kurang untuk {name} level {lvl}, kurang {what}; dibeli begitu cukup',
+      'Automatyczne badania: za mało na {name} poziom {lvl}, brakuje {what}; kupi się, gdy wystarczy',
+      '自动研究：{name} 第 {lvl} 级不够，缺少 {what}；足够后立即购买',
+      '자동 연구: {name} 레벨 {lvl}에 부족, 부족분 {what}; 충분해지면 구매됩니다',
+      '自動研究：{name} レベル {lvl} に足りません（不足 {what}）。足りしだい購入します'],
     rp: ['{n} research points', '{n} очков исследований', '{n} Forschungspunkte', '{n} points de recherche', '{n} punti ricerca',
       '{n} puntos de investigación', '{n} रिसर्च पॉइंट्स', '{n} araştırma puanı', '{n} pontos de pesquisa', '{n} очок досліджень',
       '{n} poin riset', '{n} punktów badań', '{n} 研究点数', '연구 포인트 {n}', '研究ポイント {n}'],
@@ -224,7 +247,7 @@ BetterDTKit.mod('auto-research', {
         gv.ResearchCoins = rp; gv.Budget = money;
         // left until the game offers a new level, the other cards go on
         const st = cards.get(id);
-        if (st) { delete st.wait; st.gave = lvl + n; }
+        if (st) { delete st.wait; delete st.short; st.gave = lvl + n; }
         stop = 'the game did not research id ' + id;
         continue;
       }
@@ -344,12 +367,12 @@ BetterDTKit.mod('auto-research', {
         }));
         c.appendChild(b);
       }
-      const s = cards.get(id), gave = !!(s && s.gave !== undefined);
+      const s = cards.get(id), gave = !!(s && s.gave !== undefined), short = !!(s && s.short !== undefined);
       const label = tr('auto'), title = tr('cardTip') + (gave ? '\n' + tr('gaveTip') : '');
       if (b.lastChild.textContent !== label) b.lastChild.textContent = label;
       if (b.title !== title) b.title = title;
       b.classList.toggle('bdt-ar-on', !!s);
-      b.classList.toggle('bdt-ar-gave', gave);
+      b.classList.toggle('bdt-ar-gave', gave || short);
       c.classList.toggle('bdt-ar-card', !!s);
     }
     saveNames();
