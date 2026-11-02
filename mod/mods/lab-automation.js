@@ -236,7 +236,8 @@ BetterDTKit.mod('lab-automation', {
     btn.classList.toggle('bdt-lab-is-on', C.FUNCS.some(on));
     const dark = shadeOpacity();
     Object.assign(btn.style, { display: 'flex', left: x + 'px', top: y + 'px', fontSize: 22 * k + 'px', opacity: String(screen ? screen.opacity : 1),
-      filter: dark > 0.01 ? `brightness(${1 - dark})` : '', pointerEvents: dark > 0.01 ? 'none' : '' });
+      // every frame with the game's tile, so without the hover transition (it would lag behind and flash)
+      filter: dark > 0.01 ? `brightness(${1 - dark})` : '', transition: dark > 0.01 ? 'none' : '', pointerEvents: dark > 0.01 ? 'none' : '' });
   }
   const SHIELD = ['mousedown', 'mouseup', 'click', 'dblclick', 'pointerdown', 'pointerup', 'pointermove', 'mousemove',
     'touchstart', 'touchmove', 'touchend', 'wheel', 'contextmenu'];
