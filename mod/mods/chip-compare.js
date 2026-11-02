@@ -214,5 +214,12 @@ BetterDTKit.mod('chip-compare', {
     if (out !== shown) { panel.innerHTML = out; shown = out; }
   }
   const timer = setInterval(kit.guard(update), 250);
+  // the section scrolls: the button follows its selector every frame (the rest is counted 4× a second)
+  kit.on('tick', () => {
+    if (!now || btn.style.display === 'none') return;
+    const inst = now.inst, L = inst.layer, bb = inst.getBoundingBox();
+    const [, y] = L.layerToCssPx((bb.left + bb.right) / 2 + 248, (bb.top + bb.bottom) / 2);
+    btn.style.top = y + 'px';
+  });
   return () => { clearInterval(timer); hide(); };
 });
