@@ -1221,7 +1221,7 @@ BetterDT.register('betterdt-settings', (rt) => {
     'fair-specs': ['Fair specs', 'Честные характеристики', 'Faire Spezifikationen', 'Caractéristiques équitables', 'Specifiche eque',
       'Especificaciones justas', 'निष्पक्ष स्पेसिफिकेशन', 'Adil özellikler', 'Especificações justas', 'Чесні характеристики', 'Spesifikasi adil',
       'Uczciwe parametry', '公平规格', '공정한 사양', '公平なスペック'],
-    'fair-specs.d': ['What research unlocks for your own CPU or GPU (clocks, cores, cache, TFLOPS…) keeps up with the best competing part of the same time',
+    'fair-specs.d': ['What research unlocks for your own CPU or GPU (clocks, cores, cache, TFLOPS…) keeps up with the best competing part of the same time. In the CPU editor the GPU clock and texture units move the bars',
       'То, что исследования открывают для своего CPU или GPU (частоты, ядра, кэш, TFLOPS…), не отстаёт от лучших деталей конкурентов того же времени',
       'Was die Forschung für eigene CPUs und GPUs freischaltet (Takt, Kerne, Cache, TFLOPS…), hält mit dem besten Konkurrenzteil derselben Zeit mit',
       'Ce que la recherche débloque pour vos CPU et GPU (fréquences, cœurs, cache, TFLOPS…) suit la meilleure pièce concurrente de la même époque',

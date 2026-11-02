@@ -70,6 +70,24 @@ BetterDTKit.mod('fair-specs', {
   kit.on('month', apply);
   apply();
 
+  // The bars of the own CPU editor (getMyCpuSpecScores) leave out the integrated GPU's core clock and texture units
+  // (weight 0: changing them moves nothing), and the device's latencies (touch, app launch, shader compilation, …)
+  // share 7 % of PERFORMANCE, about 1 point each. Here the clock counts as in the own GPU editor (power and
+  // performance, and the heat and consumption of a higher clock), the texture units as the fill rate, and the
+  // latencies get 16 %. The security engine stays out: it is no performance.
+  const WEIGHTS = { power: { gClock: 0.08, gTmu: 0.04 }, perf: { gClock: 0.04, lat: 0.16 }, energyLoad: { gClock: 0.06 }, coolHeat: { gClock: 0.06 } };
+  let gameWeights = null;
+  if (typeof globalThis.setMyCpuSpecScoresConfig === 'function' && typeof globalThis.getMyCpuSpecScoresConfig === 'function') {
+    const w = globalThis.getMyCpuSpecScoresConfig().WEIGHTS || {};
+    gameWeights = {};
+    for (const [bar, keys] of Object.entries(WEIGHTS)) {
+      gameWeights[bar] = {};
+      for (const k of Object.keys(keys)) gameWeights[bar][k] = (w[bar] && w[bar][k]) || 0;
+    }
+    globalThis.setMyCpuSpecScoresConfig({ WEIGHTS });
+    resetCaches();
+  } else kit.warn('own CPU scores have no config: the GPU clock still adds nothing to the bars');
+
   // off: the game's values back where ours are still in place
   return () => {
     for (const [table, log] of changed) {
@@ -82,6 +100,7 @@ BetterDTKit.mod('fair-specs', {
       }
     }
     changed.clear();
+    if (gameWeights) globalThis.setMyCpuSpecScoresConfig({ WEIGHTS: gameWeights });
     resetCaches();
   };
 });

@@ -78,7 +78,8 @@ game file and does not touch your saves.
   the price page.
 - **Fair specs:** what research unlocks for your own CPU or GPU (clocks, cores, cache, TFLOPS, texture units, fill
   rate, memory) keeps up with the best competing part of the same time; with all research done, a laptop CPU or GPU
-  no longer stays at about 60 % of the market.
+  no longer stays at about 60 % of the market. In the own CPU editor the integrated GPU's core clock and texture
+  units move the bars, and the latencies count more.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -611,6 +612,13 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - **Effects:** own chips keep their level and get the new value, also chips designed before. The cost counts the
   share of the best value of the day, so a top chip costs what it did; the game's caches of the best values and the
   spec scores are cleared. Loading a save gives the tables back from it, so the values are raised after every load.
+- **Bars of the own CPU editor:** the game's CPU score (getMyCpuSpecScores) gives the integrated GPU's core clock and
+  texture units no weight, so changing them moved no bar, and the device's latencies (touch, app launch, shader
+  compilation, tracking, …) share 7 % of PERFORMANCE, about 1 point each. Through the game's setMyCpuSpecScoresConfig
+  the clock gets POWER 8 % and PERFORMANCE 4 % (and 6 % of the heat and consumption, as in the own GPU editor), the
+  texture units POWER 4 % and the latencies 16 % of PERFORMANCE. The security engine stays out of the bars. Off, the
+  game's weights come back. In a 2029 laptop CPU: GPU clock from the lowest to the highest option POWER +6,
+  PERFORMANCE +2, ENERGY and COOLING −4; texture units POWER +3; each latency PERFORMANCE +3…4 (before: 0, 0 and +1).
 - Tested in game 1.6 in May 2029: the laptop GPU clock went from 1968 to 3200 MHz (best part 3250), laptop CPU clock,
   cores, cache, TFLOPS, texture units, fill rate and memory are level with the best part or ahead. Between two
   levels far apart the market can still be ahead (laptop cores 2013–2018, watch CPUs before 2015).
