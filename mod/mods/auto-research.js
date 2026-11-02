@@ -3,7 +3,8 @@
 // Every research card (a researched one too: the game may offer more levels later) gets an "Auto" box in its top
 // right corner, and the top bar an "Auto: whole tab" box that ticks
 // or unticks all the cards of the tab shown (only the cards of the category picked in the top bar, if one is). A
-// ticked card is researched by itself: once a game day (and right when it is ticked) every level the game offers now
+// ticked card is researched by itself: once a game day (and right when it is ticked, and every 2 seconds on the
+// research screen, where the game stops the time) every level the game offers now
 // is bought, when the research points and the money are enough. The game offers a new level of a part when the part
 // comes to the market (the same levels as the game's own buttons research), never one researched ahead by a lab
 // breakthrough. Recommended cards are bought first, then the cheaper ones, one level of each card per round.
@@ -413,6 +414,14 @@ BetterDTKit.mod('auto-research', {
   kit.on('gameLoaded', () => { load(); due = true; });
   kit.on('gameClosed', () => { clearTimeout(saveTimer); cards = new Map(); key = ''; });
   kit.on('day', () => { due = true; });
+  // the game stops the time on the research screen: there no day comes, so the levels the game offered on the
+  // last day (it can offer them after the day's run) are looked at there every 2 seconds
+  let looked = 0;
+  kit.on('tick', () => {
+    if (layoutName() !== 'RESEARCH' || performance.now() - looked < 2000) return;
+    looked = performance.now();
+    due = true;
+  });
   // once a game day, and the next frame again while something is in the way
   kit.on('tick', () => { if (due && !blocked()) { due = false; run(); } });
   // at once when the game draws the cards (before the frame is painted), and now and then for a new level
