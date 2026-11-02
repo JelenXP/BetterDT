@@ -76,6 +76,9 @@ game file and does not touch your saves.
   market would. Part of the saving (50, 70 or 85 %) can go into the price without buyers and reviewers taking the
   device as overpriced; the designer shows the saving on the CPU and GPU pages and a badge with the extra price on
   the price page.
+- **Fair specs:** what research unlocks for your own CPU or GPU (clocks, cores, cache, TFLOPS, texture units, fill
+  rate, memory) keeps up with the best competing part of the same time; with all research done, a laptop CPU or GPU
+  no longer stays at about 60 % of the market.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -598,6 +601,19 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   of the saving).
 - Tested in game 1.6 on a late save: own laptop CPUs saved $28–186 per unit; where the price allowed it, the sales
   grew 10–15 %.
+
+### `fair-specs.js`: fair specs
+- **Tables:** the research tables the editor of an own chip offers (clock, cores and cache of phone, laptop, watch,
+  console and VR CPUs; GPU clocks; laptop GPU TFLOPS, texture units, fill rate and memory). Each value is raised to
+  the best competing part (the game's processor, iGPU and dGPU arrays, by year) on the market until the next value
+  comes, a year ahead at most. A value never goes down and never falls below the one before it; the text of the
+  TFLOPS and fill rate values follows.
+- **Effects:** own chips keep their level and get the new value, also chips designed before. The cost counts the
+  share of the best value of the day, so a top chip costs what it did; the game's caches of the best values and the
+  spec scores are cleared. Loading a save gives the tables back from it, so the values are raised after every load.
+- Tested in game 1.6 in May 2029: the laptop GPU clock went from 1968 to 3200 MHz (best part 3250), laptop CPU clock,
+  cores, cache, TFLOPS, texture units, fill rate and memory are level with the best part or ahead. Between two
+  levels far apart the market can still be ahead (laptop cores 2013–2018, watch CPUs before 2015).
 
 ### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
 - **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in

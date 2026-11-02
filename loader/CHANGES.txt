@@ -1,5 +1,6 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.4.1 Fair specs: research for your own CPU and GPU keeps up with the best competing part (laptop clocks were at 60 %)
 0.4.1 Devicesgram auto posting: buy it on "Create new post" and everything you can post goes out every day (−15 % likes and followers)
 0.4.1 Lab automation: buy automatic collecting, automatic project renewal (+10 % fee) and a breakthrough focus
 0.4.1 Auto research: a ticked card that was short of points or money is bought on the first day there is enough
