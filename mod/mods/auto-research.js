@@ -133,7 +133,16 @@ BetterDTKit.mod('auto-research', {
     console.log = () => { };
     try { return fn(); } finally { console.log = orig; }
   }
-  const targets = () => quiet(() => globalThis.debugResearchAllTargets());
+  // The game's list counts the parts on the market, which can be one more than its research table allows (a card with
+  // 5 levels, 6 parts on the market): its ResearchEngine stops at the table's top, and so does the list here.
+  function targets() {
+    const out = new Map(), a = arr('ArrayResearch');
+    for (const [id, to] of quiet(() => globalThis.debugResearchAllTargets())) {
+      const top = Number(a.getAt(id, 0)) || 0;
+      out.set(id, top > 0 ? Math.min(to, top) : to);
+    }
+    return out;
+  }
   function recommended() {
     const out = new Set();
     for (const ids of Object.values(quiet(() => globalThis.debugResearchCategoryFlags()) || {})) for (const id of ids) out.add(Number(id));
@@ -213,8 +222,11 @@ BetterDTKit.mod('auto-research', {
         // the game did not take it: the levels set here go back too
         arr('ArrayMyResearch').setAt(lvl, id, 0, 0);
         gv.ResearchCoins = rp; gv.Budget = money;
+        // left until the game offers a new level, the other cards go on
+        const st = cards.get(id);
+        if (st) { delete st.wait; st.gave = lvl + n; }
         stop = 'the game did not research id ' + id;
-        break;
+        continue;
       }
       done += n;
       if (isFree) { gv.ResearchCoins = rp; gv.Budget = money; continue; }   // free, like the game's sandbox button
@@ -228,7 +240,7 @@ BetterDTKit.mod('auto-research', {
     if (done && layoutName() === 'RESEARCH') refreshPage();
     if (r.buys.length || r.gaveUp.length) {
       log('researched', done, 'of', r.buys.length, 'levels, paid', paidRp, 'RP and $' + paidUsd,
-        r.gaveUp.length ? '– gave up ' + r.gaveUp.map(g => g.id + '@' + g.level).join(' ') : '', stop ? '– stopped: ' + stop : '');
+        r.gaveUp.length ? '– gave up ' + r.gaveUp.map(g => g.id + '@' + g.level).join(' ') : '', stop ? '– skipped: ' + stop : '');
     }
     save();
     if (mismatch) return kit.fail(mismatch);

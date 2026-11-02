@@ -16,6 +16,7 @@
 // A device with innovative parts (born after its release) sells more: its popularity counts 10 % more per part while
 // the sales are computed, fading out within 60 days after the part reached the market. Fair reviews also scores
 // innovation (fair-reviews.js).
+// With the breakthrough focus of lab-automation.js the chosen device's parts are drawn 3× as often (its area 2× more).
 BetterDTKit.mod('research-breakthroughs', {
   needs: {
     calls: ['ResearchInvestEngine'],
@@ -70,7 +71,9 @@ BetterDTKit.mod('research-breakthroughs', {
       if (r.start > today() || !D.counters[r.array]) continue;
       const t = B.target(level(id), borns(r.array, r.bornCol), today(), r.cost);
       const lead = t && borns(r.array, r.bornCol)[t.row] - today();
-      if (t) out.push({ id, w: B.relevance(rel, r.creating) * B.leadWeight(lead), t });
+      // the breakthrough focus of lab-automation.js weighs the chosen device and area more
+      const focus = globalThis.BDTLabFocus ? globalThis.BDTLabFocus.weight(r) : 1;
+      if (t) out.push({ id, w: B.relevance(rel, r.creating) * B.leadWeight(lead) * focus, t });
     }
     return out;
   }

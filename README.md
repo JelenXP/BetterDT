@@ -18,6 +18,9 @@ game file and does not touch your saves.
   recommended functions first, at most half of your money) **Research all** researches everything on all tabs, for
   research points and money. It is greyed out when you cannot afford all of it; hovering it shows the price, and a
   click first asks with the price.
+- **Lab automation (RESEARCH LAB):** an **AUTOMATION** button on the investing window: buy automatic collecting of
+  the lab's points, automatic renewal of a project with the last amount (+10 % fee) and a breakthrough focus on a
+  device and its area (3× as often, its area 2× more).
 - **Auto research (RESEARCH LAB):** tick **Auto** on a research card (or **Auto: whole tab** in the top bar) and its
   new levels are researched by themselves once a game day, as soon as the game offers them and you have the research
   points and the money. Not enough: tried again 5 days later, then given up with a message until the game offers
@@ -394,7 +397,8 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   (`auto-research.c<hash of the company name>.<n>`, values of at most 200 characters, so split over several keys).
 - **When it buys:** once a game day, after a save is loaded and right when a card is ticked. It buys the levels the
   game offers now (`debugResearchAllTargets()`, the list of the game's own buttons), never a level researched ahead
-  by a lab breakthrough. Recommended cards first (`debugResearchCategoryFlags()`), then the cheaper ones, one level
+  by a lab breakthrough, and never more than `ArrayResearch` allows (the game's list can offer one level more than
+  its `ResearchEngine` takes). Recommended cards first (`debugResearchCategoryFlags()`), then the cheaper ones, one level
   of each card per round, while the research points and the money are enough and the money left stays above the
   reserve (settings: $0 to $1T, default $0). In sandbox mode the levels are free, like the game's own button.
 - **Not enough:** the level waits 5 game days, then it is given up with a message saying what was missing (research
@@ -504,6 +508,28 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   $25M for $50M, $100M, $400M and $1B; a $999M project was paid, kept as 25 000 999 and made 151.21 points a day
   against 64.89 at $25M.
 
+
+### `lab-automation.js`: lab automation
+- **Where:** an **AUTOMATION** button in the top left corner of the "Investing in research" window opens a panel in the
+  look of the game's own Automatic marketing window (the game's `#amk-css` is copied at runtime with the classes
+  renamed). Each function is bought once for research points and money and then has an on/off box.
+- **Automatic collecting** (300 RP + $2M): after every day of the lab (`ResearchInvestEngine`, once the other mods'
+  hooks of it are done) the whole points of the pool go to the research points, the fraction stays; points never stop
+  at the lab's capacity. `research-breakthroughs.js` still counts every point the lab made.
+- **Automatic renewal** (600 RP + $10M): a project that has ended starts again with the amount of the last one
+  (row 2 of the lab table keeps it) for a 10 % automation fee on top, like the game's automatic marketing. It starts
+  the way the game's Invest button does (event sheet RESEARCH MENU): the money, 30 days, the amount (over $25M in the
+  form of `lab-invest.js`) and the game's social post. Not enough money, or less than the money reserve of Auto
+  research would be left: tried every day, one message.
+- **Breakthrough focus** (1 000 RP + $25M): a device (the four CPU kinds as one) and, if wanted, one of its review
+  areas; `research-breakthroughs.js` weighs the candidates of the device 3× and of the area 6× (`BDTLabFocus`).
+- **Saved with the game:** rows 3–7 of `ArrayMyResearch_Invest` (flags, focus, points collected, fees, projects
+  renewed; the game reads rows 0–2 and saves and loads the whole table). A new game starts without them.
+- Tested on a copy with file writes blocked: rows added to the lab table came back from the save after a value was
+  changed in memory only; buying renewal started a $200M project at once ($230M with the price and the fee); about
+  113 points a day went to the research points with the pool left at a fraction; at the end of a project the
+  breakthroughs came, with a reserve above the money it was not renewed (one message), a day later it was; with the
+  focus on smartphones and their display, smartphone parts went from 11.6 % to 38.6 % of the breakthrough draw.
 ### `living-market.js`: living market
 - **Technology:** the further the market has moved on since a device came out, the less it sells: for every kind of
   part, the newest part on the market today against the newest one on the release day (half the most moved part,
