@@ -212,7 +212,8 @@ BetterDTKit.mod('lab-automation', {
   function placeButton() {
     const cls = String(gv.class);
     if (cls !== SCREEN) screen = null;
-    if (!here() || dlg) { if (btn) btn.style.display = 'none'; return; }
+    // it stays under the open panel, blurred with the rest of the screen by the panel's backdrop
+    if (!here()) { if (btn) btn.style.display = 'none'; return; }
     if (cls === SCREEN && (!screen || !alive(screen))) screen = findWindow();
     if (cls === SCREEN && !screen) return;
     let L = null;
@@ -259,7 +260,6 @@ BetterDTKit.mod('lab-automation', {
     window.addEventListener('keydown', onKey, true);
     paint();
     layout();
-    if (btn) btn.style.display = 'none';
   }
   function closePanel() {
     if (!dlg) return;
