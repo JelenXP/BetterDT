@@ -80,6 +80,9 @@ game file and does not touch your saves.
   rate, memory) keeps up with the best competing part of the same time; with all research done, a laptop CPU or GPU
   no longer stays at about 60 % of the market. In the own CPU editor the integrated GPU's core clock and texture
   units move the bars, and the latencies count more.
+- **Chip compare:** in the device designer, "Compare" next to the CPU or GPU model pins the chosen chip; the arrows
+  choose another one (a manufacturer's, a custom or your own) and a panel shows both side by side: parameters with
+  the change in %, the designer's bars and the production cost.
 - **Search and scroll bars (RESEARCH LAB, INVESTING):** a search field finds a research project in any tab or a
   company by name and jumps to it; the long lists get a scroll bar you can drag or click.
 - **Steady hover:** texts in the device editors no longer shake when the cursor is at their edge.
@@ -622,6 +625,20 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
 - Tested in game 1.6 in May 2029: the laptop GPU clock went from 1968 to 3200 MHz (best part 3250), laptop CPU clock,
   cores, cache, TFLOPS, texture units, fill rate and memory are level with the best part or ahead. Between two
   levels far apart the market can still be ahead (laptop cores 2013–2018, watch CPUs before 2015).
+
+### `chip-compare.js`: chip compare
+- **Where:** the CPU and GPU sections of the device designer. The open section is found by the model name the game
+  shows in it (ProcessorModel_Text, GraphicProcessorModel_Text; the series name where a phone has no model selector),
+  so it works the same in every device and language; the button sits right of that selector.
+- **What:** "Compare" pins the chosen chip (A); the chip chosen now is B. The panel over the device picture shows
+  each parameter as "A » B" with the change in % (green better, red worse; a smaller node is better), the four bars
+  of the designer in points and the production cost of the device. "Pin this" pins B, ✕ ends it; leaving the
+  designer forgets the pins. It only reads: the device keeps what is chosen.
+- **Data:** the game's chip readers (getLaptopChipSpecBars, getChipSpecBars, getConsoleChipSpecBars, …) for the chosen
+  chip whatever its source (manufacturer, custom, own), Processor_Power … Processor_Energy for the bars, DeviceCostPrice
+  for the cost; the labels are the game's own texts. Phones, tablets, watches and VR give the fill rate as gTex.
+- Tested in game 1.6: laptop CPUs (2630QM » 2670QM: CPU clock +10 %, POWER +5, cost +$3), laptop dGPUs, a 2029 laptop
+  with an Intel CPU pinned against an own CPU, and a phone SoC.
 
 ### `list-search.js`: search and scroll bars (RESEARCH LAB, INVESTING)
 - **Research:** a search field at the start of the research top bar looks through the projects of all tabs (names in
