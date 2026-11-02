@@ -108,12 +108,16 @@ BetterDTKit.mod('lab-automation', {
 
   // ── every day: collecting and renewal ──────────────────────────────────────────────────────────────────────────────
   let warned = false;   // the message about the money, once for each project that could not be renewed
+  // like the game's COLLECT: the pool rounded and emptied (a fraction left in it would keep the game's COLLECT
+  // button up, showing 1 or 0), then the lab screen's button and texts as the game updates them
   function collect() {
-    const pool = get(0), n = Math.floor(pool);
-    if (n < 1) return;
+    const pool = get(0), n = Math.round(pool);
+    if (!(pool > 0)) return;
     gv.ResearchCoins = num(gv.ResearchCoins) + n;
-    set(0, pool - n);
+    set(0, 0);
     set(C.ROW.collected, get(C.ROW.collected) + n);
+    if (String(gv.class) === LAB) for (const f of ['ResearchMenu_Text', 'ResearchMenu_ButtonsOpacity']) try { rt.callFunction(f); } catch { }
+    try { globalThis.refreshSandboxPanel?.(); } catch { }
   }
   function renew() {
     const r = C.renewal({ days: get(1), amount: amountOf(get(2)), money: num(gv.Budget), reserve: Math.max(0, S.num('auto-research.reserve', 0)) });

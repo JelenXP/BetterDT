@@ -515,8 +515,9 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   look of the game's own Automatic marketing window (the game's `#amk-css` is copied at runtime with the classes
   renamed). Each function is bought once for research points and money and then has an on/off box.
 - **Automatic collecting** (300 RP + $2M): after every day of the lab (`ResearchInvestEngine`, once the other mods'
-  hooks of it are done) the whole points of the pool go to the research points, the fraction stays; points never stop
-  at the lab's capacity. `research-breakthroughs.js` still counts every point the lab made.
+  hooks of it are done) the pool goes to the research points rounded and empties, like the game's COLLECT, and the
+  lab screen's COLLECT button is updated by the game's `ResearchMenu_Text` and `ResearchMenu_ButtonsOpacity` (the game
+  shows it while the pool is above 0); points never stop at the lab's capacity. `research-breakthroughs.js` still counts every point the lab made.
 - **Automatic renewal** (600 RP + $10M): a project that has ended starts again with the amount of the last one
   (row 2 of the lab table keeps it) for a 10 % automation fee on top, like the game's automatic marketing. It starts
   the way the game's Invest button does (event sheet RESEARCH MENU): the money, 30 days, the amount (over $25M in the
@@ -528,7 +529,7 @@ Based on the "prevent retirement" mod by **M1lan.** – thank you!
   renewed; the game reads rows 0–2 and saves and loads the whole table). A new game starts without them.
 - Tested on a copy with file writes blocked: rows added to the lab table came back from the save after a value was
   changed in memory only; buying renewal started a $200M project at once ($230M with the price and the fee); about
-  113 points a day went to the research points with the pool left at a fraction; at the end of a project the
+  113 points a day went to the research points; at the end of a project the
   breakthroughs came, with a reserve above the money it was not renewed (one message), a day later it was; with the
   focus on smartphones and their display, smartphone parts went from 11.6 % to 38.6 % of the breakthrough draw.
 ### `living-market.js`: living market
