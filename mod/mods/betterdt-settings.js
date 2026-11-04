@@ -520,7 +520,7 @@
   display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--bdt-s, 1) * 10px); pointer-events: none; }
 .bdt-ui-toast { max-width: calc(var(--bdt-s, 1) * 520px); padding: calc(var(--bdt-s, 1) * 12px) calc(var(--bdt-s, 1) * 18px);
   border-radius: calc(var(--bdt-s, 1) * 10px); background: rgba(12, 15, 22, .86); border: 1px solid rgba(255, 255, 255, .10);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); color: #fff; font: calc(var(--bdt-s, 1) * 22px)/1.3 ${FONT};
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); color: #fff; font: calc(var(--bdt-s, 1) * 22px)/1.3 ${FONT}; white-space: pre-line;
   animation: bdt-ui-in .3s cubic-bezier(.30, 1.35, .45, 1) both; }
 .bdt-ui-toast.bdt-ui-good { border-color: rgba(168, 212, 24, .7); }
 .bdt-ui-toast.bdt-ui-bad { border-color: rgba(255, 107, 127, .8); }
@@ -539,8 +539,31 @@
   const fits = (i, s) => !!i && i.objectType.name === s.t && i.layer.name === s.l && near(i.width, s.w, 2) && near(i.height, s.h, 2);
   const alive = (i) => { try { return rt.getInstanceByUid(i.uid) === i; } catch { return false; } };
 
+  // errors of the mods: where they are (BDTModderCore), and who wants to hear of the first one of a mod
+  const errorListeners = new Set();
+  function noteError(m, e) {
+    const C = globalThis.BDTModderCore;
+    const first = !m.error;
+    m.error = C ? C.describe(e, m.name) : { message: String((e && e.message) || e) };
+    if (first) for (const f of errorListeners) { try { f(m.name, m.error); } catch { } }
+  }
+
+  // a short message in the bottom right corner: { el, close }
+  function toast(text, opts = {}) {
+    uiCss();
+    let box = document.querySelector('.bdt-ui-toasts');
+    if (!box) { box = document.createElement('div'); box.className = 'bdt-ui-toasts'; document.body.appendChild(box); }
+    const t = document.createElement('div');
+    t.className = 'bdt-ui-toast' + (opts.type ? ' bdt-ui-' + opts.type : '');
+    t.textContent = text;
+    box.appendChild(t);
+    const remove = () => { t.remove(); if (box && !box.children.length) box.remove(); };
+    const timer = setTimeout(() => { t.classList.add('bdt-ui-out'); setTimeout(remove, 320); }, opts.ms || 4000);
+    return { el: t, close: () => { clearTimeout(timer); remove(); } };
+  }
+
   function mod(name, spec, init) {
-    const m = { name, spec, state: 'waiting', problems: [], errors: 0, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
+    const m = { name, spec, state: 'waiting', problems: [], errors: 0, error: null, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
     mods.set(name, m);
     function stop(state, problem) {
       if (m.state !== 'running' && m.state !== 'waiting') return;
@@ -556,6 +579,7 @@
           if (m.state !== 'running') return undefined;
           try { return fn.apply(this, arguments); } catch (e) {
             m.errors++;
+            noteError(m, e);
             console.error('[BetterDT] mod', name, 'error', m.errors + '/' + MAX_ERRORS + ':', e);
             if (m.errors >= MAX_ERRORS) stop('failed', String((e && e.message) || e));
             return undefined;
@@ -714,17 +738,9 @@
       },
       // a short message in the bottom right corner; opts.ms (default 4000), opts.type 'good' / 'bad'
       toast(text, opts = {}) {
-        uiCss();
-        let box = document.querySelector('.bdt-ui-toasts');
-        if (!box) { box = document.createElement('div'); box.className = 'bdt-ui-toasts'; document.body.appendChild(box); }
-        const t = document.createElement('div');
-        t.className = 'bdt-ui-toast' + (opts.type ? ' bdt-ui-' + opts.type : '');
-        t.textContent = text;
-        box.appendChild(t);
-        const remove = () => { t.remove(); if (box && !box.children.length) box.remove(); };
-        const timer = setTimeout(() => { t.classList.add('bdt-ui-out'); setTimeout(remove, 320); }, opts.ms || 4000);
-        m.undo.push(() => { clearTimeout(timer); remove(); });
-        return t;
+        const t = toast(text, opts);
+        m.undo.push(t.close);
+        return t.el;
       },
       // the BetterDT dialog: resolves with the index of the clicked button (waits while another dialog is open)
       dialog({ title = '', text = '', buttons = [{ label: 'OK', go: true }], content } = {}) {
@@ -755,7 +771,7 @@
           const d = init(rt, kit);
           m.dispose = typeof d === 'function' ? d : d && typeof d.dispose === 'function' ? () => d.dispose() : null;
           log('[BetterDTKit] started', name);
-        } catch (e) { console.error('[BetterDT] mod', name, 'failed:', e); stop('failed', 'start: ' + ((e && e.message) || e)); }
+        } catch (e) { console.error('[BetterDT] mod', name, 'failed:', e); noteError(m, e); stop('failed', 'start: ' + ((e && e.message) || e)); }
         const n = spec.needs || {};
         if (Object.keys(n.arrays || {}).length || n.dataCheck) whenGameLoaded(spec, () => {
           const q = checkData(spec);
@@ -776,7 +792,23 @@
     salesReady: () => hookSales(),
     // for tests: patch / unpatch the popularity reads by hand, the current factor of a device
     _sales: { on: (names) => popOn(names), off: () => popOff(), factor: (n, x, y) => popFactor(n, x, y) },
-    status: () => [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice() })),
+    // the state of every mod; a mod whose file failed to load ('broken') has no BetterDTKit.mod, only its error
+    status() {
+      const out = [...mods.values()].map(m => ({ name: m.name, state: m.state, problems: m.problems.slice(), error: m.error }));
+      const C = globalThis.BDTModderCore;
+      for (const l of B.loadErrors || []) {
+        const error = C ? C.describe(l.error, l.mod, l.file, B.sources) : { message: String((l.error && l.error.message) || l.error) };
+        if (!error.file) error.file = l.file;
+        const st = out.find(s => s.name === l.mod);
+        if (st) { if (!st.error) st.error = error; continue; }
+        out.push({ name: l.mod, state: 'broken', problems: [], error });
+      }
+      return out;
+    },
+    // fn(name, error) for the first error of a mod (and for the load errors once the settings ask for them)
+    onError(fn) { errorListeners.add(fn); return () => errorListeners.delete(fn); },
+    // a message in the corner that stays after the mod that showed it stops
+    toast: (text, opts) => toast(text, opts).el,
     // cb runs once the game data is loaded and the mods have been checked
     whenReady(runtime, cb) { rt = rt || runtime; waitReady(() => setTimeout(cb, 0)); },
     get gameVersion() { try { return String(rt.projectVersion || ''); } catch { return ''; } },
@@ -1113,6 +1145,28 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Fermato dopo errori ripetuti', 'Detenido tras errores repetidos', 'बार-बार त्रुटियों के बाद रोका गया', 'Tekrarlanan hatalardan sonra durduruldu',
       'Parado após erros repetidos', 'Зупинено після повторних помилок', 'Dihentikan setelah kesalahan berulang', 'Zatrzymany po powtarzających się błędach',
       '多次出错后已停止', '반복된 오류로 중지되었습니다', 'エラーが続いたため停止しました'],
+    stBroken: ['Could not be loaded', 'Не удалось загрузить', 'Konnte nicht geladen werden', 'Impossible à charger', 'Impossibile caricarlo',
+      'No se pudo cargar', 'लोड नहीं हो सका', 'Yüklenemedi', 'Não pôde ser carregado', 'Не вдалося завантажити', 'Tidak dapat dimuat',
+      'Nie udało się wczytać', '无法加载', '불러올 수 없음', '読み込めませんでした'],
+    errAt: ['{file}, line {line}, column {col}', '{file}, строка {line}, столбец {col}', '{file}, Zeile {line}, Spalte {col}',
+      '{file}, ligne {line}, colonne {col}', '{file}, riga {line}, colonna {col}', '{file}, línea {line}, columna {col}',
+      '{file}, पंक्ति {line}, कॉलम {col}', '{file}, satır {line}, sütun {col}', '{file}, linha {line}, coluna {col}',
+      '{file}, рядок {line}, стовпець {col}', '{file}, baris {line}, kolom {col}', '{file}, wiersz {line}, kolumna {col}',
+      '{file}，第 {line} 行，第 {col} 列', '{file}, {line}행 {col}열', '{file}、{line} 行 {col} 列'],
+    errLine: ['{file}, line {line}', '{file}, строка {line}', '{file}, Zeile {line}', '{file}, ligne {line}', '{file}, riga {line}',
+      '{file}, línea {line}', '{file}, पंक्ति {line}', '{file}, satır {line}', '{file}, linha {line}', '{file}, рядок {line}',
+      '{file}, baris {line}', '{file}, wiersz {line}', '{file}，第 {line} 行', '{file}, {line}행', '{file}、{line} 行'],
+    errFn: ['in {fn}', 'в {fn}', 'in {fn}', 'dans {fn}', 'in {fn}', 'en {fn}', '{fn} में', '{fn} içinde', 'em {fn}', 'у {fn}', 'di {fn}',
+      'w {fn}', '位于 {fn}', '{fn} 안', '{fn} 内'],
+    errToast: ['Mod {mod}: error in {where}', 'Мод {mod}: ошибка в {where}', 'Mod {mod}: Fehler in {where}', 'Mod {mod} : erreur dans {where}',
+      'Mod {mod}: errore in {where}', 'Mod {mod}: error en {where}', 'मॉड {mod}: {where} में त्रुटि', '{mod} modu: {where} içinde hata',
+      'Mod {mod}: erro em {where}', 'Мод {mod}: помилка в {where}', 'Mod {mod}: galat di {where}', 'Mod {mod}: błąd w {where}',
+      '模组 {mod}：{where} 出错', '모드 {mod}: {where}에서 오류', 'MOD {mod}：{where} でエラー'],
+    errSee: ['Details in Settings > BetterDT > Mods', 'Подробности: Настройки > BetterDT > Моды', 'Details unter Einstellungen > BetterDT > Mods',
+      'Détails dans Paramètres > BetterDT > Mods', 'Dettagli in Impostazioni > BetterDT > Mod', 'Detalles en Ajustes > BetterDT > Mods',
+      'विवरण: सेटिंग्स > BetterDT > मॉड', 'Ayrıntılar: Ayarlar > BetterDT > Modlar', 'Detalhes em Configurações > BetterDT > Mods',
+      'Подробиці: Налаштування > BetterDT > Моди', 'Detail di Pengaturan > BetterDT > Mod', 'Szczegóły: Ustawienia > BetterDT > Mody',
+      '详情见 设置 > BetterDT > 模组', '자세한 내용: 설정 > BetterDT > 모드', '詳細は 設定 > BetterDT > MOD'],
     stWarn: ['Works, but something in the game has changed', 'Работает, но в игре что-то изменилось', 'Läuft, aber im Spiel hat sich etwas geändert',
       'Fonctionne, mais quelque chose a changé dans le jeu', 'Funziona, ma qualcosa nel gioco è cambiato', 'Funciona, pero algo ha cambiado en el juego',
       'चल रहा है, पर गेम में कुछ बदल गया है', 'Çalışıyor ama oyunda bir şey değişmiş', 'Funciona, mas algo mudou no jogo',
@@ -1964,6 +2018,16 @@ BetterDT.register('betterdt-settings', (rt) => {
     }));
   }
 
+  // the lines around an error, numbered, the line itself marked
+  function errorCode(parent, code, line) {
+    if (!globalThis.BDTModderCore || !(line > 0)) return;
+    const pre = el('pre', 'bdt-err-code', parent);
+    for (const r of BDTModderCore.excerpt(code, line)) {
+      const l = el('div', r.here ? 'bdt-err-here' : '', pre);
+      l.textContent = String(r.n).padStart(4) + '  ' + r.text;
+    }
+  }
+
   function renderMods(body) {
     for (const m of B.mods) {
       if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
@@ -1974,14 +2038,24 @@ BetterDT.register('betterdt-settings', (rt) => {
         el('div', 'gs-row-hint bdt-credit', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('credit', { n: CREDITS[m.file] });
       }
       // a folder mod whose mod.json is not valid JSON: its files still load, but without title and options
-      if (m.folder && !m.manifest) el('div', 'gs-row-hint bdt-warn', mctl.parentNode.querySelector('.gs-row-label')).textContent = t('badManifest');
-      // what the compatibility check found (BetterDTKit)
+      const label = mctl.parentNode.querySelector('.gs-row-label');
+      if (m.folder && !m.manifest) {
+        const p = globalThis.BDTModderCore && m.manifestText !== undefined && BDTModderCore.jsonProblem(m.manifestText);
+        el('div', 'gs-row-hint bdt-warn', label).textContent = t('badManifest') +
+          (p ? ' – ' + t('errAt', { file: 'mod.json', line: p.line, col: p.column }) + ': ' + p.message : '');
+        if (p) errorCode(label, m.manifestText, p.line);
+      }
+      // what the compatibility check found (BetterDTKit), and where an error of the mod is
       const st = m.enabled && kitStatus(m.file);
-      if (st && (st.state !== 'running' || st.problems.length)) {
-        const key = st.state === 'incompatible' ? 'stIncompat' : st.state === 'failed' ? 'stFailed' : st.state === 'running' ? 'stWarn' : '';
-        if (key) {
-          const h = el('div', 'gs-row-hint bdt-warn', mctl.parentNode.querySelector('.gs-row-label'));
-          h.textContent = t(key) + (st.problems.length ? ': ' + st.problems.join('; ') : '');
+      if (st && (st.state !== 'running' || st.problems.length || st.error)) {
+        const key = st.state === 'incompatible' ? 'stIncompat' : st.state === 'failed' ? 'stFailed' : st.state === 'broken' ? 'stBroken'
+          : st.state === 'running' && st.problems.length ? 'stWarn' : '';
+        if (key) el('div', 'gs-row-hint bdt-warn', label).textContent = t(key) + (st.problems.length ? ': ' + st.problems.join('; ') : '');
+        if (st.error) {
+          const e = st.error;
+          el('div', 'gs-row-hint bdt-warn', label).textContent = (e.file ? t('errAt', { file: e.file, line: e.line, col: e.column }) +
+            (e.fn ? ' ' + t('errFn', { fn: e.fn }) : '') + ': ' : '') + e.message;
+          if (e.file && B.sources && B.sources.has(e.file)) errorCode(label, B.sources.get(e.file), e.line);
         }
       }
       const opts = [];
@@ -2122,6 +2196,16 @@ BetterDT.register('betterdt-settings', (rt) => {
     }, [{ label: t('ok'), go: true, cb: () => { } }]);
   }
   const nextDialog = () => B.api('state').then(checkDialogs, () => {});
+
+  // the first error of a mod, and the files that failed to load, said in the game: where it is, and where to see more
+  function errorToast(name, e) {
+    const f = B.mods.find(x => kitName(x.file) === name), where = e.file ? t('errLine', { file: e.file, line: e.line }) : e.message;
+    KIT.toast(t('errToast', { mod: modTitle(f ? f.file : name), where }) + '\n' + t('errSee'), { type: 'bad', ms: 9000 });
+  }
+  if (KIT && KIT.onError) {
+    KIT.onError(errorToast);
+    KIT.whenReady(rt, () => { for (const st of KIT.status()) if (st.state === 'broken' && st.error) errorToast(st.name, st.error); });
+  }
   setInterval(() => { if (!dlg && inMenu()) nextDialog(); }, 2000);
 
   // what the game is doing, so that a crash report can say it (sent every 15 s, kept in memory by the loader)
@@ -2147,6 +2231,10 @@ BetterDT.register('betterdt-settings', (rt) => {
 #gs-root .gs-row-hint.bdt-warn { color: rgb(var(--warn)); opacity: 1; }
 #gs-root .gs-row-hint.bdt-good { color: rgb(var(--good)); opacity: 1; }
 #gs-root .gs-row-hint { white-space: pre-line; }
+#gs-root .bdt-err-code { margin: calc(var(--gs, 1) * 6px) 0 0; padding: calc(var(--gs, 1) * 8px) calc(var(--gs, 1) * 10px);
+  border-radius: calc(var(--gs, 1) * 8px); background: rgba(0, 0, 0, .35); font: calc(var(--gs, 1) * 15px)/1.35 Consolas, monospace;
+  white-space: pre; overflow-x: auto; color: rgba(255, 255, 255, .75); }
+#gs-root .bdt-err-code .bdt-err-here { color: rgb(var(--warn)); }
 #gs-root .gs-btn.bdt-choice { margin-left: calc(var(--gs, 1) * 6px); opacity: .7; }
 #gs-root .gs-btn.bdt-choice.bdt-chosen { opacity: 1; background: linear-gradient(180deg, #a8d418 0%, #63b303 100%); color: #fff; border-color: transparent; }
 #gs-root .gs-row.bdt-opt .gs-row-name { padding-left: calc(var(--gs, 1) * 18px); opacity: .9; }

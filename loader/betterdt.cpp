@@ -979,9 +979,75 @@ static std::string QueryParam(const std::string &q, const std::string &name) {
   return "";
 }
 
+// ── modder tools: when the mod files changed, a file's text, a new mod folder ──────────────────
+static long long FileTimeMs(const std::wstring &path) {
+  WIN32_FILE_ATTRIBUTE_DATA a;
+  if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &a)) return 0;
+  ULARGE_INTEGER t;
+  t.LowPart = a.ftLastWriteTime.dwLowDateTime;
+  t.HighPart = a.ftLastWriteTime.dwHighDateTime;
+  return (long long)(t.QuadPart / 10000ULL) - 11644473600000LL;
+}
+// a mod file named the way the page names it: "<file>.js" in mods, "<folder>/<file>" in a folder mod
+static bool ModFilePath(const std::string &file, std::wstring &path) {
+  size_t sl = file.find('/');
+  if (sl == std::string::npos) {
+    if (!ValidModName(file)) return false;
+    path = g_modsDir + Widen(file);
+    return true;
+  }
+  std::string dir = file.substr(0, sl), f = file.substr(sl + 1);
+  if (!ValidFolderName(dir) || f.empty() || f.size() > 100 || f[0] == '.' ||
+      f.find_first_of("\\/:*?\"<>| ") != std::string::npos || f.find("..") != std::string::npos) return false;
+  path = g_modsDir + Widen(dir) + L"\\" + Widen(f);
+  return true;
+}
+// {"files": {"x.js": <ms>, "hello/mod.json": <ms>, "hello/mod.js": <ms>, …}}: every mod file and folder manifest
+static std::string ModStatJson() {
+  std::string j = "{\"files\":{";
+  bool first = true;
+  auto add = [&](const std::string &name) {
+    std::wstring p;
+    long long t = ModFilePath(name, p) ? FileTimeMs(p) : 0;
+    if (!t) return;
+    j += (first ? "" : ",") + JsonStr(name) + ":" + std::to_string(t);
+    first = false;
+  };
+  std::vector<std::string> list = ModList();
+  for (const std::string &n : list) add(n);
+  for (const FolderMod &f : FolderMods(list)) {
+    add(f.name + "/mod.json");
+    for (const std::string &file : f.files) add(f.name + "/" + file);
+  }
+  return j + "}}";
+}
+// a new folder mod mods\<name>\ with mod.json and mod.js; never over an existing folder or mod
+static std::string NewMod(const std::string &name, const std::string &json, const std::string &js, int &status) {
+  if (!ValidFolderName(name) || json.empty() || js.empty() || json.size() > 65536 || js.size() > 65536) { status = 400; return "{\"error\":\"bad\"}"; }
+  std::wstring dir = g_modsDir + Widen(name);
+  bool listed = false;
+  for (const std::string &n : ModList()) listed |= _stricmp(n.c_str(), (name + ".js").c_str()) == 0;
+  if (listed || GetFileAttributesW(dir.c_str()) != INVALID_FILE_ATTRIBUTES) { status = 409; return "{\"error\":\"exists\"}"; }
+  if (!CreateDirectoryW(dir.c_str(), nullptr) || !WriteFileAtomic(dir + L"\\mod.json", json) || !WriteFileAtomic(dir + L"\\mod.js", js)) {
+    status = 500;
+    return "{\"error\":\"write\"}";
+  }
+  Log("new mod %s", name.c_str());
+  ShellExecuteW(nullptr, L"open", dir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  return "{\"ok\":true}";
+}
+
 static std::string HandleApi(const std::string &cmd, const std::string &query, int &status) {
   status = 200;
   if (cmd == "state") return StateJson();
+  if (cmd == "modstat") return ModStatJson();
+  if (cmd == "modsrc") {
+    std::wstring p;
+    std::string text;
+    if (!ModFilePath(QueryParam(query, "file"), p) || !ReadFileUtf8(p, text)) { status = 404; return "{\"error\":\"no file\"}"; }
+    return "{\"text\":" + JsonStr(text) + "}";
+  }
+  if (cmd == "newmod") return NewMod(QueryParam(query, "name"), QueryParam(query, "json"), QueryParam(query, "js"), status);
   if (cmd == "set") {
     std::string k = QueryParam(query, "k"), v = QueryParam(query, "v");
     if (!ValidKey(k) || v.size() > 200 || v.find_first_of("\r\n") != std::string::npos) { status = 400; return "{\"error\":\"bad key\"}"; }
@@ -1019,6 +1085,9 @@ static std::string HandleApi(const std::string &cmd, const std::string &query, i
     if (what == "folder") ShellExecuteW(nullptr, L"open", g_modsDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else if (what == "log") ShellExecuteW(nullptr, L"open", (g_modsDir + L"betterdt.log").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else if (what == "discord") ShellExecuteW(nullptr, L"open", L"https://discord.gg/JdQEMNNTrN", nullptr, nullptr, SW_SHOWNORMAL);
+    else if (what == "mod" && ValidFolderName(QueryParam(query, "name")) &&
+             GetFileAttributesW((g_modsDir + Widen(QueryParam(query, "name"))).c_str()) != INVALID_FILE_ATTRIBUTES)
+      ShellExecuteW(nullptr, L"open", (g_modsDir + Widen(QueryParam(query, "name"))).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else if (what == "github") ShellExecuteW(nullptr, L"open", Widen(std::string("https://github.com/") + kRepo + "/releases").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     else { status = 400; return "{\"error\":\"bad target\"}"; }
     return "{\"ok\":true}";
@@ -1153,15 +1222,25 @@ static std::wstring BuildScript() {
         // a folder mod's manifest comes as text: parsed here, null when it is not valid JSON
         "const modList = " + modsJson + ";\n"
         "for (const m of modList) {\n"
-        "  if (typeof m.manifest === 'string') try { m.manifest = JSON.parse(m.manifest); }\n"
-        "    catch (e) { console.error('[BetterDT] mod ' + m.file + ': mod.json', e); m.manifest = null; }\n"
+        "  if (typeof m.manifest === 'string') { m.manifestText = m.manifest; try { m.manifest = JSON.parse(m.manifest); }\n"
+        "    catch (e) { console.error('[BetterDT] mod ' + m.file + ': mod.json', e); m.manifest = null; } }\n"
         "  Object.freeze(m);\n"
+        "}\n"
+        // every file runs on its own, named mods/<file> in stacks: a syntax error or an exception while it loads
+        // stops that file alone, and is kept with the code so that the settings can show where it is
+        "const loadErrors = [], sources = new Map();\n"
+        "function runMod(mod, file, code) {\n"
+        "  sources.set(file, code);\n"
+        "  try { (0, eval)('(function () {' + code + '\\n})();\\n//# sourceURL=mods/' + file); return true; }\n"
+        "  catch (e) { loadErrors.push({ mod, file, error: e, at: Date.now() });\n"
+        "    console.error('[BetterDT] mod ' + file + ' failed while loading:', e); return false; }\n"
         "}\n"
         "const B = Object.freeze({\n"
         "  native: true, version: " + JsonStr(BETTERDT_VERSION) + ", repo: " + JsonStr(kRepo) + ",\n"
         "  mods: Object.freeze(modList),\n"
         "  settings: S, state, api,\n"
         "  register(name, init) { if (names.has(name)) return; names.add(name); mods.push({ name, init }); },\n"
+        "  loadErrors, sources, runMod,\n"
         "  log,\n"
         "});\n"
         // the old loader from assets.dat (dtmod install) would overwrite DTMods and load the mods twice →
@@ -1180,8 +1259,7 @@ static std::wstring BuildScript() {
     }
     Log("mod %s: %zu B", name.c_str(), code.size());
     loaded++;
-    js += "try { (function () {\n" + code + "\n})(); } catch (e) { console.error('[BetterDT] mod " + name +
-          " failed while loading:', e); }\n";
+    js += "runMod(" + JsonStr(name.substr(0, name.size() - 3)) + "," + JsonStr(name) + "," + JsonStr(code) + ");\n";
   }
   for (const FolderMod &f : folders) {
     if (!ModEnabled(f.name)) { Log("mod %s/: disabled", f.name.c_str()); continue; }
@@ -1194,8 +1272,7 @@ static std::wstring BuildScript() {
       }
       Log("mod %s/%s: %zu B", f.name.c_str(), file.c_str(), code.size());
       loaded++;
-      js += "try { (function () {\n" + code + "\n})(); } catch (e) { console.error('[BetterDT] mod " + f.name + "/" + file +
-            " failed while loading:', e); }\n";
+      js += "runMod(" + JsonStr(f.name) + "," + JsonStr(f.name + "/" + file) + "," + JsonStr(code) + ");\n";
     }
   }
   js += "function startAll(rt) {\n"
