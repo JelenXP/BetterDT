@@ -59,3 +59,31 @@ test('an error of a mod: the first frame in its own files, a syntax error looked
   assert.deepEqual(M.describe(s, 'hello', 'hello.js', sources), { message: "Unexpected token ';'", file: 'hello.js', line: 2, column: 9, fn: '' });
   assert.deepEqual(M.describe('plain', 'hello'), { message: 'plain' });
 });
+
+test('the panel: what changed between two snapshots', () => {
+  const a = { vars: { Budget: 100, Name: 'A', N: NaN }, tables: { ArrayX: [[1, 2], [3, 4]], ArrayY: [[0]] } };
+  const b = { vars: { Budget: 90, Name: 'A', N: NaN, New: 1 }, tables: { ArrayX: [[1, 5], [3, 4]], ArrayY: [[0], [1]], ArrayZ: [[1]] } };
+  assert.deepEqual(M.diff(a, b), [
+    { kind: 'var', name: 'Budget', from: 100, to: 90 },
+    { kind: 'var', name: 'New', from: undefined, to: 1 },
+    { kind: 'cell', table: 'ArrayX', x: 0, y: 1, from: 2, to: 5 },
+    { kind: 'size', table: 'ArrayY', from: '1×1', to: '2×1' },
+  ]);
+  const many = M.diff({ vars: { a: 1, b: 1, c: 1 } }, { vars: { a: 2, b: 2, c: 2 } }, 2);
+  assert.deepEqual(many.at(-1), { kind: 'more', count: 1 });
+});
+
+test('the panel: values in one line, parameter names, code for a mod', () => {
+  assert.equal(M.preview({ a: 1, b: 'x', c: [1, 2], d: { e: { f: 1 } } }), '{a: 1, b: "x", c: [1, 2], d: {e: {…}}}');
+  const o = { n: 1 }; o.self = o;
+  assert.equal(M.preview(o, 3), '{n: 1, self: [circular]}');
+  assert.equal(M.preview(function hire(id, cost = 5) { }), 'ƒ hire(id, cost)');
+  assert.deepEqual(M.params((a, { b, c }, ...d) => 0), ['a', '{ b, c }', '...d']);
+  assert.deepEqual(M.params(x => x), ['x']);
+  assert.deepEqual(M.params(Math.max), ['…']);
+  assert.equal(M.tableCode('ArrayOffices', { level: 0, 'seat count': 2, '': 3 }), 'const t = kit.table("ArrayOffices", { level: 0, "seat count": 2 });');
+  assert.match(M.textCode(10974, "You don't"), /texts: \{ 10974: "You don't" \}\nkit\.text\(10974\)/);
+  assert.match(M.wrapCallsCode('reviewsengine'), /^kit\.wrapCalls\("reviewsengine", \{/);
+  assert.match(M.replaceCode('hireEmployee', ['id']), /globalThis\.hireEmployee = function \(id\)/);
+  assert.deepEqual(M.collapse([{ name: 'a', args: '1' }, { name: 'a', args: '1' }, { name: 'b', args: '' }]).map(c => c.name + c.n), ['a2', 'b1']);
+});

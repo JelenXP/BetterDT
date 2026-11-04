@@ -212,6 +212,26 @@
     return () => { const hs = scriptCalls.get(fnName); if (hs) hs.delete(h); };
   }
 
+  // Every call of an event sheet function, for the modder panel: cb(name) before it runs (the call sites of all
+  // function blocks, and runtime.callFunction). Names are the engine's, in lower case. Returns stop().
+  function traceEventCalls(cb) {
+    const esm = eventSheets(), undo = [], note = (n) => { try { cb(n); } catch { } };
+    if (esm && esm._functionBlocksByName && esm._actsBySid) {
+      const names = new Map();
+      for (const [n, fb] of esm._functionBlocksByName) { try { names.set(fb.GetEventBlock(), n); } catch { } }
+      for (const act of esm._actsBySid.values()) {
+        const n = act._callEventBlock && names.get(act._callEventBlock);
+        if (n) undo.push(wrapRun(act, () => note(n), null));
+      }
+    }
+    if (rt) {
+      const own = Object.prototype.hasOwnProperty.call(rt, 'callFunction'), orig = rt.callFunction;
+      rt.callFunction = function (name) { note(String(name).toLowerCase()); return orig.apply(this, arguments); };
+      undo.push(() => { if (own) rt.callFunction = orig; else delete rt.callFunction; });
+    }
+    return () => { for (const u of undo.splice(0).reverse()) { try { u(); } catch { } } };
+  }
+
   // ── popularity multipliers of the daily sales (kit.salesMultiplier) ─────────────────────────────────────
   // While the game's daily sales script runs, reading the popularity of a device (z = 2 of its sales array)
   // gives it × the product of the mods' multipliers; the value written back keeps the game's own decay.
@@ -822,6 +842,7 @@
       return out;
     },
     unload,
+    traceEventCalls: (cb) => traceEventCalls(cb),
     // a folder mod's manifest read again (mod.json changed) or one that came after the start: used instead of the
     // loader's copy; mods() lists the loader's mods and those added since
     setManifest(name, manifest) { manifests.set(name, manifest); },
@@ -2173,7 +2194,8 @@ BetterDT.register('betterdt-settings', (rt) => {
   function renderMods(body) {
     renderCreate(body);
     for (const m of (KIT && KIT.mods ? KIT.mods() : B.mods)) {
-      if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
+      // the modder panel is part of the modder tools (their switch)
+      if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-') || m.file === 'modder-panel.js') continue;
       const card = el('div', 'gs-card', body);
       const mctl = row(card, modTitle(m.file), modDesc(m.file));
       sw(mctl, modOn(m.file), (v) => { setModOn(m.file, v); paintOpts(); });

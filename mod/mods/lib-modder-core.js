@@ -106,5 +106,110 @@
     return loc ? Object.assign(out, loc) : out;
   }
 
-  globalThis.BDTModderCore = Object.freeze({ WRAP, sourceName, syntaxLocation, stackLocation, excerpt, jsonProblem, ofMod, describe });
+  // ── the modder panel ─────────────────────────────────────────────────────────────────────────────
+  // what changed between two snapshots { vars: { name: value }, tables: { name: [[column 0 cells], [column 1], …] } }:
+  // [{ kind: 'var', name, from, to }, { kind: 'cell', table, x, y, from, to }, { kind: 'size', table, from, to }],
+  // at most max of them (more: the last entry is { kind: 'more', count })
+  function diff(a, b, max = 500) {
+    const out = [];
+    let more = 0;
+    const push = (c) => { if (out.length < max) out.push(c); else more++; };
+    const same = (p, q) => p === q || (Number.isNaN(p) && Number.isNaN(q));
+    for (const name of Object.keys(b.vars || {})) {
+      const from = (a.vars || {})[name], to = b.vars[name];
+      if (!same(from, to)) push({ kind: 'var', name, from, to });
+    }
+    for (const table of Object.keys(b.tables || {})) {
+      const p = (a.tables || {})[table], q = b.tables[table];
+      if (!p) continue;
+      const pw = p.length, qw = q.length, ph = pw ? p[0].length : 0, qh = qw ? q[0].length : 0;
+      if (pw !== qw || ph !== qh) push({ kind: 'size', table, from: pw + '×' + ph, to: qw + '×' + qh });
+      for (let x = 0; x < Math.min(pw, qw); x++) for (let y = 0; y < Math.min(ph, qh); y++) {
+        if (!same(p[x][y], q[x][y])) push({ kind: 'cell', table, x, y, from: p[x][y], to: q[x][y] });
+      }
+    }
+    if (more) out.push({ kind: 'more', count: more });
+    return out;
+  }
+
+  // a value in one line, as the console shows it: strings quoted, objects and arrays shortened
+  function preview(v, depth = 1, seen = new Set()) {
+    if (v === null) return 'null';
+    if (v === undefined) return 'undefined';
+    const t = typeof v;
+    if (t === 'string') return JSON.stringify(v.length > 200 ? v.slice(0, 200) + '…' : v);
+    if (t === 'number' || t === 'boolean') return String(v);
+    if (t === 'bigint') return String(v) + 'n';
+    if (t === 'symbol') return v.toString();
+    if (t === 'function') return 'ƒ ' + (v.name || 'anonymous') + '(' + params(v).join(', ') + ')';
+    if (seen.has(v)) return '[circular]';
+    if (v instanceof Error) return v.name + ': ' + v.message;
+    if (typeof Element !== 'undefined' && v instanceof Element) return '<' + v.tagName.toLowerCase() + (v.id ? '#' + v.id : '') + '>';
+    if (depth < 0) return Array.isArray(v) ? '[…' + v.length + ']' : '{…}';
+    seen.add(v);
+    let s;
+    if (Array.isArray(v)) {
+      const items = v.slice(0, 20).map(x => preview(x, depth - 1, seen));
+      s = '[' + items.join(', ') + (v.length > 20 ? ', … ' + (v.length - 20) + ' more' : '') + ']';
+    } else {
+      let keys = [];
+      try { keys = Object.keys(v); } catch { }
+      const name = v.constructor && v.constructor.name && v.constructor.name !== 'Object' ? v.constructor.name + ' ' : '';
+      const items = keys.slice(0, 12).map(k => {
+        let x;
+        try { x = v[k]; } catch (e) { x = e; }
+        return (/^[A-Za-z_$][\w$]*$/.test(k) ? k : JSON.stringify(k)) + ': ' + preview(x, depth - 1, seen);
+      });
+      s = name + '{' + items.join(', ') + (keys.length > 12 ? ', … ' + (keys.length - 12) + ' more' : '') + '}';
+    }
+    seen.delete(v);
+    return s;
+  }
+
+  // the parameter names of a function, from its code ("function f(a, b = 1)", "(a, { b }) =>", "x =>")
+  function params(fn) {
+    let src = '';
+    try { src = Function.prototype.toString.call(fn); } catch { return []; }
+    if (/\[native code\]/.test(src)) return ['…'];
+    const m = /^[^(=]*?\(([^)]*)\)/.exec(src.replace(/\/\*[\s\S]*?\*\//g, ''));
+    if (!m) { const a = /^\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*=>/.exec(src); return a ? [a[1]] : []; }
+    const out = [];
+    let depth = 0, cur = '';
+    for (const ch of m[1]) {
+      if ('([{'.includes(ch)) depth++;
+      if (')]}'.includes(ch)) depth--;
+      if (ch === ',' && depth === 0) { out.push(cur); cur = ''; } else cur += ch;
+    }
+    if (cur.trim()) out.push(cur);
+    return out.map(p => p.trim().replace(/\s*=[\s\S]*$/, '').replace(/\s+/g, ' ')).filter(Boolean);
+  }
+
+  // code for a mod: a table with named rows, a game text, a call of an event function wrapped, a function replaced
+  const ident = (s) => (/^[A-Za-z_$][\w$]*$/.test(s) ? s : JSON.stringify(s));
+  function tableCode(table, fields) {
+    const f = Object.entries(fields).filter(([k]) => k).map(([k, y]) => ident(k) + ': ' + y).join(', ');
+    return `const t = kit.table(${JSON.stringify(table)}, { ${f} });`;
+  }
+  const textCode = (index, english) => `// in the mod's spec: texts: { ${index}: ${JSON.stringify(english)} }\nkit.text(${index})`;
+  const wrapCallsCode = (name) => `kit.wrapCalls(${JSON.stringify(name)}, {\n  before: () => { },\n  after: () => { },\n});`;
+  function replaceCode(name, args) {
+    const a = args.filter(x => x !== '…').join(', ');
+    return `const orig = globalThis.${name};\nglobalThis.${name} = function (${a}) {\n  const result = orig.apply(this, arguments);\n  return result;\n};\nkit.onStop(() => { globalThis.${name} = orig; });`;
+  }
+
+  // the calls recorded by the panel, a run of the same call shown once with its count:
+  // [{ name, args, result, n }] from [{ name, args, result }]
+  function collapse(calls) {
+    const out = [];
+    for (const c of calls) {
+      const last = out[out.length - 1];
+      if (last && last.name === c.name && last.args === c.args) { last.n++; last.result = c.result; } else out.push({ ...c, n: 1 });
+    }
+    return out;
+  }
+
+  globalThis.BDTModderCore = Object.freeze({
+    WRAP, sourceName, syntaxLocation, stackLocation, excerpt, jsonProblem, ofMod, describe,
+    diff, preview, params, tableCode, textCode, wrapCallsCode, replaceCode, collapse,
+  });
 })();
