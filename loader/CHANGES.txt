@@ -1,5 +1,10 @@
 # Release notes shown in the game's update dialog: "<version> <one line>", newest first.
 # package.ps1 puts all of them into the release zip; the game shows the ones newer than the installed version.
+0.4.1-beta.3 Modder tools (Settings > BetterDT > Mods): a mod is loaded again as soon as you save its files, no restart
+0.4.1-beta.3 Modder tools: F10 opens the modder panel (variables, changes, tables, texts, functions, calls, console)
+0.4.1-beta.3 Create a mod: a new mod from a template in one click, its folder opens
+0.4.1-beta.3 Mod errors are shown in the game with the file, the line and the code around it
+0.4.1-beta.3 For modders: your devices, companies and employees by name, events when a device is released or research is done
 0.4.1-beta.2 Chip compare: pin a CPU or GPU in the device designer and compare it with another one, your own chips too
 0.4.1-beta.2 Own CPU editor: the integrated GPU's core clock and texture units move the bars, latencies count more
 0.4.1-beta.2 Fair specs: research for your own CPU and GPU keeps up with the best competing part (laptop clocks were at 60 %)

@@ -2,7 +2,16 @@
 
 This guide explains how to write a mod for Devices Tycoon that runs with BetterDT: where its files go, how it is
 loaded, the BetterDTKit API, the parts of the game a mod usually needs and how to find the rest without reading the
-game's code. Two complete, working examples are in [`examples/mods`](examples/mods):
+game's code.
+
+You need no developer tools and no remote debugging. BetterDT has **Modder tools** built in (Settings → BetterDT →
+Mods): a mod is created from a template with one click and loaded again as soon as you save its files, its errors
+are shown in the game with the file, the line and the code around it, and **F10** opens a panel that finds
+variables, tables, texts and game functions for you, records what changes and which game functions run, and has a
+console. [Section 2](#2-your-first-mod-in-five-minutes) gets you started, [section 12](#12-finding-things-in-the-game)
+explains the panel.
+
+Two complete, working examples are in [`examples/mods`](examples/mods):
 
 - [`monthly-report/`](examples/mods/monthly-report): a folder mod with `mod.json` (title, description, options in the
   BetterDT settings), events, game data, a button, a message, a dialog and an image file,
@@ -29,8 +38,9 @@ Contents:
 17. [Troubleshooting](#17-troubleshooting)
 
 > **Versions.** Folder mods, `mod.json`, `spec.info`, `kit.option`, `kit.on`, `kit.game`, `kit.table`, `kit.ui` and
-> mod files served at `https://betterdt.localhost/mod/…` need **BetterDT 0.4.0** or newer. Everything else works
-> with older versions too. Put `"requires": { "betterdt": "0.4.0" }` into `mod.json`, and an older BetterDT shows
+> mod files served at `https://betterdt.localhost/mod/…` need **BetterDT 0.4.0** or newer. The Modder tools, errors
+> in the game, `kit.game.devices()` / `companies()` / `ownedCompanies()`, the data events (`deviceReleased`, …) and
+> `kit.ui.near` / `panel` / `notify` need **BetterDT 0.4.1** or newer. Everything else works with older versions too. Put `"requires": { "betterdt": "0.4.0" }` into `mod.json`, and an older BetterDT shows
 > the player why your mod does not start. Players on the beta channel can have a beta such as `0.4.1-beta.1`, which
 > counts as older than `0.4.1`.
 
@@ -50,46 +60,67 @@ A mod never changes a game file. It exists only while the game runs, so removing
 
 ## 2. Your first mod in five minutes
 
-1. Open the game folder (Steam → Library → right-click Devices Tycoon → Manage → Browse local files). BetterDT must be
-   installed: there is a `mods` folder next to `Devices Tycoon.exe`.
-2. Create the folder `mods\hello` with two files.
+1. Start the game with BetterDT installed. Open Settings → BetterDT → Mods and turn on **Modder tools** (at the end
+   of the list). Restart the game once, so the tools are loaded.
+2. In the same list, the card **Create a mod**: type a name (`hello`; letters, digits, `.`, `_` and `-`), choose a
+   template and click **Create**. BetterDT creates the folder `mods\hello` with `mod.json` and `mod.js` and opens it
+   in Explorer. With Modder tools on, the mod runs at once.
 
-   `mods\hello\mod.json`:
+   | Template | What it does |
+   | --- | --- |
+   | Empty | says hello when the game starts |
+   | Every day and month | research points every day, a message with the money every month (with an option) |
+   | A button | a button in the office that shows the money |
+   | Sales × N | an option in the settings that makes your devices sell more (or less) |
+   | A window | a dialog with your own content and a button when a save is loaded |
 
-   ```json
-   {
-     "title": "Hello",
-     "description": "Says how much money you have, once a month.",
-     "version": "1.0.0",
-     "author": "Your name",
-     "requires": { "betterdt": "0.4.0" },
-     "options": [
-       { "key": "loud", "type": "bool", "default": false, "label": "Also show a dialog" }
-     ]
-   }
-   ```
+3. Open `mod.js` in any text editor (Notepad works; [VS Code](https://code.visualstudio.com/) colours the code),
+   change something and save. The game loads the mod again within a second and says so in the corner: no restart.
+   A changed `mod.json` (title, description, options) is read again too.
+4. If you make a mistake, the corner says where (`mod.js, line 12`), and the mod's card in Settings → BetterDT →
+   Mods shows the error with the lines around it. Fix it and save again.
 
-   `mods\hello\mod.js`:
+A complete small mod looks like this:
 
-   ```js
-   BetterDTKit.mod('hello', {
-     needs: { vars: ['Budget'] },
-   }, (rt, kit) => {
-     kit.on('month', (date) => {
-       const text = `${date.month}/${date.year}: $${Math.round(kit.game.money).toLocaleString()}`;
-       kit.ui.toast(text);
-       if (kit.option('loud')) kit.ui.dialog({ title: 'Hello', text });
-     });
-   });
-   ```
+`mods\hello\mod.json`:
 
-3. Start the game. Settings → BetterDT → Mods now has a card **Hello** with your description, an on/off switch and
-   the option "Also show a dialog". Load a game: at the start of every month a message appears in the corner.
+```json
+{
+  "title": "Hello",
+  "description": "Says how much money you have, once a month.",
+  "version": "1.0.0",
+  "author": "Your name",
+  "requires": { "betterdt": "0.4.0" },
+  "options": [
+    { "key": "loud", "type": "bool", "default": false, "label": "Also show a dialog" }
+  ]
+}
+```
 
-After every change to your files, restart the game: mods are read once, when the game starts.
+`mods\hello\mod.js`:
+
+```js
+BetterDTKit.mod('hello', {
+  needs: { vars: ['Budget'] },
+}, (rt, kit) => {
+  kit.on('month', (date) => {
+    const text = `${date.month}/${date.year}: $${Math.round(kit.game.money).toLocaleString()}`;
+    kit.ui.toast(text);
+    if (kit.option('loud')) kit.ui.dialog({ title: 'Hello', text });
+  });
+});
+```
+
+The card **Hello** in Settings → BetterDT → Mods has your description, an on/off switch and the option "Also show a
+dialog". Load a game: at the start of every month a message appears in the corner.
+
+You can also create the files by hand: a folder in `mods` (next to `Devices Tycoon.exe`; Steam → Library →
+right-click Devices Tycoon → Manage → Browse local files) with `mod.json` and `mod.js`. Without Modder tools, restart
+the game after every change: mods are then read once, when the game starts.
 
 The name in `BetterDTKit.mod('hello', …)` must be the folder name. Everything the mod adds through `kit` (the event,
-the message, the dialog) is removed by BetterDTKit when the mod stops, so this mod needs no clean-up code.
+the message, the dialog) is removed by BetterDTKit when the mod stops or is loaded again, so this mod needs no
+clean-up code.
 
 ## 3. How mods are loaded
 
@@ -119,8 +150,13 @@ settings.
 - **On/off:** a mod that is turned off is not loaded at all; the switch takes effect after a restart.
 - **Updates:** a BetterDT update never touches your folders and keeps your single files in `mods.json`. Do not name
   your mod like an official one.
-- **Errors:** an exception while your file loads or while your mod starts is caught and logged; the other mods and
-  the game keep running. Settings → BetterDT shows the state of your mod ([section 5](#5-betterdtkitmod-reference)).
+- **Errors:** an exception while your file loads or while your mod starts is caught; the other mods and the game keep
+  running. A message in the corner names the mod and where the error is, and the mod's card in Settings → BetterDT →
+  Mods shows the error with the file, the line, the function and the code around it, also for a syntax error or a
+  broken `mod.json` ([section 5](#5-betterdtkitmod-reference)).
+- **Loaded again:** with Modder tools on, saving a file of a mod stops it (what it added through `kit` is removed,
+  its dispose runs), runs its files again and starts it; with a game loaded it gets `gameLoaded` again. What your mod
+  changed without `kit` and does not undo in its dispose stays, as when it is turned off.
 
 There is also `BetterDT.register('name', rt => { … })`: it starts the function as soon as the engine exists, without
 any checks, error counting or settings integration. Use `BetterDTKit.mod` unless you have a reason not to.
@@ -368,6 +404,11 @@ like `kit.guard`.
 | `language` | – | `index, code` | the player switched the game language |
 | `option` | the option's key | `value, fullKey` | one of your options changed |
 | `setting` | a settings key (optional) | `key, value` | any setting changed (`value` is the stored string) |
+| `deviceReleased` | a device type (`'laptop'`, `'gpu'`, …) | `device` (as in `kit.game.devices()`) | the player released a model or a chip |
+| `researchDone` | a research id | `{ id, level, from }` | a research level was finished (`level` = the new level) |
+| `employeeHired` | a profession (`'ENGINEERS'`, …) | `employee` (as in `kit.game.employees()`) | an employee was hired |
+| `employeeLeft` | a profession | `employee` | an employee left or was fired |
+| `companyBought` | a company id | `{ id, name }` | the player bought out a company |
 
 `date` is `{ day, month, year, total }`; `total` is `DayTotal`, the number of days since the start of the game.
 
@@ -380,6 +421,15 @@ kit.on('option', 'loud', (on) => { /* the player flipped the switch */ });
 ```
 
 `gameLoaded` waits until the loading screen is gone, so the save's tables are filled.
+
+The last five events compare the game's tables once a game day, so they come at the start of the next day, not in
+the moment it happened. A loaded save only gives them a starting point: its existing devices and employees do not
+count as new.
+
+```js
+kit.on('deviceReleased', (d) => kit.ui.notify(`${d.name} is on sale for $${d.price}`));
+kit.on('employeeHired', 'ENGINEERS', (e) => kit.ui.toast(`Welcome, ${e.name}`));
+```
 
 ## 8. Game data: `kit.game` and `kit.table`
 
@@ -396,8 +446,23 @@ kit.on('option', 'loud', (on) => { /* the player flipped the switch */ });
 | `company` | `{ name, countryId }` |
 | `speed` | the game speed (1, 1.25, 1.5, 2, 3); can be set |
 | `version` | the game version, for example `'1.6.0'` |
-| `employees()` | the hired employees: `[{ id, profession, design, speed, research }]` |
+| `devices()` | the player's models and chips: `[{ type, chip, array, x, y, id, name, sold, cost, price, rating, releaseDay, releaseDate, released }]` |
+| `companies()` | every company of the market, the player too: `[{ id, name, player, country, earnings, start, finish, types }]` |
+| `ownedCompanies()` | the companies the player bought out: `[{ id, name }]` |
+| `employees()` | the hired employees: `[{ id, name, profession, design, speed, research }]` |
 | `tables` | the tables below, with named fields |
+
+`devices()`: `type` is `'smartphone'`, `'tablet'`, `'laptop'`, `'watch'`, `'headphones'`, `'tv'`, `'scooter'`,
+`'keyboard'`, `'console'`, `'gamepad'`, `'vr'`, or for chips (`chip: true`) `'cpu-smartphone'`, `'cpu-laptop'`,
+`'cpu-console'`, `'cpu-vr'`, `'gpu'`. `array`, `x` and `y` say where the model is in the game's table (`y` is the
+edition, 0–2), `sold` the units sold, `releaseDay` the `DayTotal` of its release; `released` is false while it is
+still being developed. `companies()`: `earnings` is the value the game's ratings use, `start` / `finish` the years
+the company is on the market, `types` the categories it sells (`'SMARTPHONES'`, `'CPU_LAPTOP'`, …).
+
+```js
+const best = kit.game.devices().filter(d => d.released && !d.chip).sort((a, b) => b.sold - a.sold)[0];
+const rivals = kit.game.companies().filter(c => !c.player && c.types.includes('LAPTOPS'));
+```
 
 ### Named tables: `kit.game.tables`
 
@@ -408,11 +473,12 @@ and that were checked in game 1.6; a table holds more rows than are named here.
 | --- | --- | --- | --- |
 | `countries` | `ArrayCountries` | country (`company.countryId`) | `name`, `money`, `tax`, `costOfProduction`, `trade`, `tech` |
 | `companies` | `ArrayCompanyNames` | company | `defaultName`, `name` (the name shown) |
+| `ratings` | `ArrayRatingsCompanies` | company on the market | `company` (id, −1 = the player), `start`, `finish`, `country`, `earnings`, `types` |
 | `shares` | `ArrayInvesting` | company | `total`, `ownedCompany` (1 = bought out), `offer` (shares on offer) |
 | `myShares` | `ArrayInvestingMyStocks` | company | `owned` |
 | `research` | `ArrayResearch` | research project | `points`, `money` (price of one level) |
 | `myResearch` | `ArrayMyResearch` | research project | `level` |
-| `employees` | `ArrayEmployees` | employee | `profession` |
+| `employees` | `ArrayEmployees` | employee | `name`, `profession` |
 | `employeeSkills` | `ArrayEmployees_Characters` | employee | `design`, `speed`, `research` |
 | `myEmployees` | `ArrayMyEmployees` | slot | `id` (the employee) |
 | `stores` | `ArrayMyShops` | country | `level`, `count` |
@@ -458,7 +524,10 @@ Helpers for HTML over the game, in the game's look. Everything they create is re
 | `kit.ui.el(tag, props, parent)` | creates an element; `props` sets properties (`className`, `textContent`, `src`, …), `style` (an object) and listeners (`onclick: fn`, guarded); `parent` defaults to `document.body`, `null` = not attached |
 | `kit.ui.shield(el, keys = true)` | clicks, wheel and (unless `keys` is false) keys on the element do not reach the game |
 | `kit.ui.anchor(el, layer, x, y, opts)` | keeps a fixed element at `x, y` (design pixels) of a layer of the game; hidden on screens without that layer. `opts.screen`: only on that screen, `opts.scale: true`: scale with the game. Returns a function that stops it |
-| `kit.ui.button(label, onClick, opts)` | a button like the game's dialog buttons; `opts.color` `'green'` (default), `'red'` or `'grey'`, `opts.parent` to attach it. Plays the game's click sound |
+| `kit.ui.button(label, onClick, opts)` | a button like the game's dialog buttons; `opts.color` `'green'` (default), `'red'` or `'grey'`, `opts.parent` to attach it, `opts.near` an object's UID to keep it next to that object (with the options of `near`). Plays the game's click sound |
+| `kit.ui.near(el, uid, opts)` | keeps a fixed element next to an object of the game (the UID the inspector shows) and follows it while the screen scrolls; hidden while the object is not there. `opts.side` `'right'` (default), `'left'`, `'above'`, `'below'`, `'over'`, `opts.gap` in pixels (8), `opts.scale: true`. Returns a function that stops it |
+| `kit.ui.panel(title, opts)` | a small window in the BetterDT look: `{ el, body, setTitle, close }`; put your content into `body`. `opts.x`, `opts.y`, `opts.width`, `opts.onClose`. It can be dragged by its title, has a close button and keeps clicks from the game |
+| `kit.ui.notify(text, opts)` | a message among the game's own notifications in the office; on other screens a `toast` |
 | `kit.ui.toast(text, opts)` | a short message in the bottom right corner; `opts.ms` (default 4000), `opts.type` `'good'` / `'bad'` |
 | `kit.ui.dialog({ title, text, buttons, content })` | the BetterDT dialog; `buttons` `[{ label, go }]` (`go: true` = green); resolves with the index of the clicked button. Waits while another dialog is open. `content(element)` can add more |
 
@@ -470,6 +539,12 @@ const btn = kit.ui.button('Report', async () => {
   if (i === 1) kit.ui.toast('Shown', { type: 'good' });
 }, { parent: document.body });
 kit.ui.anchor(btn, 'GAMEPLAY GLOBAL UI (Back)', 1830, 175, { screen: 'BOSS OFFICE', scale: true });
+
+// next to an object you found with the inspector (F9): its UID
+kit.ui.button('Sell all', () => { /* … */ }, { near: 397, side: 'below' });
+
+const p = kit.ui.panel('My company', { x: 40, y: 200, width: 320 });
+kit.on('day', () => { p.body.textContent = `$${Math.round(kit.game.money).toLocaleString()}`; });
 ```
 
 ## 10. The `BetterDT` object: settings and log
@@ -549,9 +624,26 @@ you can change those with ordinary DOM code.
 
 ## 12. Finding things in the game
 
-You do not need the game's source code to find names. With the developer console
-([section 14](#14-setting-up-for-development)) open, `runtime` is the game runtime. These snippets answer the usual
-questions.
+You do not need the game's source code or developer tools to find names. Turn on **Modder tools** (Settings →
+BetterDT → Mods) and press **F10** in the game: the modder panel opens on the right. Clicks into the panel do not
+reach the game; F10 or × closes it.
+
+| Tab | What you do there |
+| --- | --- |
+| **Variables** | the game's global variables with their current values. Search by name (`budget`) or, with "by value", by a number you see on the screen (`300 000 000`): the fastest way to find what holds it. Click a value to change it, a name to copy `rt.globalVars.Name` |
+| **Changes** | **Start**, do something in the game (hire someone, buy a share), **Stop**: the panel lists every variable and table cell that changed, with the old and new value. Click a cell to copy `kit.table` code for it |
+| **Tables** | every table (`Array…`) with its size; open one to see its cells (10 records × 40 fields at a time), give the fields names and copy the `kit.table(…)` code |
+| **Texts** | searches the game's texts in all languages; **Copy code** gives you `kit.text(index)` with the `spec.texts` entry |
+| **Functions** | the game's 2,000+ functions with their parameters; call one with your own arguments and see the result, copy a call or the code to replace it safely |
+| **Calls** | **Record**, do something in the game, **Stop**: which game functions and event sheet functions ran, how often and in which order. This is how you find what to wrap with `kit.wrapCalls` or replace |
+| **Console** | runs JavaScript in the game (Enter runs, Shift+Enter is a new line); `rt`, `kit` and `BetterDT` are there, `await` works. It also shows `console.log` and the errors of all mods |
+
+The **Inspector** (Settings → BetterDT → Mods → Inspector, then **F9**) tells you what is under the cursor: type,
+UID, layer, position, size and text of every object there ([below](#what-is-under-the-cursor)). Together: F9 to find
+the object, F10 to find the data and the functions behind it.
+
+The snippets below do the same by hand. Run them in the panel's **Console** (or in the developer tools, if you use
+them, [section 14](#14-setting-up-for-development)); `runtime` there is the same as `rt`.
 
 ### Where am I, and what is on this screen?
 
@@ -579,8 +671,8 @@ in the game. A panel next to the cursor lists the screen name and the objects un
 and over the game's HTML it shows the element's path. ↑ / ↓ select another object, **Ctrl+C** copies it as an entry
 for `spec.uids`, Ctrl+Shift+C copies its type name. It needs no developer tools.
 
-Without the inspector, run this in the developer console, then move the mouse over the game: the console prints the
-objects under it.
+Without the inspector, run this in a console, then move the mouse over the game: the console prints the objects
+under it.
 
 ```js
 document.addEventListener('pointermove', (e) => {
@@ -743,10 +835,22 @@ Your mod can damage a running game or its saves while you develop it. Before you
 - back up your saves: `Documents\Devices Tycoon`,
 - test with a separate save you do not mind losing.
 
-### The developer console
+### The cycle
 
-BetterDT does not turn on the developer tools; release builds keep them off. WebView2 itself turns them on when the
-game is started with this environment variable. Start the game from PowerShell (with Steam running):
+1. Turn on **Modder tools** once (Settings → BetterDT → Mods, then restart the game).
+2. Create your mod (**Create a mod**) or copy one into `mods`.
+3. Find what you need with the modder panel (**F10**, [section 12](#12-finding-things-in-the-game)) and try your code
+   in its **Console**.
+4. Put it into your mod's files and save: the mod is loaded again at once. An error shows in the corner and on the
+   mod's card.
+
+Turn Modder tools off when you only want to play: then nothing watches the files and F10 does nothing.
+
+### For advanced users: the developer tools
+
+You do not need them for any of the above. If you want breakpoints and the browser's own tools: BetterDT does not
+turn on the developer tools; release builds keep them off. WebView2 itself turns them on when the game is started
+with this environment variable. Start the game from PowerShell (with Steam running):
 
 ```powershell
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1"
@@ -755,13 +859,11 @@ $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222 --rem
 
 Then open `http://127.0.0.1:9222` in Chrome or Edge, or go to `edge://inspect` / `chrome://inspect` and open the
 page `app.localhost`. You get the full developer tools: console (with `runtime` and your `BetterDT.log` output),
-elements, breakpoints in your mod (the injected script is shown as a VM script).
+elements, breakpoints in your mod (each mod file is listed as `mods/<file>` in the Sources panel).
 
 `--remote-allow-origins` lets `tools/cdp.mjs` (below) connect. The port listens only on your own computer
 (127.0.0.1). The variable applies only to programs started from that PowerShell window. Close the window when you
 are done; do not set it permanently in Windows.
-
-### Run code from a terminal
 
 `tools/cdp.mjs` in this repository runs JavaScript in the game page over the same port (Node.js 22+), which is handy
 for scripted tests:
@@ -771,12 +873,6 @@ node tools/cdp.mjs "runtime.globalVars.Budget"
 node tools/cdp.mjs --file my-test.js        # an async function body; `rt` is the runtime, `return` a value
 node tools/cdp.mjs --shot screen.png
 ```
-
-### The cycle
-
-1. Explore in the console ([section 12](#12-finding-things-in-the-game)) and try your code there.
-2. Put it into your mod's files.
-3. Restart the game and check Settings → BetterDT → Mods for the state of your mod.
 
 ## 15. Rules for a good mod
 
@@ -813,8 +909,10 @@ node tools/cdp.mjs --shot screen.png
 | The card says "Does not fit this game version, turned off: …" | something in `spec.needs` or `requires` is missing in this version (or has a typo) |
 | The card says "Stopped after repeated errors" | a guarded function threw 20 times; the last error is shown |
 | The card has no state at all | the name given to `BetterDTKit.mod` is not the folder name / the file name without `.js` |
-| My change has no effect | the game was not restarted, or the mod is turned off |
-| Nothing happens and no state is shown | a file has a syntax error; `mods\betterdt.log` lists the files that were loaded and the developer console shows the error |
+| My change has no effect | Modder tools are off and the game was not restarted, or the mod is turned off |
+| The card says "Error in mod.js, line …" | the error with the code around it is on the card; fix it and save (with Modder tools on, the mod is loaded again) |
+| A mod loaded again does something twice | it added something without `kit` (a timer, a listener, a replaced function) and does not remove it in its dispose or `kit.onStop` |
+| Nothing happens and no state is shown | the mod is not in the list of loaded mods: `mods\betterdt.log` lists the files that were loaded |
 
 `mods\betterdt.log` is written by BetterDT's loader on every start: which mods were loaded (with their size) and
 which were turned off.

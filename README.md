@@ -704,7 +704,16 @@ What it shows the player:
 
 **[MODDING.md](MODDING.md)** is the full guide: how mods are loaded, `mod.json`, the BetterDTKit API (events, game
 data, UI in the game's look), the game's runtime, how to find variables, tables, texts and functions of the game
-without its source code, recipes, and a development setup. In short, a mod is a folder in `mods` (BetterDT 0.4.0+):
+without its source code, recipes, and a development setup.
+
+The easy way, with no developer tools (BetterDT 0.4.1+): turn on **Modder tools** in Settings → BetterDT → Mods,
+restart the game once and use the card **Create a mod**: it makes a new mod from a template and opens its folder.
+Every time you save one of its files, the mod is loaded again in the running game; an error is shown in the corner
+and on the mod's card with the file, the line and the code around it. **F10** opens the modder panel: find variables
+(also by the value you see on the screen), see what changed, browse tables, search the game's texts, call game
+functions, record which game functions run, and a console.
+
+In short, a mod is a folder in `mods` (BetterDT 0.4.0+):
 
 `mods\hello\mod.json`
 
