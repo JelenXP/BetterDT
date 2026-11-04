@@ -386,10 +386,28 @@
     return { screen: layoutName(), total: n('DayTotal'), day: n('Day'), month: n('Month'), year: n('Year'), lang: langIdx() };
   }
   const isLoad = (from, to) => to > 0 && (!(from > 0) || to < from || to - from > 40);   // another save, not days passing
+  // the data events (BDTGameData.EVENTS): two snapshots of the tables a day apart compared; a loaded save only
+  // sets the snapshot, so its old devices and employees do not count as new
+  let dataSnap = null, dataTotal = 0;
+  const DATA_EVENTS = ['deviceReleased', 'researchDone', 'employeeHired', 'employeeLeft', 'companyBought'];
+  function watchData(st) {
+    const G = globalThis.BDTGameData;
+    if (!G || ![...subs].some(s => DATA_EVENTS.includes(s.type))) { dataSnap = null; return; }
+    if (!(st.total > 0) || st.screen === 'LOADING GAME') { dataSnap = null; return; }
+    if (dataSnap && st.total === dataTotal) return;
+    const prev = dataSnap, fresh = !prev || isLoad(dataTotal, st.total);
+    try { dataSnap = G.snapshot(arrOf); } catch (e) { dataSnap = null; console.error('[BetterDTKit] data events', e); return; }
+    dataTotal = st.total;
+    if (fresh) return;
+    for (const ev of G.diff(prev, dataSnap)) {
+      for (const s of [...subs]) if (subs.has(s) && s.type === ev.type && (s.filter === undefined || s.filter === ev.key)) s.fn(ev.data);
+    }
+  }
   function dispatch() {
     if (!subs.size) return;
     let st;
     try { st = gameState(); } catch { return; }
+    watchData(st);
     for (const s of [...subs]) {
       if (!subs.has(s)) continue;
       const seen = s.seen;
@@ -479,14 +497,16 @@
     countries: ['ArrayCountries', { name: 0, money: 1, tax: 2, costOfProduction: 3, trade: 4, tech: 5 }],
     research: ['ArrayResearch', { points: 1, money: 2 }],
     myResearch: ['ArrayMyResearch', { level: 0 }],
-    employees: ['ArrayEmployees', { profession: 4 }],
+    employees: ['ArrayEmployees', { name: 0, profession: 4 }],
     employeeSkills: ['ArrayEmployees_Characters', { design: 0, speed: 1, research: 2 }],
     myEmployees: ['ArrayMyEmployees', { id: 0 }],
     companies: ['ArrayCompanyNames', { defaultName: 0, name: 1 }],
+    ratings: ['ArrayRatingsCompanies', { company: 0, start: 1, finish: 2, country: 3, earnings: 4, types: 10 }],
     shares: ['ArrayInvesting', { total: 4, ownedCompany: 7, offer: 8 }],
     myShares: ['ArrayInvestingMyStocks', { owned: 0 }],
     stores: ['ArrayMyShops', { level: 0, count: 1 }],
   };
+  const arrOf = (name) => { try { const o = rt.objects[name]; return o ? o.getFirstInstance() : null; } catch { return null; } };
   function makeGame() {
     const g = () => rt.globalVars, num = (k) => Number(g()[k]) || 0;
     const tables = {};
@@ -504,8 +524,16 @@
       set speed(v) { if (typeof globalThis.setGameSpeed === 'function') globalThis.setGameSpeed(Number(v)); },
       get version() { return api.gameVersion; },
       tables,
-      // hired employees: { id, profession, design, speed, research }
+      // the player's models and chips: { type, chip, array, x, y, id, name, sold, cost, price, rating, releaseDay,
+      // releaseDate, released }
+      devices() { return globalThis.BDTGameData ? BDTGameData.devices(arrOf) : []; },
+      // the rival companies and the player: { id, name, player, country, earnings, start, finish, types }
+      companies() { return globalThis.BDTGameData ? BDTGameData.companies(arrOf, g().CompanyName) : []; },
+      // the companies the player bought: { id, name }
+      ownedCompanies() { return globalThis.BDTGameData ? BDTGameData.owned(arrOf) : []; },
+      // hired employees: { id, name, profession, design, speed, research }
       employees() {
+        if (globalThis.BDTGameData) return BDTGameData.employees(arrOf);
         const my = tables.myEmployees, e = tables.employees, c = tables.employeeSkills, out = [];
         for (let x = 0; x < my.width; x++) {
           const id = Math.round(Number(my.get(x, 0)));
@@ -543,6 +571,15 @@
   border-radius: calc(var(--bdt-s, 1) * 10px); background: rgba(12, 15, 22, .86); border: 1px solid rgba(255, 255, 255, .10);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); color: #fff; font: calc(var(--bdt-s, 1) * 22px)/1.3 ${FONT}; white-space: pre-line;
   animation: bdt-ui-in .3s cubic-bezier(.30, 1.35, .45, 1) both; }
+.bdt-ui-panel { position: fixed; z-index: 2147481000; min-width: calc(var(--bdt-s, 1) * 280px); max-width: 90vw; max-height: 85vh;
+  display: flex; flex-direction: column; border-radius: calc(var(--bdt-s, 1) * 12px); background: rgba(12, 15, 22, .92);
+  border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 14px 40px -12px rgba(0, 0, 0, .7); color: #fff;
+  font: calc(var(--bdt-s, 1) * 22px)/1.35 ${FONT}; }
+.bdt-ui-panel-head { display: flex; align-items: center; gap: 12px; padding: calc(var(--bdt-s, 1) * 10px) calc(var(--bdt-s, 1) * 16px);
+  border-bottom: 1px solid rgba(255, 255, 255, .10); cursor: move; user-select: none; font-size: calc(var(--bdt-s, 1) * 25px); }
+.bdt-ui-panel-head > span:first-child { flex: 1; }
+.bdt-ui-panel-x { cursor: pointer; opacity: .7; padding: 0 4px; } .bdt-ui-panel-x:hover { opacity: 1; color: #ff6b7f; }
+.bdt-ui-panel-body { padding: calc(var(--bdt-s, 1) * 12px) calc(var(--bdt-s, 1) * 16px); overflow: auto; }
 .bdt-ui-toast.bdt-ui-good { border-color: rgba(168, 212, 24, .7); }
 .bdt-ui-toast.bdt-ui-bad { border-color: rgba(255, 107, 127, .8); }
 .bdt-ui-toast.bdt-ui-out { opacity: 0; transition: opacity .3s ease; }
@@ -686,7 +723,8 @@
       // kit.on('day', fn), kit.on('screen', 'INVESTING STOCK', fn) … ; returns off()
       on(type, filter, fn) {
         if (typeof filter === 'function') { fn = filter; filter = undefined; }
-        const known = ['tick', 'screen', 'leave', 'day', 'month', 'year', 'gameLoaded', 'gameClosed', 'language', 'option', 'setting'];
+        const known = ['tick', 'screen', 'leave', 'day', 'month', 'year', 'gameLoaded', 'gameClosed', 'language', 'option', 'setting',
+          ...DATA_EVENTS];
         if (!known.includes(type)) throw new Error('kit.on: unknown event ' + type);
         const s = { type, filter, fn: kit.guard(fn), seen: undefined };
         if (type === 'option') {
@@ -756,7 +794,67 @@
           opts.parent === undefined ? null : opts.parent);
         ui.shield(b, false);
         b.addEventListener('click', kit.guard((ev) => { globalThis.tapMain?.(); if (onClick) onClick(ev); }));
+        if (opts.near !== undefined) { document.body.appendChild(b); ui.near(b, opts.near, opts); }
         return b;
+      },
+      // keeps a fixed element next to an object of the game (its uid, as the inspector shows it), following it while
+      // the screen scrolls; hidden while the object is not there. opts.side 'right' (default), 'left', 'above',
+      // 'below', 'over'; opts.gap in CSS px (default 8); opts.scale: scale with the game. Returns off().
+      near(e, uid, opts = {}) {
+        e.style.position = 'fixed';
+        if (opts.scale) e.style.transformOrigin = '0 0';
+        const side = opts.side || 'right', gap = opts.gap ?? 8;
+        return kit.on('tick', () => {
+          let i = null, box = null;
+          try { i = kit.inst(uid); box = i && i.layer && i.isVisible !== false && i.getBoundingBox(); } catch { }
+          if (!box) { e.style.display = 'none'; return; }
+          const [l, t] = i.layer.layerToCssPx(box.left, box.top), [r, b] = i.layer.layerToCssPx(box.right, box.bottom);
+          const k = opts.scale ? (i.layer.layerToCssPx(box.left + 1000, box.top)[0] - l) / 1000 : 1;
+          e.style.display = '';
+          if (opts.scale) e.style.transform = 'scale(' + k.toFixed(4) + ')';
+          const w = e.offsetWidth * k, h = e.offsetHeight * k;
+          let x = r + gap, y = (t + b - h) / 2;
+          if (side === 'left') x = l - gap - w;
+          else if (side === 'above') { x = (l + r - w) / 2; y = t - gap - h; }
+          else if (side === 'below') { x = (l + r - w) / 2; y = b + gap; }
+          else if (side === 'over') { x = (l + r - w) / 2; y = (t + b - h) / 2; }
+          e.style.left = Math.round(x) + 'px';
+          e.style.top = Math.round(y) + 'px';
+        });
+      },
+      // a small window in the game's look: { el, body, setTitle, close }; opts.x, opts.y (CSS px, default top left),
+      // opts.width, opts.onClose. The title bar drags it; clicks inside do not reach the game.
+      panel(title = '', opts = {}) {
+        uiCss();
+        const el = ui.el('div', { className: 'bdt-ui-panel' });
+        ui.shield(el);
+        el.style.left = (opts.x ?? 40) + 'px';
+        el.style.top = (opts.y ?? 80) + 'px';
+        if (opts.width) el.style.width = typeof opts.width === 'number' ? opts.width + 'px' : opts.width;
+        const head = ui.el('div', { className: 'bdt-ui-panel-head' }, el);
+        const name = ui.el('span', { textContent: title }, head);
+        const x = ui.el('span', { className: 'bdt-ui-panel-x', textContent: '×' }, head);
+        const body = ui.el('div', { className: 'bdt-ui-panel-body' }, el);
+        let closed = false;
+        const close = () => { if (closed) return; closed = true; el.remove(); if (opts.onClose) kit.guard(opts.onClose)(); };
+        x.addEventListener('click', close);
+        head.addEventListener('pointerdown', (ev) => {
+          if (ev.target === x) return;
+          const sx = ev.clientX - el.offsetLeft, sy = ev.clientY - el.offsetTop;
+          const move = (m) => { el.style.left = Math.max(0, m.clientX - sx) + 'px'; el.style.top = Math.max(0, m.clientY - sy) + 'px'; };
+          const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+          addEventListener('pointermove', move);
+          addEventListener('pointerup', up);
+        });
+        return { el, body, setTitle: (t) => { name.textContent = t; }, close };
+      },
+      // a message in the game's own office notifications (falls back to kit.ui.toast outside the office)
+      notify(text, opts = {}) {
+        if (typeof globalThis.showOfficeNotification === 'function' && /OFFICE/.test(layoutName())) {
+          try { globalThis.showOfficeNotification(String(text), opts.ms); return true; } catch { }
+        }
+        ui.toast(text, opts);
+        return false;
       },
       // a short message in the bottom right corner; opts.ms (default 4000), opts.type 'good' / 'bad'
       toast(text, opts = {}) {

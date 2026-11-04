@@ -4,7 +4,8 @@ import { load } from './load.mjs';
 
 // a runtime with what BetterDTKit reads: the language table, global variables, the screen and the tick event
 const ticks = new Set();
-const cells = { ArrayLanguage: [[['Hello'], ['World']]], ArrayCountries: [[['Czechia'], [53], [0.15]], [['Spain'], [40], [0.25]]] };
+const cells = { ArrayLanguage: [[['Hello'], ['World']]], ArrayCountries: [[['Czechia'], [53], [0.15]], [['Spain'], [40], [0.25]]],
+  ArrayMyEmployees: [[[1]]], ArrayEmployees: [[['Ann'], [1], [50], [30], ['DESIGNERS']], [['Bob'], [2], [50], [30], ['ENGINEERS']]] };
 const array = (name) => {
   const data = cells[name];
   return {
@@ -199,4 +200,24 @@ test('unload: a mod stops, its kit additions go, and it can be registered and st
   tick();
   assert.equal(n, 2);
   assert.equal(KIT.status().find(m => m.name === 'again').state, 'running');
+});
+
+test('data events: found once a day, not for what a loaded save already has', () => {
+  load('mod/mods/lib-game-data.js', 'BDTGameData');
+  const g = rt.globalVars, log = [];
+  const kit = start('data-events', {});
+  kit.on('employeeHired', (e) => log.push('hired ' + e.name));
+  kit.on('employeeLeft', 'ENGINEERS', (e) => log.push('left ' + e.name));
+  assert.throws(() => kit.on('deviceSold', () => {}), /unknown event/);
+  rt.layout.name = 'OFFICE'; g.DayTotal = 500; tick();           // a save loaded: Bob is not "hired"
+  cells.ArrayMyEmployees = [[[1]], [[0]]]; tick();               // the same day: not checked yet
+  assert.deepEqual(log, []);
+  g.DayTotal = 501; tick();
+  assert.deepEqual(log, ['hired Ann']);
+  cells.ArrayMyEmployees = [[[0]]]; g.DayTotal = 502; tick();
+  assert.deepEqual(log, ['hired Ann', 'left Bob']);
+  cells.ArrayMyEmployees = [[[0]], [[1]]]; g.DayTotal = 3000; tick();   // another save: only a new snapshot
+  assert.deepEqual(log, ['hired Ann', 'left Bob']);
+  KIT.unload('data-events');
+  g.DayTotal = 0; rt.layout.name = 'MENU'; tick();
 });
