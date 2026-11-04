@@ -47,8 +47,10 @@ const KIT = load('mod/mods/betterdt-settings.js', 'BetterDTKit');
 // registers a mod, starts it like the loader does and returns its kit
 function start(name, spec) {
   let kit = null;
+  const n = starts.length;
   KIT.mod(name, spec, (r, k) => { kit = k; });
-  starts.pop()(rt);
+  // once the engine runs, a mod registered later starts at once (as one loaded again by the modder tools)
+  if (starts.length > n) starts.pop()(rt);
   return kit;
 }
 
@@ -173,10 +175,28 @@ test('sales multipliers: their product while the sales run, the decay kept, gone
 
 test('an old mod without the new fields works as before', () => {
   let got = null;
+  const n = starts.length;
   KIT.mod('old', { needs: { vars: ['Budget'] } }, (r, k) => { got = [typeof k.guard, typeof k.text, typeof k.wrapCalls]; });
-  starts.pop()(rt);
+  if (starts.length > n) starts.pop()(rt);
   assert.deepEqual(got, ['function', 'function', 'function']);
   assert.equal(KIT.status().find(m => m.name === 'old').state, 'running');
   assert.equal(KIT.info('old'), null);
   assert.deepEqual(KIT.options('old'), []);
+});
+
+test('unload: a mod stops, its kit additions go, and it can be registered and started again', () => {
+  let n = 0, offs = 0;
+  const k1 = start('again', {});
+  k1.onStop(() => offs++);
+  k1.on('tick', () => n++);
+  tick();
+  assert.equal(KIT.unload('again'), true);
+  tick();
+  assert.deepEqual([n, offs], [1, 1]);
+  assert.equal(KIT.status().some(m => m.name === 'again'), false);
+  const k2 = start('again', {});
+  k2.on('tick', () => n++);
+  tick();
+  assert.equal(n, 2);
+  assert.equal(KIT.status().find(m => m.name === 'again').state, 'running');
 });

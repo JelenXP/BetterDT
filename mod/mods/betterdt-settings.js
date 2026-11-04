@@ -316,10 +316,11 @@
     for (let i = 0; i < Math.max(x.n.length, y.n.length); i++) { const d = (x.n[i] || 0) - (y.n[i] || 0); if (d) return Math.sign(d); }
     return x.pre === y.pre ? 0 : x.pre > y.pre ? 1 : -1;
   }
-  const folderMod = (name) => (B.mods || []).find(f => f.folder && f.file === name) || null;
+  const manifests = new Map(), added = [];
+  const folderMod = (name) => [...(B.mods || []), ...added].find(f => f.folder && f.file === name) || null;
   function infoOf(name) {
     const f = folderMod(name), m = mods.get(name);
-    const i = (f && f.manifest) || (m && m.spec && m.spec.info);
+    const i = manifests.get(name) || (f && f.manifest) || (m && m.spec && m.spec.info);
     return i && typeof i === 'object' ? i : null;
   }
   // options with full keys: 'days' of the mod 'my-mod' is stored as my-mod.days
@@ -563,6 +564,7 @@
   }
 
   function mod(name, spec, init) {
+    if (mods.has(name)) unload(name);
     const m = { name, spec, state: 'waiting', problems: [], errors: 0, error: null, dispose: null, warned: new Set(), cache: new Map(), undo: [] };
     mods.set(name, m);
     function stop(state, problem) {
@@ -757,7 +759,8 @@
       },
     };
     kit.ui = ui;
-    B.register(name, (runtime) => {
+    m.stop = stop;
+    const start = (runtime) => {
       rt = runtime;
       waitReady(() => {
         const p = checkRequires(name).concat(check(spec));
@@ -778,7 +781,20 @@
           if (q.length) stop('incompatible', q.join(', '));
         });
       });
-    });
+    };
+    // registered once the engine runs (loaded again by the modder tools): started at once
+    if (rt) start(rt);
+    else B.register(name, start);
+  }
+
+  // stops a mod (what it added through kit goes, its dispose runs) and forgets it, so that its code can be loaded again
+  function unload(name) {
+    const m = mods.get(name);
+    if (!m) return false;
+    m.stop('stopped');
+    m.state = 'stopped';
+    mods.delete(name);
+    return true;
   }
 
   const api = {
@@ -805,6 +821,12 @@
       }
       return out;
     },
+    unload,
+    // a folder mod's manifest read again (mod.json changed) or one that came after the start: used instead of the
+    // loader's copy; mods() lists the loader's mods and those added since
+    setManifest(name, manifest) { manifests.set(name, manifest); },
+    addMod(entry) { if (!(B.mods || []).some(f => f.file === entry.file) && !added.some(f => f.file === entry.file)) added.push(entry); },
+    mods: () => [...(B.mods || []), ...added],
     // fn(name, error) for the first error of a mod (and for the load errors once the settings ask for them)
     onError(fn) { errorListeners.add(fn); return () => errorListeners.delete(fn); },
     // a message in the corner that stays after the mod that showed it stops
@@ -1308,6 +1330,24 @@ BetterDT.register('betterdt-settings', (rt) => {
       '在设备设计器中固定一个 CPU 或 GPU，与另一个并排对比：参数、指标条和生产成本',
       '기기 설계에서 CPU나 GPU를 고정하고 다른 것과 나란히 비교: 사양, 막대, 생산 비용',
       'デバイス設計でCPUやGPUを固定し、別のものと並べて比較：スペック、バー、製造コスト'],
+    'modder-tools': ['Modder tools', 'Инструменты моддера', 'Modder-Werkzeuge', 'Outils pour moddeurs', 'Strumenti per modder',
+      'Herramientas para modders', 'मॉडर टूल', 'Mod yapımcısı araçları', 'Ferramentas para modders', 'Інструменти моддера',
+      'Alat modder', 'Narzędzia moddera', '模组作者工具', '모더 도구', 'MOD作者ツール'],
+    'modder-tools.d': ['A mod is loaded again as soon as you save its files, no restart. F10: the modder panel (variables, changes, tables, texts, functions, calls, console)',
+      'Мод загружается заново, как только вы сохраните его файлы, без перезапуска. F10: панель моддера (переменные, изменения, таблицы, тексты, функции, вызовы, консоль)',
+      'Ein Mod wird neu geladen, sobald du seine Dateien speicherst, ohne Neustart. F10: das Modder-Panel (Variablen, Änderungen, Tabellen, Texte, Funktionen, Aufrufe, Konsole)',
+      'Un mod est rechargé dès que vous enregistrez ses fichiers, sans redémarrer. F10 : le panneau du moddeur (variables, changements, tables, textes, fonctions, appels, console)',
+      'Una mod viene ricaricata appena salvi i suoi file, senza riavviare. F10: il pannello del modder (variabili, modifiche, tabelle, testi, funzioni, chiamate, console)',
+      'Un mod se recarga en cuanto guardas sus archivos, sin reiniciar. F10: el panel del modder (variables, cambios, tablas, textos, funciones, llamadas, consola)',
+      'फ़ाइलें सेव करते ही मॉड फिर से लोड होता है, रीस्टार्ट के बिना। F10: मॉडर पैनल (वेरिएबल, बदलाव, टेबल, टेक्स्ट, फ़ंक्शन, कॉल, कंसोल)',
+      'Dosyalarını kaydettiğiniz anda mod yeniden yüklenir, yeniden başlatma yok. F10: mod yapımcısı paneli (değişkenler, değişiklikler, tablolar, metinler, fonksiyonlar, çağrılar, konsol)',
+      'Um mod é recarregado assim que você salva os arquivos, sem reiniciar. F10: o painel do modder (variáveis, mudanças, tabelas, textos, funções, chamadas, console)',
+      'Мод завантажується знову, щойно ви збережете його файли, без перезапуску. F10: панель моддера (змінні, зміни, таблиці, тексти, функції, виклики, консоль)',
+      'Mod dimuat ulang begitu filenya disimpan, tanpa restart. F10: panel modder (variabel, perubahan, tabel, teks, fungsi, panggilan, konsol)',
+      'Mod wczytuje się ponownie, gdy tylko zapiszesz jego pliki, bez restartu. F10: panel moddera (zmienne, zmiany, tabele, teksty, funkcje, wywołania, konsola)',
+      '保存模组文件后立即重新加载，无需重启。F10：模组作者面板（变量、变化、表格、文本、函数、调用、控制台）',
+      '파일을 저장하면 재시작 없이 모드를 바로 다시 불러옵니다. F10: 모더 패널 (변수, 변경, 테이블, 텍스트, 함수, 호출, 콘솔)',
+      'ファイルを保存するとすぐ再起動なしでMODを再読み込みします。F10：MOD作者パネル（変数、変化、テーブル、テキスト、関数、呼び出し、コンソール）'],
     'dev-inspector': ['Inspector (for modders)', 'Инспектор (для моддеров)', 'Inspektor (für Modder)', 'Inspecteur (pour moddeurs)',
       'Ispettore (per modder)', 'Inspector (para modders)', 'इंस्पेक्टर (मॉडर्स के लिए)', 'Denetçi (mod yapımcıları için)',
       'Inspetor (para modders)', 'Інспектор (для моддерів)', 'Inspektor (untuk modder)', 'Inspektor (dla modderów)',
@@ -1757,7 +1797,7 @@ BetterDT.register('betterdt-settings', (rt) => {
       { key: 'auto-continue.secs', type: 'range', def: 3, min: 1, max: 10, step: 1 }],
   };
   // mods that always load but stay idle until turned on: the mod's own switch sets this key (no restart needed)
-  const SWITCH = { 'dev-inspector.js': { key: 'dev-inspector.on', def: false } };
+  const SWITCH = { 'dev-inspector.js': { key: 'dev-inspector.on', def: false }, 'modder-tools.js': { key: 'modder.on', def: false } };
   const modOn = (f) => (SWITCH[f] ? S.bool(SWITCH[f].key, SWITCH[f].def) : S.bool('mod.' + f, true));
   const setModOn = (f, v) => (SWITCH[f] ? save(SWITCH[f].key, v) : save('mod.' + f, v));
   // mods based on someone else's work: shown under the mod in the settings
@@ -2029,7 +2069,7 @@ BetterDT.register('betterdt-settings', (rt) => {
   }
 
   function renderMods(body) {
-    for (const m of B.mods) {
+    for (const m of (KIT && KIT.mods ? KIT.mods() : B.mods)) {
       if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
       const card = el('div', 'gs-card', body);
       const mctl = row(card, modTitle(m.file), modDesc(m.file));
