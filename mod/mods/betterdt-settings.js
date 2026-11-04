@@ -927,6 +927,76 @@ BetterDT.register('betterdt-settings', (rt) => {
       'Ada ide, pertanyaan, atau bug? Gabung dengan kami di', 'Pomysły, pytania albo błąd? Dołącz do nas na',
       '有想法、问题或发现错误？欢迎加入我们的', '아이디어, 질문, 버그가 있나요? 함께해요:', 'アイデア・質問・不具合は'],
     releases: ['Releases', 'Версии', 'Versionen', 'Versions', 'Versioni', 'Versiones', 'संस्करण', 'Sürümler', 'Versões', 'Версії', 'Rilis', 'Wydania', '版本发布', '릴리스', 'リリース'],
+    'create': ['Create a mod', 'Создать мод', 'Mod erstellen', 'Créer un mod', 'Crea una mod', 'Crear un mod', 'मॉड बनाएँ', 'Mod oluştur',
+      'Criar um mod', 'Створити мод', 'Buat mod', 'Utwórz mod', '创建模组', '모드 만들기', 'MODを作成'],
+    'createHint': ['A new folder in mods with mod.json and mod.js from a template, ready to change; the folder opens',
+      'Новая папка в mods с mod.json и mod.js из шаблона, готовая к изменению; папка откроется',
+      'Ein neuer Ordner in mods mit mod.json und mod.js aus einer Vorlage, bereit zum Ändern; der Ordner wird geöffnet',
+      'Un nouveau dossier dans mods avec mod.json et mod.js d’après un modèle, prêt à modifier ; le dossier s’ouvre',
+      'Una nuova cartella in mods con mod.json e mod.js da un modello, pronta da modificare; la cartella si apre',
+      'Una carpeta nueva en mods con mod.json y mod.js de una plantilla, lista para cambiar; la carpeta se abre',
+      'mods में टेम्पलेट से mod.json और mod.js वाला नया फ़ोल्डर, बदलने के लिए तैयार; फ़ोल्डर खुल जाएगा',
+      'mods içinde şablondan mod.json ve mod.js içeren yeni bir klasör, değiştirmeye hazır; klasör açılır',
+      'Uma nova pasta em mods com mod.json e mod.js de um modelo, pronta para alterar; a pasta abre',
+      'Нова тека в mods з mod.json і mod.js із шаблону, готова до змін; тека відкриється',
+      'Folder baru di mods dengan mod.json dan mod.js dari templat, siap diubah; foldernya terbuka',
+      'Nowy folder w mods z mod.json i mod.js z szablonu, gotowy do zmian; folder się otworzy',
+      '在 mods 中按模板新建含 mod.json 和 mod.js 的文件夹，可直接修改；文件夹会打开', '템플릿으로 mod.json과 mod.js가 든 새 폴더를 mods에 만듭니다. 바로 수정할 수 있고 폴더가 열립니다',
+      'テンプレートから mod.json と mod.js の入った新しいフォルダーを mods に作成します。フォルダーが開きます'],
+    'tplLabel': ['Template', 'Шаблон', 'Vorlage', 'Modèle', 'Modello', 'Plantilla', 'टेम्पलेट', 'Şablon', 'Modelo', 'Шаблон', 'Templat',
+      'Szablon', '模板', '템플릿', 'テンプレート'],
+    'tpl.empty': ['Empty', 'Пустой', 'Leer', 'Vide', 'Vuoto', 'Vacío', 'खाली', 'Boş', 'Vazio', 'Порожній', 'Kosong', 'Pusty', '空白', '빈 모드',
+      '空'],
+    'tpl.daily': ['Every day and month', 'Каждый день и месяц', 'Jeden Tag und Monat', 'Chaque jour et mois', 'Ogni giorno e mese',
+      'Cada día y mes', 'हर दिन और महीने', 'Her gün ve ay', 'Todo dia e mês', 'Щодня й щомісяця', 'Tiap hari dan bulan',
+      'Co dzień i miesiąc', '每天和每月', '매일, 매달', '毎日と毎月'],
+    'tpl.button': ['A button', 'Кнопка', 'Ein Knopf', 'Un bouton', 'Un pulsante', 'Un botón', 'एक बटन', 'Bir düğme', 'Um botão', 'Кнопка',
+      'Sebuah tombol', 'Przycisk', '一个按钮', '버튼', 'ボタン'],
+    'tpl.sales': ['Sales × N', 'Продажи × N', 'Verkäufe × N', 'Ventes × N', 'Vendite × N', 'Ventas × N', 'बिक्री × N', 'Satışlar × N',
+      'Vendas × N', 'Продажі × N', 'Penjualan × N', 'Sprzedaż × N', '销量 × N', '판매 × N', '販売 × N'],
+    'tpl.window': ['A window', 'Окно', 'Ein Fenster', 'Une fenêtre', 'Una finestra', 'Una ventana', 'एक विंडो', 'Bir pencere', 'Uma janela',
+      'Вікно', 'Sebuah jendela', 'Okno', '一个窗口', '창', 'ウィンドウ'],
+    'createBtn': ['Create', 'Создать', 'Erstellen', 'Créer', 'Crea', 'Crear', 'बनाएँ', 'Oluştur', 'Criar', 'Створити', 'Buat', 'Utwórz',
+      '创建', '만들기', '作成'],
+    'created': ['Mod {name} created in mods/{name}', 'Мод {name} создан в mods/{name}', 'Mod {name} in mods/{name} erstellt',
+      'Mod {name} créé dans mods/{name}', 'Mod {name} creata in mods/{name}', 'Mod {name} creado en mods/{name}',
+      'मॉड {name} mods/{name} में बना', '{name} modu mods/{name} içinde oluşturuldu', 'Mod {name} criado em mods/{name}',
+      'Мод {name} створено в mods/{name}', 'Mod {name} dibuat di mods/{name}', 'Mod {name} utworzony w mods/{name}',
+      '模组 {name} 已创建于 mods/{name}', '모드 {name}을(를) mods/{name}에 만들었습니다', 'MOD {name} を mods/{name} に作成しました'],
+    'createdLive': ['It runs now: save mod.js and it is loaded again', 'Он уже работает: сохраните mod.js, и он загрузится заново',
+      'Er läuft schon: speichere mod.js, und er wird neu geladen', 'Il tourne déjà : enregistrez mod.js et il est rechargé',
+      'È già attiva: salva mod.js e viene ricaricata', 'Ya funciona: guarda mod.js y se recarga',
+      'यह चल रहा है: mod.js सेव करें, यह फिर से लोड होगा', 'Şimdi çalışıyor: mod.js dosyasını kaydedin, yeniden yüklenir',
+      'Já está rodando: salve mod.js e ele é recarregado', 'Він уже працює: збережіть mod.js, і він завантажиться знову',
+      'Sudah berjalan: simpan mod.js dan dimuat ulang', 'Już działa: zapisz mod.js, a wczyta się ponownie', '已在运行：保存 mod.js 即会重新加载',
+      '이미 실행 중입니다: mod.js를 저장하면 다시 불러옵니다', 'すでに動作中です：mod.js を保存すると再読み込みされます'],
+    'createdRestart': ['Restart the game to load it, or turn on Modder tools first',
+      'Перезапустите игру, чтобы загрузить его, или сначала включите инструменты моддера',
+      'Starte das Spiel neu, um ihn zu laden, oder schalte vorher die Modder-Werkzeuge ein',
+      'Redémarrez le jeu pour le charger, ou activez d’abord les outils pour moddeurs',
+      'Riavvia il gioco per caricarla, o prima attiva gli strumenti per modder',
+      'Reinicia el juego para cargarlo, o activa antes las herramientas para modders',
+      'इसे लोड करने के लिए गेम रीस्टार्ट करें, या पहले मॉडर टूल चालू करें',
+      'Yüklemek için oyunu yeniden başlatın veya önce mod yapımcısı araçlarını açın',
+      'Reinicie o jogo para carregá-lo, ou ative antes as ferramentas para modders',
+      'Перезапустіть гру, щоб завантажити його, або спершу ввімкніть інструменти моддера',
+      'Mulai ulang game untuk memuatnya, atau nyalakan dulu alat modder',
+      'Uruchom grę ponownie, aby go wczytać, albo najpierw włącz narzędzia moddera', '重启游戏以加载，或先开启模组作者工具', '불러오려면 게임을 재시작하거나 먼저 모더 도구를 켜세요',
+      '読み込むにはゲームを再起動するか、先にMOD作者ツールをオンにしてください'],
+    'nameChars': ['Only letters, digits, . _ and - (no spaces)', 'Только буквы, цифры, . _ и - (без пробелов)',
+      'Nur Buchstaben, Ziffern, . _ und - (keine Leerzeichen)', 'Seulement lettres, chiffres, . _ et - (sans espaces)',
+      'Solo lettere, cifre, . _ e - (senza spazi)', 'Solo letras, dígitos, . _ y - (sin espacios)',
+      'केवल अक्षर, अंक, . _ और - (स्पेस नहीं)', 'Yalnızca harf, rakam, . _ ve - (boşluk yok)', 'Só letras, dígitos, . _ e - (sem espaços)',
+      'Лише літери, цифри, . _ і - (без пробілів)', 'Hanya huruf, angka, . _ dan - (tanpa spasi)',
+      'Tylko litery, cyfry, . _ i - (bez spacji)', '只能用字母、数字、. _ 和 -（不含空格）', '영문자, 숫자, . _ - 만 (공백 없음)', '英字・数字・. _ - のみ（空白なし）'],
+    'nameTaken': ['A mod with this name already exists', 'Мод с таким именем уже есть', 'Ein Mod mit diesem Namen gibt es schon',
+      'Un mod de ce nom existe déjà', 'Esiste già una mod con questo nome', 'Ya existe un mod con este nombre', 'इस नाम का मॉड पहले से है',
+      'Bu adda bir mod zaten var', 'Já existe um mod com este nome', 'Мод із такою назвою вже є', 'Mod dengan nama ini sudah ada',
+      'Mod o tej nazwie już istnieje', '已有同名模组', '같은 이름의 모드가 이미 있습니다', '同じ名前のMODがすでにあります'],
+    'createFail': ['The mod could not be created', 'Не удалось создать мод', 'Der Mod konnte nicht erstellt werden',
+      'Impossible de créer le mod', 'Impossibile creare la mod', 'No se pudo crear el mod', 'मॉड नहीं बन सका', 'Mod oluşturulamadı',
+      'Não foi possível criar o mod', 'Не вдалося створити мод', 'Mod tidak dapat dibuat', 'Nie udało się utworzyć moda', '无法创建模组',
+      '모드를 만들 수 없습니다', 'MODを作成できませんでした'],
     modsHint: ['Turning a mod on or off takes effect after a restart', 'Включение и выключение модов сработает после перезапуска',
       'Ein- und Ausschalten wirkt nach einem Neustart', 'Activer ou désactiver un mod prend effet après un redémarrage',
       'Attivare o disattivare una mod ha effetto dopo il riavvio', 'Activar o desactivar un mod surte efecto tras reiniciar',
@@ -2068,7 +2138,40 @@ BetterDT.register('betterdt-settings', (rt) => {
     }
   }
 
+  // a new folder mod from a template (BDTModTemplates); with Modder tools on it runs as soon as its files are there
+  function renderCreate(body) {
+    const Tp = globalThis.BDTModTemplates;
+    if (!Tp || !KIT || !KIT.mods) return;
+    const card = el('div', 'gs-card', body);
+    const nctl = row(card, t('create'), t('createHint'));
+    const input = el('input', 'bdt-input', nctl);
+    input.type = 'text'; input.maxLength = 60; input.spellcheck = false; input.placeholder = 'my-mod';
+    // typing is for the field, not for the game's keys
+    for (const ev of ['keydown', 'keyup', 'keypress']) input.addEventListener(ev, (e) => e.stopPropagation());
+    let tpl = 'empty';
+    choice(row(card, t('tplLabel')), Tp.IDS.map(id => ({ value: id, label: t('tpl.' + id) })), tpl, (v) => { tpl = v; });
+    const actl = row(card, '');
+    const hint = actl.parentNode.querySelector('.gs-row-name');
+    hint.style.whiteSpace = 'pre-line';
+    const fail = (key) => { hint.textContent = t(key); hint.classList.add('bdt-warn'); };
+    const go = btn(actl, t('createBtn'), () => {
+      const name = input.value.trim();
+      const p = Tp.nameProblem(name, KIT.mods().map(m => m.file));
+      if (p) return fail(p === 'taken' ? 'nameTaken' : 'nameChars');
+      const files = Tp.make(tpl, name);
+      go.classList.add('gs-btn-off');
+      B.api('newmod', { name, json: files['mod.json'], js: files['mod.js'] }).then((r) => {
+        go.classList.remove('gs-btn-off');
+        if (!r || !r.ok) return fail(r && r.error === 'exists' ? 'nameTaken' : 'createFail');
+        hint.classList.remove('bdt-warn');
+        hint.textContent = t('created', { name }) + '\n' + t(S.bool('modder.on', false) ? 'createdLive' : 'createdRestart');
+        input.value = '';
+      }, () => { go.classList.remove('gs-btn-off'); fail('createFail'); });
+    });
+  }
+
   function renderMods(body) {
+    renderCreate(body);
     for (const m of (KIT && KIT.mods ? KIT.mods() : B.mods)) {
       if (m.file === 'betterdt-settings.js' || m.file.startsWith('lib-')) continue;
       const card = el('div', 'gs-card', body);
@@ -2271,6 +2374,10 @@ BetterDT.register('betterdt-settings', (rt) => {
 #gs-root .gs-row-hint.bdt-warn { color: rgb(var(--warn)); opacity: 1; }
 #gs-root .gs-row-hint.bdt-good { color: rgb(var(--good)); opacity: 1; }
 #gs-root .gs-row-hint { white-space: pre-line; }
+#gs-root .bdt-input { width: calc(var(--gs, 1) * 320px); padding: calc(var(--gs, 1) * 8px) calc(var(--gs, 1) * 12px);
+  border-radius: calc(var(--gs, 1) * 8px); border: 1px solid rgba(255, 255, 255, .25); background: rgba(0, 0, 0, .3); color: #fff;
+  font: calc(var(--gs, 1) * 20px) Consolas, monospace; outline: none; }
+#gs-root .bdt-input:focus { border-color: rgb(var(--acc)); }
 #gs-root .bdt-err-code { margin: calc(var(--gs, 1) * 6px) 0 0; padding: calc(var(--gs, 1) * 8px) calc(var(--gs, 1) * 10px);
   border-radius: calc(var(--gs, 1) * 8px); background: rgba(0, 0, 0, .35); font: calc(var(--gs, 1) * 15px)/1.35 Consolas, monospace;
   white-space: pre; overflow-x: auto; color: rgba(255, 255, 255, .75); }
